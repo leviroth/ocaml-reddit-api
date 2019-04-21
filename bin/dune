@@ -1,0 +1,4 @@
+(executable
+(name main)
+(libraries core async ocaml_reddit)
+(preprocess (pps ppx_jane)))
