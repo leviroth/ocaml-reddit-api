@@ -5,21 +5,21 @@ let add_user_agent l =
   ("User-Agent", "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken") :: l
 ;;
 
+module Config = struct
+  type t =
+    { client_id : string
+    ; client_secret : string
+    ; password : string
+    ; username : string
+    }
+  [@@deriving sexp]
+
+  let basic_auth_string t =
+    Cohttp.Auth.string_of_credential (`Basic (t.client_id, t.client_secret))
+  ;;
+end
+
 module Auth = struct
-  module Config = struct
-    type t =
-      { client_id : string
-      ; client_secret : string
-      ; password : string
-      ; username : string
-      }
-    [@@deriving sexp]
-
-    let basic_auth_string t =
-      Cohttp.Auth.string_of_credential (`Basic (t.client_id, t.client_secret))
-    ;;
-  end
-
   module Access_token = struct
     (* TODO: [with_t] function? *)
     type t =
@@ -31,81 +31,6 @@ module Auth = struct
     let is_almost_expired { expiration; _ } =
       let time_with_padding = Time.add (Time.now ()) (Time.Span.of_int_sec 10) in
       Time.( <= ) expiration time_with_padding
-    ;;
-  end
-
-  module Rate_limiter : sig
-    type t [@@deriving sexp_of]
-
-    val create : unit -> t
-
-    val with_t
-      :  t
-      -> f:(unit -> (Cohttp.Response.t * Cohttp.Body.t) Deferred.t)
-      -> (Cohttp.Response.t * Cohttp.Body.t) Deferred.t
-  end = struct
-    let tolerance = Time.Span.of_int_sec 10
-
-    module Remaining_call_state = struct
-      type t =
-        | Known of int
-        | Waiting_for_refresh
-      [@@deriving sexp_of]
-    end
-
-    type t =
-      { mutable remaining_api_calls : Remaining_call_state.t
-      ; mutable reset_wait : Time.Span.t
-      ; jobs : (unit -> unit) Queue.t
-      }
-    [@@deriving sexp_of]
-
-    let create () =
-      { remaining_api_calls = Known 600
-      ; reset_wait = Time.Span.of_int_sec 600
-      ; jobs = Queue.create ()
-      }
-    ;;
-
-    let run_job_from_queue t =
-      let job = Queue.dequeue_exn t.jobs in
-      job ()
-    ;;
-
-    let rec clear_queue t =
-      match Queue.is_empty t.jobs with
-      | true -> ()
-      | false ->
-        (match t.remaining_api_calls with
-        | Waiting_for_refresh -> ()
-        | Known 0 ->
-          upon (after t.reset_wait) (fun () -> run_job_from_queue t);
-          clear_queue t
-        | Known n ->
-          t.remaining_api_calls <- Known (n - 1);
-          run_job_from_queue t;
-          clear_queue t)
-    ;;
-
-    (* TODO: This is a bad infinite loop *)
-
-    let with_t t ~f =
-      let ivar = Ivar.create () in
-      Queue.enqueue t.jobs (fun () ->
-          upon (f ()) (fun ((response, _body) as result) ->
-              let headers = Cohttp.Response.headers response in
-              Cohttp.Header.get headers "X-Ratelimit-Remaining"
-              |> Option.map ~f:Float.of_string
-              |> Option.map ~f:Int.of_float
-              |> Option.iter ~f:(fun n -> t.remaining_api_calls <- Known n);
-              Cohttp.Header.get headers "X-Ratelimit-Reset"
-              |> Option.map ~f:Int.of_string
-              |> Option.map ~f:Time.Span.of_int_sec
-              |> Option.map ~f:(Time.Span.( + ) tolerance)
-              |> Option.iter ~f:(fun n -> t.reset_wait <- n);
-              Ivar.fill ivar result));
-      clear_queue t;
-      Ivar.read ivar
     ;;
   end
 
@@ -149,23 +74,115 @@ module Auth = struct
       { token; expiration }
     in
     t.access_token <- Some access_token;
-    return ()
+    return access_token
   ;;
 
   let call ?body t method_ uri =
-    match t.access_token with
-    | None -> raise_s [%message "no access token" (t : t)]
-    | Some ({ token; _ } as access_token) ->
-      let%bind () =
-        match Access_token.is_almost_expired access_token with
-        | true -> get_token t
-        | false -> return ()
-      in
-      let headers =
-        [ "Authorization", sprintf "bearer %s" token ]
-        |> add_user_agent
-        |> Cohttp.Header.of_list
-      in
-      Cohttp_async.Client.call ?body ~headers method_ uri
+    let%bind access_token =
+      match t.access_token with
+      | None -> get_token t
+      | Some access_token -> return access_token
+    in
+    let%bind { token; _ } =
+      match Access_token.is_almost_expired access_token with
+      | true -> get_token t
+      | false -> return access_token
+    in
+    let headers =
+      [ "Authorization", sprintf "bearer %s" token ]
+      |> add_user_agent
+      |> Cohttp.Header.of_list
+    in
+    Cohttp_async.Client.call ?body ~headers method_ uri
   ;;
 end
+
+module Rate_limiter : sig
+  type t [@@deriving sexp]
+
+  val create : unit -> t
+
+  val with_t
+    :  t
+    -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+end = struct
+  let tolerance = Time.Span.of_int_sec 10
+
+  type t =
+    { mutable remaining_api_calls : int
+    ; mutable reset_time : Time.t option
+    ; mutable waiting_for_reset : bool
+    ; jobs : (unit -> unit) Queue.t
+    }
+  [@@deriving sexp]
+
+  let create () =
+    { remaining_api_calls = 600
+    ; reset_time = None
+    ; waiting_for_reset = false
+    ; jobs = Queue.create ()
+    }
+  ;;
+
+  let rec clear_queue t =
+    match t.waiting_for_reset with
+    | true -> ()
+    | false ->
+      Queue.dequeue t.jobs
+      |> Option.iter ~f:(fun job ->
+             match t.remaining_api_calls with
+             | 0 ->
+               (match t.reset_time with
+               | None ->
+                 failwith
+                   "Tried to run job with no remaining API calls and unknown reset time"
+               (* TODO Bug *)
+               | Some reset_time ->
+                 t.waiting_for_reset <- true;
+                 upon (at reset_time) job)
+             | n ->
+               t.remaining_api_calls <- n - 1;
+               job ();
+               clear_queue t)
+  ;;
+
+  let with_t t ~f =
+    let ivar = Ivar.create () in
+    Queue.enqueue t.jobs (fun () ->
+        upon (f ()) (fun ((response, _body) as result) ->
+            let headers = Cohttp.Response.headers response in
+            Cohttp.Header.get headers "X-Ratelimit-Remaining"
+            |> Option.iter ~f:(fun s ->
+                   let remaining_api_calls = Float.of_string s |> Int.of_float in
+                   t.remaining_api_calls <- remaining_api_calls);
+            Cohttp.Header.get headers "X-Ratelimit-Reset"
+            |> Option.iter ~f:(fun s ->
+                   let reset_time =
+                     Int.of_string s
+                     |> Time.Span.of_int_sec
+                     |> Time.Span.( + ) tolerance
+                     |> Time.add (Time.now ())
+                   in
+                   t.reset_time <- Some reset_time);
+            t.waiting_for_reset <- false;
+            Ivar.fill ivar result;
+            clear_queue t));
+    clear_queue t;
+    Ivar.read ivar
+  ;;
+end
+
+type t =
+  { auth : Auth.t
+  ; rate_limiter : Rate_limiter.t
+  }
+[@@deriving sexp]
+
+let create config =
+  { auth = Auth.create config (); rate_limiter = Rate_limiter.create () }
+;;
+
+let call ?body t method_ uri =
+  Rate_limiter.with_t t.rate_limiter ~f:(fun () -> Auth.call ?body t.auth method_ uri)
+;;
