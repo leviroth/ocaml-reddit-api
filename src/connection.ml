@@ -109,20 +109,53 @@ module Rate_limiter : sig
 end = struct
   let tolerance = Time.Span.of_int_sec 10
 
+  module Server_side_info = struct
+    type t =
+      { remaining_api_calls : int
+      ; reset_time : Time.t
+      }
+    [@@deriving sexp]
+
+    let t_of_headers headers =
+      let open Option.Let_syntax in
+      let%bind remaining_api_calls =
+        Cohttp.Header.get headers "X-Ratelimit-Remaining"
+        >>| Float.of_string
+        >>| Int.of_float
+      and reset_time =
+        Cohttp.Header.get headers "X-Ratelimit-Reset"
+        >>| Int.of_string
+        >>| Time.Span.of_int_sec
+        >>| Time.Span.( + ) tolerance
+        >>| Time.add (Time.now ())
+      in
+      return { remaining_api_calls; reset_time }
+    ;;
+
+    let demonstrates_reset t t' =
+      let time_difference = Time.diff t'.reset_time t.reset_time in
+      Time.Span.( > ) time_difference (Time.Span.of_int_sec 300)
+    ;;
+
+    let update t t' =
+      match demonstrates_reset t t' with
+      | true -> t'
+      | false ->
+        (match t.remaining_api_calls < t'.remaining_api_calls with
+        | true -> t
+        | false -> t')
+    ;;
+  end
+
   type t =
-    { mutable remaining_api_calls : int
-    ; mutable reset_time : Time.t option
+    { mutable server_side_info : Server_side_info.t option
     ; mutable waiting_for_reset : bool
     ; jobs : (unit -> unit) Queue.t
     }
   [@@deriving sexp]
 
   let create () =
-    { remaining_api_calls = 600
-    ; reset_time = None
-    ; waiting_for_reset = false
-    ; jobs = Queue.create ()
-    }
+    { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
   ;;
 
   let rec clear_queue t =
@@ -131,20 +164,29 @@ end = struct
     | false ->
       Queue.dequeue t.jobs
       |> Option.iter ~f:(fun job ->
-             match t.remaining_api_calls with
-             | 0 ->
-               (match t.reset_time with
-               | None ->
-                 failwith
-                   "Tried to run job with no remaining API calls and unknown reset time"
-               (* TODO Bug *)
-               | Some reset_time ->
+             match t.server_side_info with
+             | None ->
+               t.waiting_for_reset <- true;
+               job ()
+             | Some ({ reset_time; remaining_api_calls } as server_side_info) ->
+               (match remaining_api_calls with
+               | 0 ->
                  t.waiting_for_reset <- true;
-                 upon (at reset_time) job)
-             | n ->
-               t.remaining_api_calls <- n - 1;
-               job ();
-               clear_queue t)
+                 upon (at reset_time) job
+               | n ->
+                 t.server_side_info
+                 <- Some { server_side_info with remaining_api_calls = n - 1 };
+                 job ();
+                 clear_queue t))
+  ;;
+
+  let update_server_side_info t new_server_side_info =
+    t.server_side_info
+    <- Some
+         (match t.server_side_info with
+         | None -> new_server_side_info
+         | Some server_side_info ->
+           Server_side_info.update server_side_info new_server_side_info)
   ;;
 
   let with_t t ~f =
@@ -152,20 +194,19 @@ end = struct
     Queue.enqueue t.jobs (fun () ->
         upon (f ()) (fun ((response, _body) as result) ->
             let headers = Cohttp.Response.headers response in
-            Cohttp.Header.get headers "X-Ratelimit-Remaining"
-            |> Option.iter ~f:(fun s ->
-                   let remaining_api_calls = Float.of_string s |> Int.of_float in
-                   t.remaining_api_calls <- remaining_api_calls);
-            Cohttp.Header.get headers "X-Ratelimit-Reset"
-            |> Option.iter ~f:(fun s ->
-                   let reset_time =
-                     Int.of_string s
-                     |> Time.Span.of_int_sec
-                     |> Time.Span.( + ) tolerance
-                     |> Time.add (Time.now ())
-                   in
-                   t.reset_time <- Some reset_time);
-            t.waiting_for_reset <- false;
+            Server_side_info.t_of_headers headers
+            |> Option.iter ~f:(fun new_server_side_info ->
+                   (match t.server_side_info with
+                   | None -> t.waiting_for_reset <- false
+                   | Some old_server_side_info ->
+                     (match
+                        Server_side_info.demonstrates_reset
+                          old_server_side_info
+                          new_server_side_info
+                      with
+                     | false -> ()
+                     | true -> t.waiting_for_reset <- false));
+                   update_server_side_info t new_server_side_info);
             Ivar.fill ivar result;
             clear_queue t));
     clear_queue t;
