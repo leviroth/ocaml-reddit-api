@@ -21,7 +21,6 @@ end
 
 module Auth = struct
   module Access_token = struct
-    (* TODO: [with_t] function? *)
     type t =
       { token : string
       ; expiration : Time.t
@@ -77,7 +76,7 @@ module Auth = struct
     return access_token
   ;;
 
-  let call ?body t method_ uri =
+  let with_t t ~f ~headers =
     let%bind access_token =
       match t.access_token with
       | None -> get_token t
@@ -91,9 +90,9 @@ module Auth = struct
     let headers =
       [ "Authorization", sprintf "bearer %s" token ]
       |> add_user_agent
-      |> Cohttp.Header.of_list
+      |> Cohttp.Header.add_list headers
     in
-    Cohttp_async.Client.call ?body ~headers method_ uri
+    f headers
   ;;
 end
 
@@ -107,8 +106,6 @@ module Rate_limiter : sig
     -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
     -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 end = struct
-  let tolerance = Time.Span.of_int_sec 10
-
   module Server_side_info = struct
     type t =
       { remaining_api_calls : int
@@ -123,18 +120,19 @@ end = struct
         >>| Float.of_string
         >>| Int.of_float
       and reset_time =
-        Cohttp.Header.get headers "X-Ratelimit-Reset"
-        >>| Int.of_string
-        >>| Time.Span.of_int_sec
-        >>| Time.Span.( + ) tolerance
-        >>| Time.add (Time.now ())
+        let%bind relative_reset_time =
+          Cohttp.Header.get headers "X-Ratelimit-Reset"
+          >>| Int.of_string
+          >>| Time.Span.of_int_sec
+        in
+        return (Time.add (Time.now ()) relative_reset_time)
       in
       return { remaining_api_calls; reset_time }
     ;;
 
     let demonstrates_reset t t' =
       let time_difference = Time.diff t'.reset_time t.reset_time in
-      Time.Span.( > ) time_difference (Time.Span.of_int_sec 300)
+      Time.Span.( > ) time_difference (Time.Span.of_int_sec 60)
     ;;
 
     let update t t' =
@@ -224,6 +222,7 @@ let create config =
   { auth = Auth.create config (); rate_limiter = Rate_limiter.create () }
 ;;
 
-let call ?body t method_ uri =
-  Rate_limiter.with_t t.rate_limiter ~f:(fun () -> Auth.call ?body t.auth method_ uri)
+let with_t t ~f ~headers =
+  Auth.with_t t.auth ~headers ~f:(fun headers ->
+      Rate_limiter.with_t t.rate_limiter ~f:(fun () -> f headers))
 ;;

@@ -21,9 +21,8 @@ type t [@@deriving sexp]
 
 val create : Config.t -> t
 
-val call
-  :  ?body:Cohttp_async.Body.t
-  -> t
-  -> Cohttp.Code.meth
-  -> Uri.t
+val with_t
+  :  t
+  -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
+  -> headers:Cohttp.Header.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
