@@ -1,1 +1,2 @@
 profile = janestreet
+ocp-indent-compat = true
