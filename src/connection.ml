@@ -111,7 +111,7 @@ end = struct
       { remaining_api_calls : int
       ; reset_time : Time.t
       }
-    [@@deriving sexp]
+    [@@deriving sexp, fields]
 
     let t_of_headers headers =
       let open Option.Let_syntax in
@@ -130,18 +130,40 @@ end = struct
       return { remaining_api_calls; reset_time }
     ;;
 
-    let demonstrates_reset t t' =
-      let time_difference = Time.diff t'.reset_time t.reset_time in
-      Time.Span.( > ) time_difference (Time.Span.of_int_sec 60)
+    let compare_approximate_reset_times time1 time2 =
+      let tolerance = Time.Span.of_int_sec 60 in
+      let lower = Maybe_bound.Incl (Time.sub time2 tolerance) in
+      let upper = Maybe_bound.Incl (Time.add time2 tolerance) in
+      match
+        Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time.compare
+      with
+      | Below_lower_bound -> -1
+      | In_range -> 0
+      | Above_upper_bound -> 1
+    ;;
+
+    let demonstrates_reset old_t new_t =
+      match
+        compare_approximate_reset_times old_t.reset_time new_t.reset_time
+        |> Ordering.of_int
+      with
+      | Less -> true
+      | Greater | Equal -> false
+    ;;
+
+    let compare_by_inferred_time_on_server t t' =
+      Comparable.lexicographic
+        [ Comparable.lift compare_approximate_reset_times ~f:reset_time
+        ; Fn.flip (Comparable.lift compare ~f:remaining_api_calls)
+        ]
+        t
+        t'
     ;;
 
     let update t t' =
-      match demonstrates_reset t t' with
-      | true -> t'
-      | false ->
-        (match t.remaining_api_calls < t'.remaining_api_calls with
-        | true -> t
-        | false -> t')
+      match compare_by_inferred_time_on_server t t' |> Ordering.of_int with
+      | Less | Equal -> t'
+      | Greater -> t
     ;;
   end
 
