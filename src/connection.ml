@@ -248,3 +248,23 @@ let with_t t ~f ~headers =
   Auth.with_t t.auth ~headers ~f:(fun headers ->
       Rate_limiter.with_t t.rate_limiter ~f:(fun () -> f headers))
 ;;
+
+let with_retry_internal f =
+  let next_time_to_wait time = Time.Span.max time Time.Span.minute in
+  let rec with_retry f time_to_wait =
+    match%bind try_with f with
+    | Ok ((response, _body) as result) ->
+      (match Cohttp.Response.status response with
+      | #Cohttp.Code.server_error_status ->
+        Log.Global.info_s
+          [%message "got server error status code" (response : Cohttp.Response.t)];
+        with_retry f (next_time_to_wait time_to_wait)
+      | _ -> return result)
+    | Error exn ->
+      Log.Global.info_s [%message "saw exception" (exn : Exn.t)];
+      with_retry f (next_time_to_wait time_to_wait)
+  in
+  with_retry f Time.Span.second
+;;
+
+let with_retry t ~f ~headers = with_retry_internal (fun () -> with_t t ~f ~headers)

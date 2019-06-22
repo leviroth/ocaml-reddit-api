@@ -26,3 +26,9 @@ val with_t
   -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
   -> headers:Cohttp.Header.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+val with_retry
+  :  t
+  -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
+  -> headers:Cohttp.Header.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
