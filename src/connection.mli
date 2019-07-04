@@ -32,3 +32,11 @@ val with_retry
   -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
   -> headers:Cohttp.Header.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+val post_form
+  :  t
+  -> Uri.t
+  -> params:(string * string list) list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t

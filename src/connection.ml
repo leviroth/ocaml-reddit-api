@@ -268,3 +268,16 @@ let with_retry_internal f =
 ;;
 
 let with_retry t ~f ~headers = with_retry_internal (fun () -> with_t t ~f ~headers)
+
+let post_form t uri ~params =
+  let headers = Cohttp.Header.init () in
+  with_retry
+    t
+    ~f:(fun headers -> Cohttp_async.Client.post_form ~headers ~params uri)
+    ~headers
+;;
+
+let get t uri =
+  let headers = Cohttp.Header.init () in
+  with_retry t ~f:(fun headers -> Cohttp_async.Client.get ~headers uri) ~headers
+;;

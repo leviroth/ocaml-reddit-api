@@ -1,5 +1,4 @@
 open! Core
-include Thing
 
 type _u =
   { approved_at_utc : Time.t option option (* null *)
