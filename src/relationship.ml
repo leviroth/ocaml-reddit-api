@@ -88,14 +88,14 @@ let add
   in
   let params =
     Param_dsl.make
-      [ Required' ("api_type", "json")
-      ; Required' ("name", Username.to_string username)
-      ; Required' ("type", to_string t)
-      ; Optional' ("duration", Duration.parameter_of_t duration)
-      ; Optional' ("note", note)
-      ; Optional' ("ban_reason", ban_reason)
-      ; Optional' ("ban_message", ban_message)
-      ; Optional' ("ban_context", Option.map ban_context ~f:Fullname.to_string)
+      [ "api_type", Required' "json"
+      ; "name", Required' (Username.to_string username)
+      ; "type", Required' (to_string t)
+      ; "duration", Optional' (Duration.parameter_of_t duration)
+      ; "note", Optional' note
+      ; "ban_reason", Optional' ban_reason
+      ; "ban_message", Optional' ban_message
+      ; "ban_context", Optional' (Option.map ban_context ~f:Fullname.to_string)
       ]
   in
   Connection.post_form connection ~params uri

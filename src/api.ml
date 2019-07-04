@@ -1,6 +1,53 @@
 open! Core
 open! Async
 
+let comment ?return_rtjson ?richtext_json connection ~parent ~text =
+  let uri = Uri.of_string "https://oauth.reddit.com/api/comment" in
+  let params =
+    let open Option.Monad_infix in
+    Param_dsl.make
+      [ "api_type", Required' "json"
+      ; "thing_id", Required' (Fullname.to_string parent)
+      ; "text", Required' text
+      ; "return_rtjson", Optional' (return_rtjson >>| Bool.to_string)
+      ; "richtext_json", Optional' (richtext_json >>| Yojson.Safe.to_string)
+      ]
+  in
+  Connection.post_form connection uri ~params
+;;
+
+let delete connection ~fullname =
+  let uri = Uri.of_string "https://oauth.reddit.com/api/comment" in
+  let params = Param_dsl.make [ "id", Required' (Fullname.to_string fullname) ] in
+  Connection.post_form connection uri ~params
+;;
+
+let edit ?return_rtjson ?richtext_json connection ~fullname ~text =
+  let uri = Uri.of_string "https://oauth.reddit.com/api/editusertext" in
+  let params =
+    let open Option.Monad_infix in
+    Param_dsl.make
+      [ "api_type", Required' "json"
+      ; "thing_id", Required' (Fullname.to_string fullname)
+      ; "text", Required' text
+      ; "return_rtjson", Optional' (return_rtjson >>| Bool.to_string)
+      ; "richtext_json", Optional' (richtext_json >>| Yojson.Safe.to_string)
+      ]
+  in
+  Connection.post_form connection uri ~params
+;;
+
+let follow connection ~submission ~follow =
+  let uri = Uri.of_string "https://oauth.reddit.com/api/follow_post" in
+  let params =
+    Param_dsl.make
+      [ "fullname", Required' (Fullname.to_string submission)
+      ; "follow", Required' (Bool.to_string follow)
+      ]
+  in
+  Connection.post_form connection uri ~params
+;;
+
 module Comment_sort = struct
   type t =
     | Confidence
@@ -71,16 +118,16 @@ let comments
   let params =
     let open Option.Monad_infix in
     Param_dsl.make
-      [ Optional' ("comment", comment >>| Fullname.Comment_id.to_string)
-      ; Optional' ("context", context >>| Int.to_string)
-      ; Optional' ("depth", depth >>| Int.to_string)
-      ; Optional' ("limit", limit >>| Int.to_string)
-      ; Optional' ("showedits", showedits >>| Bool.to_string)
-      ; Optional' ("showmore", showmore >>| Bool.to_string)
-      ; Optional' ("sort", sort >>| Comment_sort.to_string)
-      ; Optional' ("sr_detail", sr_detail >>| Bool.to_string)
-      ; Optional' ("threaded", threaded >>| Bool.to_string)
-      ; Optional' ("truncate", truncate >>| Int.to_string)
+      [ "comment", Optional' (comment >>| Fullname.Comment_id.to_string)
+      ; "context", Optional' (context >>| Int.to_string)
+      ; "depth", Optional' (depth >>| Int.to_string)
+      ; "limit", Optional' (limit >>| Int.to_string)
+      ; "showedits", Optional' (showedits >>| Bool.to_string)
+      ; "showmore", Optional' (showmore >>| Bool.to_string)
+      ; "sort", Optional' (sort >>| Comment_sort.to_string)
+      ; "sr_detail", Optional' (sr_detail >>| Bool.to_string)
+      ; "threaded", Optional' (threaded >>| Bool.to_string)
+      ; "truncate", Optional' (truncate >>| Int.to_string)
       ]
   in
   let uri = Uri.add_query_params base_uri params in

@@ -1,14 +1,14 @@
 open! Core
 
 type t =
-  | Required of string * string list
-  | Required' of string * string
-  | Optional of string * string list option
-  | Optional' of string * string option
+  | Required of string list
+  | Required' of string
+  | Optional of string list option
+  | Optional' of string option
 
-let make ts =
-  List.filter_map ts ~f:(function
-      | Required (name, values) | Optional (name, Some values) -> Some (name, values)
-      | Required' (name, value) | Optional' (name, Some value) -> Some (name, [ value ])
-      | Optional (_, None) | Optional' (_, None) -> None)
+let make field_names_and_ts =
+  List.filter_map field_names_and_ts ~f:(function
+      | name, (Required values | Optional (Some values)) -> Some (name, values)
+      | name, (Required' value | Optional' (Some value)) -> Some (name, [ value ])
+      | _, (Optional None | Optional' None) -> None)
 ;;
