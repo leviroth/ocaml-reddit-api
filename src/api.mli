@@ -7,6 +7,57 @@ type 'a call =
   -> Connection.t
   -> 'a Deferred.t
 
+module Listing_params : sig
+  module Pagination : sig
+    module Before_or_after : sig
+      type t =
+        | Before
+        | After
+      [@@deriving sexp]
+    end
+
+    type t =
+      { before_or_after : Before_or_after.t
+      ; index : Fullname.t
+      ; count : int
+      }
+    [@@deriving sexp]
+  end
+
+  type t =
+    { pagination : Pagination.t option
+    ; limit : int option
+    ; show_all : bool
+    }
+  [@@deriving sexp]
+end
+
+(** Account *)
+
+val friends
+  :  listing_params:Listing_params.t
+  -> sr_detail:sexp_bool sexp_option
+  -> include_categories:sexp_bool sexp_option
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val blocked
+  :  listing_params:Listing_params.t
+  -> sr_detail:sexp_bool sexp_option
+  -> include_categories:sexp_bool sexp_option
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val messaging
+  :  listing_params:Listing_params.t
+  -> sr_detail:sexp_bool sexp_option
+  -> include_categories:sexp_bool sexp_option
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val trusted
+  :  listing_params:Listing_params.t
+  -> sr_detail:sexp_bool sexp_option
+  -> include_categories:sexp_bool sexp_option
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
 (* Links and comments *)
 
 module Comment_sort : sig
@@ -94,12 +145,12 @@ val saved_categories : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val send_replies
   :  fullname:Fullname.t
-  -> enabled:string
+  -> enabled:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val set_contest_mode
   :  fullname:Fullname.t
-  -> enabled:string
+  -> enabled:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 module Sticky_state : sig

@@ -21,34 +21,104 @@ let get = call_api ~http_verb:`GET
 let post = call_api ~http_verb:`POST
 
 module Param_dsl = struct
+  type t = (string * string list) list
+
+  let required f key values : t = [ key, List.map values ~f ]
+  let required' f key value : t = [ key, [ f value ] ]
+
+  let optional f key values_opt : t =
+    Option.to_list values_opt |> List.bind ~f:(required f key)
+  ;;
+
+  let optional' f key value_opt : t =
+    Option.to_list value_opt |> List.bind ~f:(required' f key)
+  ;;
+
+  let include_optional f value_opt : t = Option.to_list value_opt |> List.bind ~f
+  let _ = optional
+  let combine = List.join
+  let bool = Bool.to_string
+  let string = Fn.id
+  let int = Int.to_string
+  let fullname_ = Fullname.to_string
+  let username_ = Username.to_string
+  let json = Yojson.Safe.to_string
+  let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
+end
+
+module Listing_params = struct
+  module Pagination = struct
+    module Before_or_after = struct
+      type t =
+        | Before
+        | After
+      [@@deriving sexp]
+    end
+
+    type t =
+      { before_or_after : Before_or_after.t
+      ; index : Fullname.t
+      ; count : int
+      }
+    [@@deriving sexp]
+
+    let params_of_t { before_or_after; index; count } =
+      [ ( (match before_or_after with
+          | Before -> "before"
+          | After -> "after")
+        , [ Fullname.to_string index ] )
+      ; "count", [ Int.to_string count ]
+      ]
+    ;;
+  end
+
   type t =
-    | Required of string list
-    | Required' of string
-    | Optional of string list option
-    | Optional' of string option
+    { pagination : Pagination.t option
+    ; limit : int option
+    ; show_all : bool
+    }
+  [@@deriving sexp]
 
-  let _ = Optional None
-
-  let make field_names_and_ts =
-    List.filter_map field_names_and_ts ~f:(function
-        | name, (Required values | Optional (Some values)) -> Some (name, values)
-        | name, (Required' value | Optional' (Some value)) -> Some (name, [ value ])
-        | _, (Optional None | Optional' None) -> None)
+  let params_of_t { pagination; limit; show_all } =
+    let open Param_dsl in
+    combine
+      [ include_optional Pagination.params_of_t pagination
+      ; optional' int "limit" limit
+      ; optional' string "show" (Option.some_if show_all "all")
+      ]
   ;;
 end
 
-let api_type : string * Param_dsl.t = "api_type", Required' "json"
+let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
+
+let prefs which ~listing_params ~sr_detail ~include_categories =
+  let endpoint = sprintf "/api/%s" which in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "include_categories" include_categories
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let friends = prefs "friends"
+let blocked = prefs "blocked"
+let messaging = prefs "messaging"
+let trusted = prefs "trusted"
 
 let add_comment ?return_rtjson ?richtext_json ~parent ~text =
   let endpoint = "/api/comment" in
   let params =
-    let open Option.Monad_infix in
-    Param_dsl.make
+    let open Param_dsl in
+    combine
       [ api_type
-      ; "thing_id", Required' (Fullname.to_string parent)
-      ; "text", Required' text
-      ; "return_rtjson", Optional' (return_rtjson >>| Bool.to_string)
-      ; "richtext_json", Optional' (richtext_json >>| Yojson.Safe.to_string)
+      ; required' fullname_ "thing_id" parent
+      ; required' string "text" text
+      ; optional' bool "return_rtjson" return_rtjson
+      ; optional' json "richtext_json" richtext_json
       ]
   in
   post ~endpoint ~params
@@ -56,20 +126,23 @@ let add_comment ?return_rtjson ?richtext_json ~parent ~text =
 
 let delete ~fullname =
   let endpoint = "/api/comment" in
-  let params = Param_dsl.make [ "id", Required' (Fullname.to_string fullname) ] in
+  let params =
+    let open Param_dsl in
+    Param_dsl.combine [ required' fullname_ "id" fullname ]
+  in
   post ~endpoint ~params
 ;;
 
 let edit ?return_rtjson ?richtext_json ~fullname ~text =
   let endpoint = "/api/editusertext" in
   let params =
-    let open Option.Monad_infix in
-    Param_dsl.make
+    let open Param_dsl in
+    combine
       [ api_type
-      ; "thing_id", Required' (Fullname.to_string fullname)
-      ; "text", Required' text
-      ; "return_rtjson", Optional' (return_rtjson >>| Bool.to_string)
-      ; "richtext_json", Optional' (richtext_json >>| Yojson.Safe.to_string)
+      ; required' fullname_ "thing_id" fullname
+      ; required' string "text" text
+      ; optional' bool "return_rtjson" return_rtjson
+      ; optional' json "richtext_json" richtext_json
       ]
   in
   post ~endpoint ~params
@@ -78,10 +151,8 @@ let edit ?return_rtjson ?richtext_json ~fullname ~text =
 let follow ~submission ~follow =
   let endpoint = "/api/follow_post" in
   let params =
-    Param_dsl.make
-      [ "fullname", Required' (Fullname.to_string submission)
-      ; "follow", Required' (Bool.to_string follow)
-      ]
+    let open Param_dsl in
+    combine [ required' fullname_ "fullname" submission; required' bool "follow" follow ]
   in
   post ~endpoint ~params
 ;;
@@ -90,7 +161,8 @@ let simple_toggle verb =
   let toggle_one_direction ~verb ~fullnames =
     let endpoint = sprintf "/api/%s" verb in
     let params =
-      Param_dsl.make [ "id", Required (List.map fullnames ~f:Fullname.to_string) ]
+      let open Param_dsl in
+      combine [ required fullname_ "id" fullnames ]
     in
     post ~endpoint ~params
   in
@@ -100,7 +172,10 @@ let simple_toggle verb =
 let simple_toggle' verb =
   let toggle_one_direction ~verb ~fullname =
     let endpoint = sprintf "/api/%s" verb in
-    let params = Param_dsl.make [ "id", Required' (Fullname.to_string fullname) ] in
+    let params =
+      let open Param_dsl in
+      combine [ required' fullname_ "id" fullname ]
+    in
     post ~endpoint ~params
   in
   toggle_one_direction ~verb, toggle_one_direction ~verb:("un" ^ verb)
@@ -162,14 +237,14 @@ end
 let more_children ?id ?limit_children ~submission ~children ~sort =
   let endpoint = "/api/morechildren" in
   let params =
-    let open Option.Monad_infix in
-    Param_dsl.make
+    let open Param_dsl in
+    combine
       [ api_type
-      ; "children", Required (List.map children ~f:Id36.Comment.to_string)
-      ; "link_id", Required' (Fullname.to_string submission)
-      ; "id", Optional' (id >>| Id36.More_children.to_string)
-      ; "limit_children", Optional' (limit_children >>| Bool.to_string)
-      ; "sort", Required' (Comment_sort.to_string sort)
+      ; required Id36.Comment.to_string "children" children
+      ; required' fullname_ "link_id" submission
+      ; optional' Id36.More_children.to_string "id" id
+      ; optional' bool "limit_children" limit_children
+      ; required' Comment_sort.to_string "sort" sort
       ]
   in
   get ~endpoint ~params
@@ -181,11 +256,11 @@ module Report_target = struct
     | Fullname of Fullname.t
   [@@deriving sexp]
 
-  let param_of_t t =
+  let params_of_t t =
     match t with
     | Modmail_conversation id ->
-      "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ]
-    | Fullname fullname -> "thing_id", [ Fullname.to_string fullname ]
+      [ "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ] ]
+    | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
   ;;
 end
 
@@ -203,43 +278,42 @@ let report
   =
   let endpoint = "/api/report" in
   let params =
-    Report_target.param_of_t target
-    ::
-    (let open Option.Monad_infix in
-    Param_dsl.make
-      [ api_type
-      ; "reason", Required' reason
-      ; "additional_info", Optional' additional_info
-      ; "custom_text", Optional' custom_text
-      ; "other_reason", Optional' other_reason
-      ; "rule_reason", Optional' rule_reason
-      ; "site_reason", Optional' site_reason
-      ; "sr_name", Optional' sr_name
-      ; "from_modmail", Optional' (from_modmail >>| Bool.to_string)
-      ; "from_help_desk", Optional' (from_help_desk >>| Bool.to_string)
-      ])
+    let open Param_dsl in
+    combine
+      [ Report_target.params_of_t target
+      ; api_type
+      ; required' string "reason" reason
+      ; optional' string "additional_info" additional_info
+      ; optional' string "custom_text" custom_text
+      ; optional' string "other_reason" other_reason
+      ; optional' string "rule_reason" rule_reason
+      ; optional' string "site_reason" site_reason
+      ; optional' string "sr_name" sr_name
+      ; optional' bool "from_modmail" from_modmail
+      ; optional' bool "from_help_desk" from_help_desk
+      ]
   in
   post ~endpoint ~params
 ;;
 
 let report_award ~award_id =
   let endpoint = "/api/report_award" in
-  let params = Param_dsl.make [ "award_id", Required' award_id ] in
+  let params = [ "award_id", [ award_id ] ] in
   post ~endpoint ~params
 ;;
 
 let save ?category ~fullname =
   let endpoint = "/api/save" in
   let params =
-    Param_dsl.make
-      [ "id", Required' (Fullname.to_string fullname); "category", Optional' category ]
+    let open Param_dsl in
+    combine [ required' fullname_ "id" fullname; optional' string "category" category ]
   in
   post ~endpoint ~params
 ;;
 
 let unsave ~fullname =
   let endpoint = "/api/save" in
-  let params = Param_dsl.make [ "id", Required' (Fullname.to_string fullname) ] in
+  let params = [ "id", [ Fullname.to_string fullname ] ] in
   post ~endpoint ~params
 ;;
 
@@ -248,8 +322,8 @@ let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[]
 let send_replies ~fullname ~enabled =
   let endpoint = "/api/sendreplies" in
   let params =
-    Param_dsl.make
-      [ "id", Required' (Fullname.to_string fullname); "state", Required' enabled ]
+    let open Param_dsl in
+    combine [ required' fullname_ "id" fullname; required' bool "state" enabled ]
   in
   post ~endpoint ~params
 ;;
@@ -257,11 +331,9 @@ let send_replies ~fullname ~enabled =
 let set_contest_mode ~fullname ~enabled =
   let endpoint = "/api/set_contest_mode" in
   let params =
-    Param_dsl.make
-      [ api_type
-      ; "id", Required' (Fullname.to_string fullname)
-      ; "state", Required' enabled
-      ]
+    let open Param_dsl in
+    combine
+      [ api_type; required' fullname_ "id" fullname; required' bool "state" enabled ]
   in
   post ~endpoint ~params
 ;;
@@ -282,14 +354,14 @@ end
 
 let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
   let endpoint = "/api/set_subreddit_sticky" in
-  let open Option.Monad_infix in
   let params =
-    Sticky_state.params_of_t sticky_state
-    @ Param_dsl.make
-        [ api_type
-        ; "id", Required' (Fullname.to_string fullname)
-        ; "to_profile", Optional' (to_profile >>| Bool.to_string)
-        ]
+    let open Param_dsl in
+    combine
+      [ Sticky_state.params_of_t sticky_state
+      ; api_type
+      ; required' fullname_ "id" fullname
+      ; optional' bool "to_profile" to_profile
+      ]
   in
   post ~endpoint ~params
 ;;
@@ -297,11 +369,14 @@ let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
 let set_suggested_sort ~fullname ~sort =
   let endpoint = "/api/set_suggested_sort" in
   let params =
-    Param_dsl.make
+    let open Param_dsl in
+    combine
       [ api_type
-      ; "id", Required' (Fullname.to_string fullname)
-      ; ( "sort"
-        , Required' (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank") )
+      ; required' fullname_ "id" fullname
+      ; required'
+          string
+          "sort"
+          (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank")
       ]
   in
   post ~endpoint ~params
@@ -312,7 +387,8 @@ let spoiler, unspoiler = simple_toggle' "spoiler"
 let store_visits ~submissions =
   let endpoint = "/api/store_visits" in
   let params =
-    Param_dsl.make [ "links", Required (List.map submissions ~f:Fullname.to_string) ]
+    let open Param_dsl in
+    combine [ required Fullname.to_string "links" submissions ]
   in
   post ~endpoint ~params
 ;;
@@ -367,27 +443,24 @@ let submit
   =
   let endpoint = "/api/store_visits" in
   let params =
-    Submission_kind.params_of_t kind
-    @
-    let open Option.Monad_infix in
-    Param_dsl.make
-      [ api_type
-      ; "sr", Required' (Subreddit_name.to_string subreddit)
-      ; "title", Required' title
-      ; "ad", Optional' (ad >>| Bool.to_string)
-      ; "nsfw", Optional' (nsfw >>| Bool.to_string)
-      ; "resubmit", Optional' (resubmit >>| Bool.to_string)
-      ; "sendreplies", Optional' (sendreplies >>| Bool.to_string)
-      ; "spoiler", Optional' (spoiler >>| Bool.to_string)
-        (* TODO Do these have to go together? *)
-      ; "flair_id", Optional' flair_id
-      ; "flair_text", Optional' flair_text
-      ; "collection_id", Optional' collection_id
-      ; ( "event_start"
-        , Optional' (event_start >>| Time.to_string_iso8601_basic ~zone:Time.Zone.utc) )
-      ; ( "event_end"
-        , Optional' (event_end >>| Time.to_string_iso8601_basic ~zone:Time.Zone.utc) )
-      ; "event_tz", Optional' event_tz
+    let open Param_dsl in
+    combine
+      [ Submission_kind.params_of_t kind
+      ; api_type
+      ; required' Subreddit_name.to_string "sr" subreddit
+      ; required' string "title" title
+      ; optional' bool "ad" ad
+      ; optional' bool "nsfw" nsfw
+      ; optional' bool "resubmit" resubmit
+      ; optional' bool "sendreplies" sendreplies
+      ; optional' bool "spoiler" spoiler
+      ; (* TODO Do these have to go together? *)
+        optional' string "flair_id" flair_id
+      ; optional' string "flair_text" flair_text
+      ; optional' string "collection_id" collection_id
+      ; optional' time "event_start" event_start
+      ; optional' time "event_end" event_end
+      ; optional' string "event_tz" event_tz
       ]
   in
   post ~endpoint ~params
@@ -407,19 +480,18 @@ module Vote_direction = struct
     | Down -> -1
   ;;
 
-  let param_of_t t = "dir", [ int_of_t t |> Int.to_string ]
+  let params_of_t t = [ "dir", [ int_of_t t |> Int.to_string ] ]
 end
 
 let vote ?rank ~direction ~fullname =
   let endpoint = "/api/vote" in
   let params =
-    Vote_direction.param_of_t direction
-    ::
-    (let open Option.Monad_infix in
-    Param_dsl.make
-      [ "fullname", Required' (Fullname.to_string fullname)
-      ; "rank", Optional' (rank >>| Int.to_string)
-      ])
+    let open Param_dsl in
+    combine
+      [ Vote_direction.params_of_t direction
+      ; required' fullname_ "fullname" fullname
+      ; optional' int "rank" rank
+      ]
   in
   post ~endpoint ~params
 ;;
@@ -446,18 +518,18 @@ let comments
     sprintf !"%s/comments/%{Id36.Submission}" subreddit_part submission
   in
   let params =
-    let open Option.Monad_infix in
-    Param_dsl.make
-      [ "comment", Optional' (comment >>| Id36.Comment.to_string)
-      ; "context", Optional' (context >>| Int.to_string)
-      ; "depth", Optional' (depth >>| Int.to_string)
-      ; "limit", Optional' (limit >>| Int.to_string)
-      ; "showedits", Optional' (showedits >>| Bool.to_string)
-      ; "showmore", Optional' (showmore >>| Bool.to_string)
-      ; "sort", Optional' (sort >>| Comment_sort.to_string)
-      ; "sr_detail", Optional' (sr_detail >>| Bool.to_string)
-      ; "threaded", Optional' (threaded >>| Bool.to_string)
-      ; "truncate", Optional' (truncate >>| Int.to_string)
+    let open Param_dsl in
+    combine
+      [ optional' Id36.Comment.to_string "comment" comment
+      ; optional' int "context" context
+      ; optional' int "depth" depth
+      ; optional' int "limit" limit
+      ; optional' bool "showedits" showedits
+      ; optional' bool "showmore" showmore
+      ; optional' Comment_sort.to_string "sort" sort
+      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "threaded" threaded
+      ; optional' int "truncate" truncate
       ]
   in
   get ~endpoint ~params
@@ -520,14 +592,16 @@ let add_relationship
     Relationship.Duration.params_of_t duration
     @ Relationship.params_of_t relationship
     @
-    let open Option.Let_syntax in
-    Param_dsl.make
-      [ api_type
-      ; "name", Required' (Username.to_string username)
-      ; "note", Optional' note
-      ; "ban_reason", Optional' ban_reason
-      ; "ban_message", Optional' ban_message
-      ; "ban_context", Optional' (ban_context >>| Fullname.to_string)
+    let open Param_dsl in
+    combine
+      [ Relationship.Duration.params_of_t duration
+      ; Relationship.params_of_t relationship
+      ; api_type
+      ; required' username_ "name" username
+      ; optional' string "note" note
+      ; optional' string "ban_reason" ban_reason
+      ; optional' string "ban_message" ban_message
+      ; optional' fullname_ "ban_context" ban_context
       ]
   in
   post ~endpoint ~params
@@ -536,8 +610,12 @@ let add_relationship
 let remove_relationship ~relationship ~username ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
   let params =
-    Relationship.params_of_t relationship
-    @ Param_dsl.make [ api_type; "name", Required' (Username.to_string username) ]
+    let open Param_dsl in
+    combine
+      [ Relationship.params_of_t relationship
+      ; api_type
+      ; required' username_ "name" username
+      ]
   in
   post ~endpoint ~params
 ;;
