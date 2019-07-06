@@ -345,7 +345,6 @@ module Submission_kind = struct
   ;;
 end
 
-(* TODO other parameters? *)
 let submit
     ?ad
     ?nsfw
