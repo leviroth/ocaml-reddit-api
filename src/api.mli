@@ -17,7 +17,7 @@ module Comment_sort : sig
     | Controversial
     | Old
     | Random
-    | Qa
+    | Q_and_a
     | Live
   [@@deriving sexp]
 end

@@ -147,11 +147,15 @@ module Comment_sort = struct
     | Controversial
     | Old
     | Random
-    | Qa
+    | Q_and_a
     | Live
   [@@deriving sexp]
 
-  let to_string t = sexp_of_t t |> Sexp.to_string |> String.lowercase
+  let to_string t =
+    match t with
+    | Q_and_a -> "qa"
+    | _ -> sexp_of_t t |> Sexp.to_string |> String.lowercase
+  ;;
 end
 
 (* TODO: mutex *)
