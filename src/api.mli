@@ -55,16 +55,16 @@ val mark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t)
 val unmark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val more_children
-  :  ?id:Fullname.More_children_id.t
+  :  ?id:Id36.More_children.t
   -> ?limit_children:bool
   -> submission:Fullname.t
-  -> children:Fullname.Comment_id.t list
+  -> children:Id36.Comment.t list
   -> sort:Comment_sort.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 module Report_target : sig
   type t =
-    | Modmail_conversation of Fullname.Modmail_conversation_id.t
+    | Modmail_conversation of Id36.Modmail_conversation.t
     | Fullname of Fullname.t
   [@@deriving sexp]
 end
@@ -191,7 +191,7 @@ val info
 
 val comments
   :  ?subreddit:Subreddit_name.t
-  -> ?comment:Fullname.Comment_id.t
+  -> ?comment:Id36.Comment.t
   -> ?context:int
   -> ?depth:int
   -> ?limit:int
@@ -201,7 +201,7 @@ val comments
   -> ?sr_detail:bool
   -> ?threaded:bool
   -> ?truncate:int
-  -> submission:Fullname.Submission_id.t
+  -> submission:Id36.Submission.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 (** Users *)

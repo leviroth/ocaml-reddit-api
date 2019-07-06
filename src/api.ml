@@ -165,9 +165,9 @@ let more_children ?id ?limit_children ~submission ~children ~sort =
     let open Option.Monad_infix in
     Param_dsl.make
       [ api_type
-      ; "children", Required (List.map children ~f:Fullname.Comment_id.to_string)
+      ; "children", Required (List.map children ~f:Id36.Comment.to_string)
       ; "link_id", Required' (Fullname.to_string submission)
-      ; "id", Optional' (id >>| Fullname.More_children_id.to_string)
+      ; "id", Optional' (id >>| Id36.More_children.to_string)
       ; "limit_children", Optional' (limit_children >>| Bool.to_string)
       ; "sort", Required' (Comment_sort.to_string sort)
       ]
@@ -177,14 +177,14 @@ let more_children ?id ?limit_children ~submission ~children ~sort =
 
 module Report_target = struct
   type t =
-    | Modmail_conversation of Fullname.Modmail_conversation_id.t
+    | Modmail_conversation of Id36.Modmail_conversation.t
     | Fullname of Fullname.t
   [@@deriving sexp]
 
   let param_of_t t =
     match t with
     | Modmail_conversation id ->
-      "modmail_conv_id", [ Fullname.Modmail_conversation_id.to_string id ]
+      "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ]
     | Fullname fullname -> "thing_id", [ Fullname.to_string fullname ]
   ;;
 end
@@ -443,12 +443,12 @@ let comments
       Option.value_map subreddit ~default:"" ~f:(fun name ->
           sprintf !"/r/%{Subreddit_name}" name)
     in
-    sprintf !"%s/comments/%{Fullname.Submission_id}" subreddit_part submission
+    sprintf !"%s/comments/%{Id36.Submission}" subreddit_part submission
   in
   let params =
     let open Option.Monad_infix in
     Param_dsl.make
-      [ "comment", Optional' (comment >>| Fullname.Comment_id.to_string)
+      [ "comment", Optional' (comment >>| Id36.Comment.to_string)
       ; "context", Optional' (context >>| Int.to_string)
       ; "depth", Optional' (depth >>| Int.to_string)
       ; "limit", Optional' (limit >>| Int.to_string)
