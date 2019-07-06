@@ -7,6 +7,8 @@ type 'a call =
   -> Connection.t
   -> 'a Deferred.t
 
+(* Links and comments *)
+
 module Comment_sort : sig
   type t =
     | Confidence
@@ -20,7 +22,7 @@ module Comment_sort : sig
   [@@deriving sexp]
 end
 
-val comment
+val add_comment
   :  ?return_rtjson:bool
   -> ?richtext_json:Yojson.Safe.t
   -> parent:Fullname.t

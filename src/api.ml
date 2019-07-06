@@ -39,7 +39,7 @@ end
 
 let api_type : string * Param_dsl.t = "api_type", Required' "json"
 
-let comment ?return_rtjson ?richtext_json ~parent ~text =
+let add_comment ?return_rtjson ?richtext_json ~parent ~text =
   let endpoint = "/api/comment" in
   let params =
     let open Option.Monad_infix in
