@@ -10,9 +10,11 @@ module type Thing_id = sig
   val to_int : t -> int
 end
 
-module Submission_id : Thing_id
-module User_id : Thing_id
 module Comment_id : Thing_id
+module User_id : Thing_id
+module Submission_id : Thing_id
+module More_children_id : Thing_id
+module Modmail_conversation_id : Thing_id
 
 type t =
   | Comment of Comment_id.t

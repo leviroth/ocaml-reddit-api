@@ -10,15 +10,13 @@ module type Thing_id = sig
 end
 
 module Thing_id : Thing_id = struct
-  type t = string
+  type t = int
 
-  let of_string s = s
-  let to_string t = t
-  let sexp_of_t t = to_string t |> sexp_of_string
-  let t_of_sexp sexp = String.t_of_sexp sexp |> of_string
+  let of_int = Fn.id
+  let to_int = Fn.id
   let base = 36
 
-  let of_int i =
+  let to_string i =
     let rec of_int i acc =
       match i with
       | 0 -> String.of_char_list acc |> String.rev
@@ -37,7 +35,7 @@ module Thing_id : Thing_id = struct
     of_int i []
   ;;
 
-  let to_int t =
+  let of_string t =
     let convert_char c =
       let convert_to_offset base_char = Char.to_int c - Char.to_int base_char in
       match Char.is_alpha c with
@@ -46,11 +44,16 @@ module Thing_id : Thing_id = struct
     in
     String.fold t ~init:0 ~f:(fun acc c -> (acc * base) + convert_char c)
   ;;
+
+  let sexp_of_t t = to_string t |> sexp_of_string
+  let t_of_sexp sexp = String.t_of_sexp sexp |> of_string
 end
 
-module Submission_id = Thing_id
-module User_id = Thing_id
 module Comment_id = Thing_id
+module User_id = Thing_id
+module Submission_id = Thing_id
+module More_children_id = Thing_id
+module Modmail_conversation_id = Thing_id
 
 type t =
   | Comment of Comment_id.t
