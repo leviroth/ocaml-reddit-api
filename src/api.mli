@@ -34,6 +34,10 @@ end
 
 (** Account *)
 
+val me : (Cohttp.Response.t * Cohttp_async.Body.t) call
+val karma : (Cohttp.Response.t * Cohttp_async.Body.t) call
+val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
+
 val friends
   :  listing_params:Listing_params.t
   -> sr_detail:sexp_bool sexp_option
@@ -58,7 +62,11 @@ val trusted
   -> include_categories:sexp_bool sexp_option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-(* Links and comments *)
+(** Captcha *)
+
+val needs_captcha : (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+(** Links and comments *)
 
 module Comment_sort : sig
   type t =

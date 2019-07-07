@@ -90,6 +90,10 @@ module Listing_params = struct
 end
 
 let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
+let me = get ~endpoint:"/api/v1/me" ~params:[]
+let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
+let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
+let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
 
 let prefs which ~listing_params ~sr_detail ~include_categories =
   let endpoint = sprintf "/api/%s" which in
