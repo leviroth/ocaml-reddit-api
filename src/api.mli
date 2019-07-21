@@ -248,6 +248,22 @@ val info
 
 (** Listings *)
 
+val best
+  :  ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val by_id
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+module Duplicate_sort : sig
+  type t =
+    | Number_of_comments
+    | New
+end
+
 val comments
   :  ?subreddit:Subreddit_name.t
   -> ?comment:Id36.Comment.t
@@ -262,6 +278,69 @@ val comments
   -> ?truncate:int
   -> submission:Id36.Submission.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val duplicates
+  :  ?crossposts_only:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?sort:Duplicate_sort.t
+  -> submission_id:Id36.Submission.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+module Historical_span : sig
+  type t =
+    | Hour
+    | Day
+    | Week
+    | Month
+    | Year
+    | All
+  [@@deriving sexp]
+end
+
+val hot
+  :  ?location:string
+  -> ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?subreddit:Subreddit_name.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val new_
+  :  ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?subreddit:Subreddit_name.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val rising
+  :  ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?subreddit:Subreddit_name.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val top
+  :  ?since:Historical_span.t
+  -> ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?subreddit:Subreddit_name.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val controversial
+  :  ?since:Historical_span.t
+  -> ?include_categories:sexp_bool
+  -> ?sr_detail:sexp_bool
+  -> ?subreddit:Subreddit_name.t
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val random
+  :  ?subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val trending_subreddits : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 (** Users *)
 

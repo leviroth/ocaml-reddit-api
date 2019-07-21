@@ -500,6 +500,30 @@ let vote ?rank ~direction ~fullname =
   post ~endpoint ~params
 ;;
 
+let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
+
+let best ?include_categories ?sr_detail ~listing_params =
+  let endpoint = "/best" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' bool "include_categories" include_categories
+      ; optional' bool "sr_detail" sr_detail
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let by_id ~fullnames =
+  let endpoint =
+    List.map fullnames ~f:Fullname.to_string
+    |> String.concat ~sep:","
+    |> sprintf "/by_id/%s"
+  in
+  get ~endpoint ~params:[]
+;;
+
 let comments
     ?subreddit
     ?comment
@@ -537,6 +561,111 @@ let comments
       ]
   in
   get ~endpoint ~params
+;;
+
+module Duplicate_sort = struct
+  type t =
+    | Number_of_comments
+    | New
+
+  let params_of_t t =
+    [ ( "sort"
+      , match t with
+        | Number_of_comments -> [ "number_of_comments" ]
+        | New -> [ "new" ] )
+    ]
+  ;;
+end
+
+let duplicates ?crossposts_only ?sr_detail ?sort ~submission_id ~listing_params =
+  let endpoint = sprintf !"/duplicates/%{Id36.Submission}" submission_id in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' bool "crossposts_only" crossposts_only
+      ; optional' bool "sr_detail" sr_detail
+      ; include_optional Duplicate_sort.params_of_t sort
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+module Historical_span = struct
+  module T = struct
+    type t =
+      | Hour
+      | Day
+      | Week
+      | Month
+      | Year
+      | All
+    [@@deriving sexp]
+  end
+
+  include T
+  include Sexpable.To_stringable (T)
+
+  let params_of_t t = [ "t", [ to_string t |> String.lowercase ] ]
+end
+
+let basic_post_listing
+    ?include_categories
+    ?sr_detail
+    ?subreddit
+    ~listing_params
+    ~endpoint_part
+    ~extra_params
+  =
+  let endpoint =
+    let subreddit_part =
+      Option.value_map subreddit ~default:"" ~f:(fun name ->
+          sprintf !"/r/%{Subreddit_name}" name)
+    in
+    sprintf !"%s/%s" subreddit_part endpoint_part
+  in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' bool "include_categories" include_categories
+      ; optional' bool "sr_detail" sr_detail
+      ; extra_params
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let hot ?location =
+  let extra_params =
+    let open Param_dsl in
+    optional' string "location" location
+  in
+  basic_post_listing ~endpoint_part:"hot" ~extra_params
+;;
+
+let new_ = basic_post_listing ~endpoint_part:"new" ~extra_params:[]
+let rising = basic_post_listing ~endpoint_part:"rising" ~extra_params:[]
+
+let top ?since =
+  let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
+  basic_post_listing ~endpoint_part:"top" ~extra_params
+;;
+
+let controversial ?since =
+  let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
+  basic_post_listing ~endpoint_part:"controversial" ~extra_params
+;;
+
+let random ?subreddit =
+  let endpoint =
+    let subreddit_part =
+      Option.value_map subreddit ~default:"" ~f:(fun name ->
+          sprintf !"/r/%{Subreddit_name}" name)
+    in
+    sprintf !"%s/random" subreddit_part
+  in
+  get ~endpoint ~params:[]
 ;;
 
 module Relationship = struct
