@@ -95,13 +95,13 @@ let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
 let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
 let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
 
-let prefs which ~listing_params ~sr_detail ~include_categories =
+let prefs which ~listing_params ~subreddit_detail ~include_categories =
   let endpoint = sprintf "/api/%s" which in
   let params =
     let open Param_dsl in
     combine
       [ Listing_params.params_of_t listing_params
-      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "sr_detail" subreddit_detail
       ; optional' bool "include_categories" include_categories
       ]
   in
@@ -502,14 +502,14 @@ let vote ?rank ~direction ~fullname =
 
 let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
 
-let best ?include_categories ?sr_detail ~listing_params =
+let best ?include_categories ?subreddit_detail ~listing_params =
   let endpoint = "/best" in
   let params =
     let open Param_dsl in
     combine
       [ Listing_params.params_of_t listing_params
       ; optional' bool "include_categories" include_categories
-      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "sr_detail" subreddit_detail
       ]
   in
   get ~endpoint ~params
@@ -533,7 +533,7 @@ let comments
     ?showedits
     ?showmore
     ?sort
-    ?sr_detail
+    ?subreddit_detail
     ?threaded
     ?truncate
     ~submission
@@ -555,7 +555,7 @@ let comments
       ; optional' bool "showedits" showedits
       ; optional' bool "showmore" showmore
       ; optional' Comment_sort.to_string "sort" sort
-      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "sr_detail" subreddit_detail
       ; optional' bool "threaded" threaded
       ; optional' int "truncate" truncate
       ]
@@ -577,14 +577,14 @@ module Duplicate_sort = struct
   ;;
 end
 
-let duplicates ?crossposts_only ?sr_detail ?sort ~submission_id ~listing_params =
+let duplicates ?crossposts_only ?subreddit_detail ?sort ~submission_id ~listing_params =
   let endpoint = sprintf !"/duplicates/%{Id36.Submission}" submission_id in
   let params =
     let open Param_dsl in
     combine
       [ Listing_params.params_of_t listing_params
       ; optional' bool "crossposts_only" crossposts_only
-      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "sr_detail" subreddit_detail
       ; include_optional Duplicate_sort.params_of_t sort
       ]
   in
@@ -611,7 +611,7 @@ end
 
 let basic_post_listing
     ?include_categories
-    ?sr_detail
+    ?subreddit_detail
     ?subreddit
     ~listing_params
     ~endpoint_part
@@ -629,7 +629,7 @@ let basic_post_listing
     combine
       [ Listing_params.params_of_t listing_params
       ; optional' bool "include_categories" include_categories
-      ; optional' bool "sr_detail" sr_detail
+      ; optional' bool "sr_detail" subreddit_detail
       ; extra_params
       ]
   in

@@ -40,25 +40,25 @@ val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val friends
   :  listing_params:Listing_params.t
-  -> sr_detail:sexp_bool sexp_option
+  -> subreddit_detail:sexp_bool sexp_option
   -> include_categories:sexp_bool sexp_option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val blocked
   :  listing_params:Listing_params.t
-  -> sr_detail:sexp_bool sexp_option
+  -> subreddit_detail:sexp_bool sexp_option
   -> include_categories:sexp_bool sexp_option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val messaging
   :  listing_params:Listing_params.t
-  -> sr_detail:sexp_bool sexp_option
+  -> subreddit_detail:sexp_bool sexp_option
   -> include_categories:sexp_bool sexp_option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val trusted
   :  listing_params:Listing_params.t
-  -> sr_detail:sexp_bool sexp_option
+  -> subreddit_detail:sexp_bool sexp_option
   -> include_categories:sexp_bool sexp_option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -250,7 +250,7 @@ val info
 
 val best
   :  ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -273,7 +273,7 @@ val comments
   -> ?showedits:bool
   -> ?showmore:bool
   -> ?sort:Comment_sort.t
-  -> ?sr_detail:bool
+  -> ?subreddit_detail:bool
   -> ?threaded:bool
   -> ?truncate:int
   -> submission:Id36.Submission.t
@@ -281,7 +281,7 @@ val comments
 
 val duplicates
   :  ?crossposts_only:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?sort:Duplicate_sort.t
   -> submission_id:Id36.Submission.t
   -> listing_params:Listing_params.t
@@ -301,21 +301,21 @@ end
 val hot
   :  ?location:string
   -> ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?subreddit:Subreddit_name.t
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val new_
   :  ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?subreddit:Subreddit_name.t
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val rising
   :  ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?subreddit:Subreddit_name.t
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -323,7 +323,7 @@ val rising
 val top
   :  ?since:Historical_span.t
   -> ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?subreddit:Subreddit_name.t
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -331,7 +331,7 @@ val top
 val controversial
   :  ?since:Historical_span.t
   -> ?include_categories:sexp_bool
-  -> ?sr_detail:sexp_bool
+  -> ?subreddit_detail:sexp_bool
   -> ?subreddit:Subreddit_name.t
   -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
