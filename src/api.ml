@@ -668,11 +668,9 @@ module Mod_filter = struct
 
   let params_of_t t =
     [ ( "mod"
-      , [ (match t with
-          | Admin -> "a"
-          | Moderators moderators ->
-            List.map moderators ~f:Username.to_string |> String.concat ~sep:",")
-        ] )
+      , match t with
+        | Admin -> [ "a" ]
+        | Moderators moderators -> List.map moderators ~f:Username.to_string )
     ]
   ;;
 end
