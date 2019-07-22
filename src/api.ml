@@ -661,6 +661,55 @@ let random ?subreddit =
   get ~endpoint ~params:[]
 ;;
 
+let block = simple_post_fullname_as_id "block"
+let collapse_message, uncollapse_message = simple_toggle "collapse_message,"
+
+let compose ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+  let endpoint = "/api/compose" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ api_type
+      ; optional' string "g-recaptcha-response" g_recaptcha_response
+      ; optional' Subreddit_name.to_string "from_sr" from_subreddit
+      ; required' username_ "to" to_
+      ; required' string "subject" subject
+      ; required' string "text" text
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let delete_message = simple_post_fullname_as_id "del_msg"
+let read_message, unread_message = simple_toggle "read_message"
+let unblock_subreddit = simple_post_fullnames_as_id "unblock_subreddit"
+
+let message_listing
+    ?include_categories
+    ?mid
+    ?subreddit_detail
+    ~listing_params
+    ~mark_read
+    endpoint
+  =
+  let endpoint = "/message/" ^ endpoint in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' bool "include_categories" include_categories
+      ; optional' string "mid" mid
+      ; optional' bool "sr_detail" subreddit_detail
+      ; required bool "mark" mark_read
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let inbox = message_listing "inbox"
+let unread = message_listing "unread"
+let sent = message_listing "sent"
+
 module Mod_filter = struct
   type t =
     | Moderators of Username.t list

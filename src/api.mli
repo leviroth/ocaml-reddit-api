@@ -339,6 +339,57 @@ val random
 
 val trending_subreddits : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
+(** Private messages *)
+
+val block : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val collapse_message
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val uncollapse_message
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val compose
+  :  ?g_recaptcha_response:string
+  -> ?from_subreddit:Subreddit_name.t
+  -> to_:Username.t
+  -> subject:string
+  -> text:string
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val delete_message
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val read_message
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unread_message
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unblock_subreddit
+  :  fullnames:Fullname.t sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val inbox
+  :  listing_params:Listing_params.t
+  -> mark_read:sexp_bool sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unread
+  :  listing_params:Listing_params.t
+  -> mark_read:sexp_bool sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val sent
+  :  listing_params:Listing_params.t
+  -> mark_read:sexp_bool sexp_list
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
 (** Moderation *)
 
 module Mod_filter : sig
