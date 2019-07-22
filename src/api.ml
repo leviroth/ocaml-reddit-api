@@ -729,6 +729,12 @@ let mod_listing ?location ?only ?subreddit ?subreddit_detail ~listing_params ~en
   get ~endpoint ~params
 ;;
 
+let reports = mod_listing ~endpoint:"reports"
+let spam = mod_listing ~endpoint:"spam"
+let modqueue = mod_listing ~endpoint:"modqueue"
+let unmoderated = mod_listing ~endpoint:"unmoderated"
+let edited = mod_listing ~endpoint:"edited"
+
 let accept_moderator_invite ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
   post ~endpoint ~params:api_type

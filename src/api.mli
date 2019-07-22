@@ -361,13 +361,44 @@ module Links_or_comments : sig
     | Comments
 end
 
-val mod_listing
+val reports
   :  ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
   -> listing_params:Listing_params.t
-  -> endpoint:string
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val spam
+  :  ?location:string
+  -> ?only:Links_or_comments.t
+  -> ?subreddit:Subreddit_name.t
+  -> ?subreddit_detail:bool
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val modqueue
+  :  ?location:string
+  -> ?only:Links_or_comments.t
+  -> ?subreddit:Subreddit_name.t
+  -> ?subreddit_detail:bool
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unmoderated
+  :  ?location:string
+  -> ?only:Links_or_comments.t
+  -> ?subreddit:Subreddit_name.t
+  -> ?subreddit_detail:bool
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val edited
+  :  ?location:string
+  -> ?only:Links_or_comments.t
+  -> ?subreddit:Subreddit_name.t
+  -> ?subreddit_detail:bool
+  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val accept_moderator_invite
