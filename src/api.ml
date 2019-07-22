@@ -46,9 +46,21 @@ module Param_dsl = struct
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
-let simple_post_fullname_as_id endpoint ~fullname =
+let simple_post_fullnames_as_id endpoint ~fullnames =
   let endpoint = sprintf "/api/%s" endpoint in
-  post ~endpoint ~params:Param_dsl.(required' fullname_ "id" fullname)
+  post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames)
+;;
+
+let simple_post_fullname_as_id ~fullname =
+  simple_post_fullnames_as_id ~fullnames:[ fullname ]
+;;
+
+let simple_toggle verb =
+  simple_post_fullnames_as_id verb, simple_post_fullnames_as_id ("un" ^ verb)
+;;
+
+let simple_toggle' verb =
+  simple_post_fullname_as_id verb, simple_post_fullname_as_id ("un" ^ verb)
 ;;
 
 module Listing_params = struct
@@ -164,22 +176,6 @@ let follow ~submission ~follow =
     combine [ required' fullname_ "fullname" submission; required' bool "follow" follow ]
   in
   post ~endpoint ~params
-;;
-
-let simple_toggle verb =
-  let toggle_one_direction ~verb ~fullnames =
-    let endpoint = sprintf "/api/%s" verb in
-    let params =
-      let open Param_dsl in
-      combine [ required fullname_ "id" fullnames ]
-    in
-    post ~endpoint ~params
-  in
-  toggle_one_direction ~verb, toggle_one_direction ~verb:("un" ^ verb)
-;;
-
-let simple_toggle' verb =
-  simple_post_fullname_as_id verb, simple_post_fullname_as_id ("un" ^ verb)
 ;;
 
 let hide, unhide =
