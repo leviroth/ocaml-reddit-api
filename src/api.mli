@@ -339,6 +339,86 @@ val random
 
 val trending_subreddits : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
+(** Moderation *)
+
+module Mod_filter : sig
+  type t =
+    | Moderators of Username.t list
+    | Admin
+end
+
+val log
+  :  ?mod_filter:Mod_filter.t
+  -> ?subreddit_detail:bool
+  -> ?subreddit:Subreddit_name.t
+  -> ?type_:string
+  -> listing_params:Listing_params.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+module Links_or_comments : sig
+  type t =
+    | Links
+    | Comments
+end
+
+val mod_listing
+  :  ?location:string
+  -> ?only:Links_or_comments.t
+  -> ?subreddit:Subreddit_name.t
+  -> ?subreddit_detail:bool
+  -> listing_params:Listing_params.t
+  -> endpoint:string
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val accept_moderator_invite
+  :  subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val approve : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+val remove : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+module How_to_distinguish : sig
+  type t =
+    | Mod
+    | Admin
+    | Special
+    | Undistinguish
+end
+
+val distinguish
+  :  ?sticky:bool
+  -> fullname:Fullname.t
+  -> how:How_to_distinguish.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val ignore_reports
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unignore_reports
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val leavecontributor
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val leavemoderator
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val mute_message_author
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val unmute_message_author
+  :  fullname:Fullname.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val stylesheet
+  :  subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
 (** Users *)
 
 module Relationship : sig

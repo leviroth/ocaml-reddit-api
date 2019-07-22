@@ -46,6 +46,11 @@ module Param_dsl = struct
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
+let simple_post_fullname_as_id endpoint ~fullname =
+  let endpoint = sprintf "/api/%s" endpoint in
+  post ~endpoint ~params:Param_dsl.(required' fullname_ "id" fullname)
+;;
+
 module Listing_params = struct
   module Pagination = struct
     module Before_or_after = struct
@@ -174,15 +179,7 @@ let simple_toggle verb =
 ;;
 
 let simple_toggle' verb =
-  let toggle_one_direction ~verb ~fullname =
-    let endpoint = sprintf "/api/%s" verb in
-    let params =
-      let open Param_dsl in
-      combine [ required' fullname_ "id" fullname ]
-    in
-    post ~endpoint ~params
-  in
-  toggle_one_direction ~verb, toggle_one_direction ~verb:("un" ^ verb)
+  simple_post_fullname_as_id verb, simple_post_fullname_as_id ("un" ^ verb)
 ;;
 
 let hide, unhide =
@@ -665,6 +662,126 @@ let random ?subreddit =
     in
     sprintf !"%s/random" subreddit_part
   in
+  get ~endpoint ~params:[]
+;;
+
+module Mod_filter = struct
+  type t =
+    | Moderators of Username.t list
+    | Admin
+
+  let params_of_t t =
+    [ ( "mod"
+      , [ (match t with
+          | Admin -> "a"
+          | Moderators moderators ->
+            List.map moderators ~f:Username.to_string |> String.concat ~sep:",")
+        ] )
+    ]
+  ;;
+end
+
+let log ?mod_filter ?subreddit_detail ?subreddit ?type_ ~listing_params =
+  let endpoint =
+    let subreddit_part =
+      Option.value_map subreddit ~default:"" ~f:(fun name ->
+          sprintf !"/r/%{Subreddit_name}" name)
+    in
+    sprintf !"%s/about/log" subreddit_part
+  in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; include_optional Mod_filter.params_of_t mod_filter
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' string "type" type_
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+module Links_or_comments = struct
+  type t =
+    | Links
+    | Comments
+
+  let params_of_t t =
+    [ ( "only"
+      , match t with
+        | Links -> [ "links" ]
+        | Comments -> [ "comments" ] )
+    ]
+  ;;
+end
+
+let mod_listing ?location ?only ?subreddit ?subreddit_detail ~listing_params ~endpoint =
+  let endpoint =
+    let subreddit_part =
+      Option.value_map subreddit ~default:"" ~f:(fun name ->
+          sprintf !"/r/%{Subreddit_name}" name)
+    in
+    sprintf !"%s/about/%s" subreddit_part endpoint
+  in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; include_optional Links_or_comments.params_of_t only
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' string "location" location
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let accept_moderator_invite ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
+  post ~endpoint ~params:api_type
+;;
+
+let approve = simple_post_fullname_as_id "approve"
+let remove = simple_post_fullname_as_id "remove"
+
+module How_to_distinguish = struct
+  type t =
+    | Mod
+    | Admin
+    | Special
+    | Undistinguish
+
+  let params_of_t t =
+    [ ( "how"
+      , [ (match t with
+          | Mod -> "yes"
+          | Admin -> "admin"
+          | Special -> "special"
+          | Undistinguish -> "no")
+        ] )
+    ]
+  ;;
+end
+
+let distinguish ?sticky ~fullname ~how =
+  let endpoint = "/api/distinguish" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ How_to_distinguish.params_of_t how
+      ; required' fullname_ "id" fullname
+      ; optional' bool "sticky" sticky
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let ignore_reports, unignore_reports = simple_toggle' "ignore_reports"
+let leavecontributor = simple_post_fullname_as_id "leavecontributor"
+let leavemoderator = simple_post_fullname_as_id "leavemoderator"
+let mute_message_author, unmute_message_author = simple_toggle' "mute_message_author"
+
+let stylesheet ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
   get ~endpoint ~params:[]
 ;;
 
