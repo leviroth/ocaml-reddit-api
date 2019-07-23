@@ -501,6 +501,39 @@ val stylesheet
   :  subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
+(** Search *)
+
+module Search_sort : sig
+  type t =
+    | Relevance
+    | Hot
+    | Top
+    | New
+    | Comments
+end
+
+module Search_type : sig
+  type t =
+    | Subreddit
+    | Submission
+    | User
+  [@@deriving sexp]
+
+  include Comparable.S with type t := t
+end
+
+val search
+  :  ?category:string
+  -> ?include_facets:bool
+  -> ?restrict_to_subreddit:Subreddit_name.t
+  -> ?since:Historical_span.t
+  -> ?sort:Search_sort.t
+  -> ?subreddit_detail:bool
+  -> ?types:Search_type.Set.t
+  -> listing_params:Listing_params.t
+  -> query:string
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
 (** Users *)
 
 module Relationship : sig

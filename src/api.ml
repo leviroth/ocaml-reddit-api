@@ -834,6 +834,85 @@ let stylesheet ~subreddit =
   get ~endpoint ~params:[]
 ;;
 
+module Search_sort = struct
+  type t =
+    | Relevance
+    | Hot
+    | Top
+    | New
+    | Comments
+
+  let params_of_t t =
+    [ ( "sort"
+      , [ (match t with
+          | Relevance -> "relevance"
+          | Hot -> "hot"
+          | Top -> "top"
+          | New -> "new"
+          | Comments -> "comments")
+        ] )
+    ]
+  ;;
+end
+
+module Search_type = struct
+  module T = struct
+    type t =
+      | Subreddit
+      | Submission
+      | User
+    [@@deriving compare, sexp]
+  end
+
+  include T
+  include Comparable.Make (T)
+
+  let to_string t =
+    match t with
+    | Subreddit -> "sr"
+    | Submission -> "link"
+    | User -> "user"
+  ;;
+end
+
+let search
+    ?category
+    ?include_facets
+    ?restrict_to_subreddit
+    ?since
+    ?sort
+    ?subreddit_detail
+    ?types
+    ~listing_params
+    ~query
+  =
+  let subreddit_part, restrict_param =
+    match restrict_to_subreddit with
+    | None -> "", []
+    | Some subreddit ->
+      sprintf !"/r/%{Subreddit_name}" subreddit, [ "restrict_sr", [ "true" ] ]
+  in
+  let endpoint = sprintf !"%s/search" subreddit_part in
+  let params =
+    let open Param_dsl in
+    combine
+      [ Listing_params.params_of_t listing_params
+      ; optional' string "category" category
+      ; optional' bool "include_facets" include_facets
+      ; required' string "q" query
+      ; include_optional Historical_span.params_of_t since
+      ; include_optional Search_sort.params_of_t sort
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional
+          Search_type.to_string
+          "type"
+          (Option.map types ~f:Search_type.Set.to_list)
+      ; restrict_param
+      ]
+  in
+  get ~endpoint ~params
+;;
+
 module Relationship = struct
   module Duration = struct
     type t =
