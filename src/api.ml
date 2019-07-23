@@ -112,12 +112,12 @@ let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
 let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
 let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
 
-let prefs which ~listing_params ~subreddit_detail ~include_categories =
+let prefs which ?listing_params ~subreddit_detail ~include_categories =
   let endpoint = sprintf "/api/%s" which in
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' bool "sr_detail" subreddit_detail
       ; optional' bool "include_categories" include_categories
       ]
@@ -495,12 +495,12 @@ let vote ?rank ~direction ~fullname =
 
 let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
 
-let best ?include_categories ?subreddit_detail ~listing_params =
+let best ?include_categories ?listing_params ?subreddit_detail =
   let endpoint = "/best" in
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' bool "include_categories" include_categories
       ; optional' bool "sr_detail" subreddit_detail
       ]
@@ -570,12 +570,12 @@ module Duplicate_sort = struct
   ;;
 end
 
-let duplicates ?crossposts_only ?subreddit_detail ?sort ~submission_id ~listing_params =
+let duplicates ?crossposts_only ?listing_params ?subreddit_detail ?sort ~submission_id =
   let endpoint = sprintf !"/duplicates/%{Id36.Submission}" submission_id in
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' bool "crossposts_only" crossposts_only
       ; optional' bool "sr_detail" subreddit_detail
       ; include_optional Duplicate_sort.params_of_t sort
@@ -603,11 +603,11 @@ module Historical_span = struct
 end
 
 let basic_post_listing
+    endpoint_part
     ?include_categories
+    ?listing_params
     ?subreddit_detail
     ?subreddit
-    ~listing_params
-    ~endpoint_part
     ~extra_params
   =
   let endpoint =
@@ -620,7 +620,7 @@ let basic_post_listing
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' bool "include_categories" include_categories
       ; optional' bool "sr_detail" subreddit_detail
       ; extra_params
@@ -634,20 +634,20 @@ let hot ?location =
     let open Param_dsl in
     optional' string "location" location
   in
-  basic_post_listing ~endpoint_part:"hot" ~extra_params
+  basic_post_listing "hot" ~extra_params
 ;;
 
-let new_ = basic_post_listing ~endpoint_part:"new" ~extra_params:[]
-let rising = basic_post_listing ~endpoint_part:"rising" ~extra_params:[]
+let new_ = basic_post_listing "new" ~extra_params:[]
+let rising = basic_post_listing "rising" ~extra_params:[]
 
 let top ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing ~endpoint_part:"top" ~extra_params
+  basic_post_listing "top" ~extra_params
 ;;
 
 let controversial ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing ~endpoint_part:"controversial" ~extra_params
+  basic_post_listing "controversial" ~extra_params
 ;;
 
 let random ?subreddit =
@@ -685,18 +685,18 @@ let read_message, unread_message = simple_toggle "read_message"
 let unblock_subreddit = simple_post_fullnames_as_id "unblock_subreddit"
 
 let message_listing
+    endpoint
     ?include_categories
+    ?listing_params
     ?mid
     ?subreddit_detail
-    ~listing_params
     ~mark_read
-    endpoint
   =
   let endpoint = "/message/" ^ endpoint in
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' bool "include_categories" include_categories
       ; optional' string "mid" mid
       ; optional' bool "sr_detail" subreddit_detail
@@ -724,7 +724,7 @@ module Mod_filter = struct
   ;;
 end
 
-let log ?mod_filter ?subreddit_detail ?subreddit ?type_ ~listing_params =
+let log ?listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
   let endpoint =
     let subreddit_part =
       Option.value_map subreddit ~default:"" ~f:(fun name ->
@@ -735,7 +735,7 @@ let log ?mod_filter ?subreddit_detail ?subreddit ?type_ ~listing_params =
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; include_optional Mod_filter.params_of_t mod_filter
       ; optional' bool "sr_detail" subreddit_detail
       ; optional' string "type" type_
@@ -758,7 +758,7 @@ module Links_or_comments = struct
   ;;
 end
 
-let mod_listing ?location ?only ?subreddit ?subreddit_detail ~listing_params ~endpoint =
+let mod_listing ?listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
   let endpoint =
     let subreddit_part =
       Option.value_map subreddit ~default:"" ~f:(fun name ->
@@ -769,7 +769,7 @@ let mod_listing ?location ?only ?subreddit ?subreddit_detail ~listing_params ~en
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; include_optional Links_or_comments.params_of_t only
       ; optional' bool "sr_detail" subreddit_detail
       ; optional' string "location" location
@@ -878,12 +878,12 @@ end
 let search
     ?category
     ?include_facets
+    ?listing_params
     ?restrict_to_subreddit
     ?since
     ?sort
     ?subreddit_detail
     ?types
-    ~listing_params
     ~query
   =
   let subreddit_part, restrict_param =
@@ -896,7 +896,7 @@ let search
   let params =
     let open Param_dsl in
     combine
-      [ Listing_params.params_of_t listing_params
+      [ include_optional Listing_params.params_of_t listing_params
       ; optional' string "category" category
       ; optional' bool "include_facets" include_facets
       ; required' string "q" query

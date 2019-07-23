@@ -38,25 +38,25 @@ val karma : (Cohttp.Response.t * Cohttp_async.Body.t) call
 val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val friends
-  :  listing_params:Listing_params.t
+  :  ?listing_params:Listing_params.t
   -> subreddit_detail:bool option
   -> include_categories:bool option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val blocked
-  :  listing_params:Listing_params.t
+  :  ?listing_params:Listing_params.t
   -> subreddit_detail:bool option
   -> include_categories:bool option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val messaging
-  :  listing_params:Listing_params.t
+  :  ?listing_params:Listing_params.t
   -> subreddit_detail:bool option
   -> include_categories:bool option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val trusted
-  :  listing_params:Listing_params.t
+  :  ?listing_params:Listing_params.t
   -> subreddit_detail:bool option
   -> include_categories:bool option
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -249,8 +249,8 @@ val info
 
 val best
   :  ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val by_id : fullnames:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -278,10 +278,10 @@ val comments
 
 val duplicates
   :  ?crossposts_only:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?sort:Duplicate_sort.t
   -> submission_id:Id36.Submission.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 module Historical_span : sig
@@ -298,39 +298,39 @@ end
 val hot
   :  ?location:string
   -> ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val new_
   :  ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val rising
   :  ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val top
   :  ?since:Historical_span.t
   -> ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val controversial
   :  ?since:Historical_span.t
   -> ?include_categories:bool
+  -> ?listing_params:Listing_params.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val random
@@ -376,17 +376,26 @@ val unblock_subreddit
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val inbox
-  :  listing_params:Listing_params.t
+  :  ?include_categories:sexp_bool
+  -> ?listing_params:Listing_params.t
+  -> ?mid:string
+  -> ?subreddit_detail:sexp_bool
   -> mark_read:sexp_bool sexp_list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val unread
-  :  listing_params:Listing_params.t
+  :  ?include_categories:sexp_bool
+  -> ?listing_params:Listing_params.t
+  -> ?mid:string
+  -> ?subreddit_detail:sexp_bool
   -> mark_read:sexp_bool sexp_list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val sent
-  :  listing_params:Listing_params.t
+  :  ?include_categories:sexp_bool
+  -> ?listing_params:Listing_params.t
+  -> ?mid:string
+  -> ?subreddit_detail:sexp_bool
   -> mark_read:sexp_bool sexp_list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -399,11 +408,11 @@ module Mod_filter : sig
 end
 
 val log
-  :  ?mod_filter:Mod_filter.t
+  :  ?listing_params:Listing_params.t
+  -> ?mod_filter:Mod_filter.t
   -> ?subreddit_detail:bool
   -> ?subreddit:Subreddit_name.t
   -> ?type_:string
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 module Links_or_comments : sig
@@ -413,43 +422,43 @@ module Links_or_comments : sig
 end
 
 val reports
-  :  ?location:string
+  :  ?listing_params:Listing_params.t
+  -> ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val spam
-  :  ?location:string
+  :  ?listing_params:Listing_params.t
+  -> ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val modqueue
-  :  ?location:string
+  :  ?listing_params:Listing_params.t
+  -> ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val unmoderated
-  :  ?location:string
+  :  ?listing_params:Listing_params.t
+  -> ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val edited
-  :  ?location:string
+  :  ?listing_params:Listing_params.t
+  -> ?location:string
   -> ?only:Links_or_comments.t
   -> ?subreddit:Subreddit_name.t
   -> ?subreddit_detail:bool
-  -> listing_params:Listing_params.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val accept_moderator_invite
@@ -525,12 +534,12 @@ end
 val search
   :  ?category:string
   -> ?include_facets:bool
+  -> ?listing_params:Listing_params.t
   -> ?restrict_to_subreddit:Subreddit_name.t
   -> ?since:Historical_span.t
   -> ?sort:Search_sort.t
   -> ?subreddit_detail:bool
   -> ?types:Search_type.Set.t
-  -> listing_params:Listing_params.t
   -> query:string
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
