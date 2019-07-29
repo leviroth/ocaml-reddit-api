@@ -46,6 +46,13 @@ module Param_dsl = struct
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
+let optional_subreddit_endpoint ?subreddit suffix =
+  let subreddit_part =
+    Option.value_map subreddit ~default:"" ~f:(sprintf !"/r/%{Subreddit_name}")
+  in
+  sprintf !"%s%s" subreddit_part suffix
+;;
+
 let simple_post_fullnames_as_id endpoint ~fullnames =
   let endpoint = sprintf "/api/%s" endpoint in
   post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames)
@@ -198,12 +205,7 @@ module Info_query = struct
 end
 
 let info ?subreddit query =
-  let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(sprintf !"/r/%{Subreddit_name}")
-    in
-    sprintf !"%s/api/info" subreddit_part
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
   let params = Info_query.params_of_t query in
   get ~endpoint ~params
 ;;
@@ -532,11 +534,7 @@ let comments
     ~submission
   =
   let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(fun name ->
-          sprintf !"/r/%{Subreddit_name}" name)
-    in
-    sprintf !"%s/comments/%{Id36.Submission}" subreddit_part submission
+    optional_subreddit_endpoint ?subreddit (Id36.Submission.to_string submission)
   in
   let params =
     let open Param_dsl in
@@ -610,13 +608,7 @@ let basic_post_listing
     ?subreddit
     ~extra_params
   =
-  let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(fun name ->
-          sprintf !"/r/%{Subreddit_name}" name)
-    in
-    sprintf !"%s/%s" subreddit_part endpoint_part
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit endpoint_part in
   let params =
     let open Param_dsl in
     combine
@@ -651,18 +643,12 @@ let controversial ?since =
 ;;
 
 let random ?subreddit =
-  let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(fun name ->
-          sprintf !"/r/%{Subreddit_name}" name)
-    in
-    sprintf !"%s/random" subreddit_part
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
   get ~endpoint ~params:[]
 ;;
 
 let block = simple_post_fullname_as_id "block"
-let collapse_message, uncollapse_message = simple_toggle "collapse_message,"
+let collapse_message, uncollapse_message = simple_toggle "collapse_message"
 
 let compose ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
   let endpoint = "/api/compose" in
@@ -725,13 +711,7 @@ module Mod_filter = struct
 end
 
 let log ?listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
-  let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(fun name ->
-          sprintf !"/r/%{Subreddit_name}" name)
-    in
-    sprintf !"%s/about/log" subreddit_part
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
   let params =
     let open Param_dsl in
     combine
@@ -759,13 +739,7 @@ module Links_or_comments = struct
 end
 
 let mod_listing ?listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
-  let endpoint =
-    let subreddit_part =
-      Option.value_map subreddit ~default:"" ~f:(fun name ->
-          sprintf !"/r/%{Subreddit_name}" name)
-    in
-    sprintf !"%s/about/%s" subreddit_part endpoint
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
   let params =
     let open Param_dsl in
     combine
@@ -785,7 +759,7 @@ let unmoderated = mod_listing ~endpoint:"unmoderated"
 let edited = mod_listing ~endpoint:"edited"
 
 let accept_moderator_invite ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
+  let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
   post ~endpoint ~params:api_type
 ;;
 
@@ -913,538 +887,532 @@ let search
   get ~endpoint ~params
 ;;
 
-module Subreddits = struct
-  let about_endpoint
-      endpoint
-      ?include_categories
-      ?listing_params
-      ?subreddit_detail
-      ?user
-      ~subreddit
-    =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' bool "include_categories" include_categories
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' username_ "user" user
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  let banned = about_endpoint "banned"
-  let muted = about_endpoint "muted"
-  let wiki_banned = about_endpoint "wikibanned"
-  let contributors = about_endpoint "contributors"
-  let wiki_contributors = about_endpoint "wikicontributors"
-  let moderators = about_endpoint "moderators"
-
-  let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
-    let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
-    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
-  ;;
-
-  let delete_subreddit_banner = removal_endpoints "delete_sr_banner"
-  let delete_subreddit_header = removal_endpoints "delete_sr_header"
-  let delete_subreddit_icon = removal_endpoints "delete_sr_icon"
-
-  let delete_subreddit_image ~image_name =
-    let extra_params = Param_dsl.(required' string "img_name" image_name) in
-    removal_endpoints "delete_sr_img" ~extra_params
-  ;;
-
-  let recommended ?over_18 ~subreddits =
-    let endpoint =
-      List.map subreddits ~f:Subreddit_name.to_string
-      |> String.concat ~sep:","
-      |> sprintf "/api/recommend/sr/%s"
-    in
-    let params = Param_dsl.(optional' bool "over_18" over_18) in
-    get ~endpoint ~params
-  ;;
-
-  let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
-    let endpoint = "/api/search_reddit_names" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ required' string "query" query
-        ; optional' bool "exact" exact
-        ; optional' bool "include_over_18" include_over_18
-        ; optional' bool "include_unadvertisable" include_unadvertisable
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  module Link_type = struct
-    type t =
-      | Any
-      | Link
-      | Self
-
-    let params_of_t t =
-      [ ( "link_type"
-        , [ (match t with
-            | Any -> "any"
-            | Link -> "link"
-            | Self -> "self")
-          ] )
+let about_endpoint
+    endpoint
+    ?include_categories
+    ?listing_params
+    ?subreddit_detail
+    ?user
+    ~subreddit
+  =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' bool "include_categories" include_categories
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' username_ "user" user
       ]
-    ;;
-  end
+  in
+  get ~endpoint ~params
+;;
 
-  module Spam_level = struct
-    type t =
-      | Low
-      | High
-      | All
+let banned = about_endpoint "banned"
+let muted = about_endpoint "muted"
+let wiki_banned = about_endpoint "wikibanned"
+let contributors = about_endpoint "contributors"
+let wiki_contributors = about_endpoint "wikicontributors"
+let moderators = about_endpoint "moderators"
 
-    let to_string t =
-      match t with
-      | Low -> "low"
-      | High -> "high"
-      | All -> "all"
-    ;;
-  end
+let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
+  let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
+  post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
+;;
 
-  module Subreddit_type = struct
-    type t =
-      | Gold_restricted
-      | Archived
-      | Restricted
-      | Employees_only
-      | Gold_only
-      | Private
-      | User
-      | Public
+let delete_subreddit_banner = removal_endpoints "delete_sr_banner"
+let delete_subreddit_header = removal_endpoints "delete_sr_header"
+let delete_subreddit_icon = removal_endpoints "delete_sr_icon"
 
-    let to_string t =
-      match t with
-      | Gold_restricted -> "gold_restricted"
-      | Archived -> "archived"
-      | Restricted -> "restricted"
-      | Employees_only -> "employees_only"
-      | Gold_only -> "gold_only"
-      | Private -> "private"
-      | User -> "user"
-      | Public -> "public"
-    ;;
-  end
+let delete_subreddit_image ~image_name =
+  let extra_params = Param_dsl.(required' string "img_name" image_name) in
+  removal_endpoints "delete_sr_img" ~extra_params
+;;
 
-  module Wiki_mode = struct
-    type t =
-      | Disabled
-      | Mod_only
-      | Anyone
+let recommended ?over_18 ~subreddits =
+  let endpoint =
+    List.map subreddits ~f:Subreddit_name.to_string
+    |> String.concat ~sep:","
+    |> sprintf "/api/recommend/sr/%s"
+  in
+  let params = Param_dsl.(optional' bool "over_18" over_18) in
+  get ~endpoint ~params
+;;
 
-    let to_string t =
-      match t with
-      | Disabled -> "disabled"
-      | Mod_only -> "modonly"
-      | Anyone -> "anyone"
-    ;;
-  end
+let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
+  let endpoint = "/api/search_reddit_names" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' string "query" query
+      ; optional' bool "exact" exact
+      ; optional' bool "include_over_18" include_over_18
+      ; optional' bool "include_unadvertisable" include_unadvertisable
+      ]
+  in
+  get ~endpoint ~params
+;;
 
-  let create_or_edit_subreddit
-      ?comment_score_hide_mins
-      ?wiki_edit_age
-      ?wiki_edit_karma
-      ~all_original_content
-      ~allow_discovery
-      ~allow_images
-      ~allow_post_crossposts
-      ~allow_top
-      ~allow_videos
-      ~api_type
-      ~collapse_deleted_comments
-      ~crowd_control_mode
-      ~description
-      ~disable_contributor_requests
-      ~exclude_banned_modqueue
-      ~free_form_reports
-      ~g_recaptcha_response
-      ~header_title
-      ~hide_ads
-      ~key_color
-      ~lang
-      ~link_type
-      ~name
-      ~original_content_tag_enabled
-      ~over_18
-      ~public_description
-      ~restrict_commenting
-      ~restrict_posting
-      ~show_media
-      ~show_media_preview
-      ~spam_comments
-      ~spam_links
-      ~spam_selfposts
-      ~spoilers_enabled
-      ~subreddit
-      ~submit_link_label
-      ~submit_text
-      ~submit_text_label
-      ~suggested_comment_sort
-      ~title
-      ~type_
-      ~wiki_mode
-    =
-    let endpoint = "/api/site_admin" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ optional' int "comment_score_hide_mins" comment_score_hide_mins
-        ; optional' int "wiki_edit_age" wiki_edit_age
-        ; optional' int "wiki_edit_karma" wiki_edit_karma
-        ; required' bool "all_original_content" all_original_content
-        ; required' bool "allow_discovery" allow_discovery
-        ; required' bool "allow_images" allow_images
-        ; required' bool "allow_post_crossposts" allow_post_crossposts
-        ; required' bool "allow_top" allow_top
-        ; required' bool "allow_videos" allow_videos
-        ; api_type
-        ; required' bool "collapse_deleted_comments" collapse_deleted_comments
-        ; required' bool "crowd_control_mode" crowd_control_mode
-        ; required' string "description" description
-        ; required' bool "disable_contributor_requests" disable_contributor_requests
-        ; required' bool "exclude_banned_modqueue" exclude_banned_modqueue
-        ; required' bool "free_form_reports" free_form_reports
-        ; optional' string "g_recaptcha_response" g_recaptcha_response
-        ; required' string "header_title" header_title
-        ; required' bool "hide_ads" hide_ads
-        ; required' string "key_color" key_color
-        ; required' string "lang" lang
-        ; Link_type.params_of_t link_type
-        ; required' string "name" name
-        ; required' bool "original_content_tag_enabled" original_content_tag_enabled
-        ; required' bool "over_18" over_18
-        ; required' string "public_description" public_description
-        ; required' bool "restrict_commenting" restrict_commenting
-        ; required' bool "restrict_posting" restrict_posting
-        ; required' bool "show_media" show_media
-        ; required' bool "show_media_preview" show_media_preview
-        ; required' Spam_level.to_string "spam_comments" spam_comments
-        ; required' Spam_level.to_string "spam_links" spam_links
-        ; required' Spam_level.to_string "spam_selfposts" spam_selfposts
-        ; required' bool "spoilers_enabled" spoilers_enabled
-        ; required' Subreddit_name.to_string "sr" subreddit
-        ; required' string "submit_link_label" submit_link_label
-        ; required' string "submit_text" submit_text
-        ; required' string "submit_text_label" submit_text_label
-        ; required'
-            Comment_sort.to_string
-            "suggested_comment_sort"
-            suggested_comment_sort
-        ; required' string "title" title
-        ; required' Subreddit_type.to_string "type_" type_
-        ; required' Wiki_mode.to_string "wikimode" wiki_mode
-        ]
-    in
-    post ~endpoint ~params
-  ;;
+module Link_type = struct
+  type t =
+    | Any
+    | Link
+    | Self
 
-  let submit_text ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
-    get ~endpoint ~params:[]
-  ;;
-
-  let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
-    let endpoint = "/api/subreddit_autocomplete" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ optional' bool "include_over_18" include_over_18
-        ; optional' bool "include_profiles" include_profiles
-        ; required' string "query" query
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  let subreddit_autocomplete_v2
-      ?limit
-      ?include_categories
-      ?include_over_18
-      ?include_profiles
-      ~query
-    =
-    let endpoint = "/api/subreddit_autocomplete_v2" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ optional' int "limit" limit
-        ; optional' bool "include_categories" include_categories
-        ; optional' bool "include_over_18" include_over_18
-        ; optional' bool "include_profiles" include_profiles
-        ; required' string "query" query
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  module Stylesheet_operation = struct
-    type t =
-      | Save
-      | Preview
-    [@@deriving sexp]
-
-    let to_string t =
-      match t with
-      | Save -> "save"
-      | Preview -> "preview"
-    ;;
-  end
-
-  let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
-    let params =
-      let open Param_dsl in
-      combine
-        [ api_type
-        ; optional' string "reason" reason
-        ; required' Stylesheet_operation.to_string "op" operation
-        ; required' string "stylesheet_contents" stylesheet_contents
-        ]
-    in
-    post ~endpoint ~params
-  ;;
-
-  module Subscription_action = struct
-    type t =
-      | Subscribe
-      | Unsubscribe
-
-    let to_string t =
-      match t with
-      | Subscribe -> "sub"
-      | Unsubscribe -> "unsub"
-    ;;
-  end
-
-  let subscribe ?skip_initial_defaults ~action =
-    let endpoint = "/api/subscribe" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ required' Subscription_action.to_string "action" action
-        ; optional' bool "skip_initial_defaults" skip_initial_defaults
-        ]
-    in
-    post ~endpoint ~params
-  ;;
-
-  module Image_type = struct
-    type t =
-      | Png
-      | Jpg
-
-    let to_string t =
-      match t with
-      | Png -> "png"
-      | Jpg -> "jpg"
-    ;;
-  end
-
-  module Upload_type = struct
-    type t =
-      | Image
-      | Header
-      | Icon
-      | Banner
-
-    let to_string t =
-      match t with
-      | Image -> "img"
-      | Header -> "header"
-      | Icon -> "icon"
-      | Banner -> "banner"
-    ;;
-  end
-
-  let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
-    let params =
-      let header = Bool.to_int header in
-      let open Param_dsl in
-      combine
-        [ optional' string "formid" form_id
-        ; required' string "file" file
-        ; required' int "header" header
-        ; required' Image_type.to_string "img_type" image_type
-        ; required' string "name" name
-        ; required' Upload_type.to_string "upload_type" upload_type
-        ]
-    in
-    post ~endpoint ~params
-  ;;
-
-  module Subreddit_search_sort = struct
-    type t =
-      | Relevance
-      | Activity
-
-    let to_string t =
-      match t with
-      | Relevance -> "relevance"
-      | Activity -> "activity"
-    ;;
-  end
-
-  let search_profiles ?listing_params ?subreddit_detail ?sort ~query =
-    let endpoint = "/profiles/search" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  (* TODO dedup the /r/subreddit prefix logic *)
-  let about ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
-    get ~endpoint ~params:[]
-  ;;
-
-  let subreddit_about ?(params = []) ~subreddit endpoint =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
-    get ~endpoint ~params
-  ;;
-
-  let subreddit_settings ?created ?location =
-    let params =
-      let open Param_dsl in
-      combine [ optional' bool "created" created; optional' string "location" location ]
-    in
-    subreddit_about ~params "edit"
-  ;;
-
-  let subreddit_rules = subreddit_about "rules"
-  let subreddit_traffic = subreddit_about "traffic"
-  let subreddit_sidebar = subreddit_about "sidebar"
-
-  let sticky ?number ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
-    let params =
-      let open Param_dsl in
-      combine [ optional' int "num" number ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  module Subreddit_relationship = struct
-    type t =
-      | Subscriber
-      | Contributor
-      | Moderator
-      | Stream_subscriber
-
-    let to_string t =
-      match t with
-      | Subscriber -> "subscriber"
-      | Contributor -> "contributor"
-      | Moderator -> "moderator"
-      | Stream_subscriber -> "streams"
-    ;;
-  end
-
-  let get_subreddits ?include_categories ?listing_params ?subreddit_detail ~relationship =
-    let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' string "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  let search_subreddits ?listing_params ?show_users ?sort ?subreddit_detail ~query =
-    let endpoint = "/subreddits/search" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' bool "show_users" show_users
-        ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  module Subreddit_listing_sort = struct
-    type t =
-      | Popular
-      | New
-      | Gold
-      | Default
-
-    let to_string t =
-      match t with
-      | Popular -> "popular"
-      | New -> "new"
-      | Gold -> "gold"
-      | Default -> "default"
-    ;;
-  end
-
-  let list_subreddits
-      ?listing_params
-      ?subreddit_detail
-      ?include_categories
-      ?show_users
-      ~sort
-    =
-    let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ; optional' bool "show_users" show_users
-        ]
-    in
-    get ~endpoint ~params
-  ;;
-
-  module User_subreddit_sort = struct
-    type t =
-      | Popular
-      | New
-
-    let to_string t =
-      match t with
-      | Popular -> "popular"
-      | New -> "new"
-    ;;
-  end
-
-  let list_user_subreddits ?listing_params ?subreddit_detail ?include_categories ~sort =
-    let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
-    let params =
-      let open Param_dsl in
-      combine
-        [ include_optional Listing_params.params_of_t listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ]
-    in
-    get ~endpoint ~params
+  let params_of_t t =
+    [ ( "link_type"
+      , [ (match t with
+          | Any -> "any"
+          | Link -> "link"
+          | Self -> "self")
+        ] )
+    ]
   ;;
 end
+
+module Spam_level = struct
+  type t =
+    | Low
+    | High
+    | All
+
+  let to_string t =
+    match t with
+    | Low -> "low"
+    | High -> "high"
+    | All -> "all"
+  ;;
+end
+
+module Subreddit_type = struct
+  type t =
+    | Gold_restricted
+    | Archived
+    | Restricted
+    | Employees_only
+    | Gold_only
+    | Private
+    | User
+    | Public
+
+  let to_string t =
+    match t with
+    | Gold_restricted -> "gold_restricted"
+    | Archived -> "archived"
+    | Restricted -> "restricted"
+    | Employees_only -> "employees_only"
+    | Gold_only -> "gold_only"
+    | Private -> "private"
+    | User -> "user"
+    | Public -> "public"
+  ;;
+end
+
+module Wiki_mode = struct
+  type t =
+    | Disabled
+    | Mod_only
+    | Anyone
+
+  let to_string t =
+    match t with
+    | Disabled -> "disabled"
+    | Mod_only -> "modonly"
+    | Anyone -> "anyone"
+  ;;
+end
+
+let create_or_edit_subreddit
+    ?comment_score_hide_mins
+    ?wiki_edit_age
+    ?wiki_edit_karma
+    ~all_original_content
+    ~allow_discovery
+    ~allow_images
+    ~allow_post_crossposts
+    ~allow_top
+    ~allow_videos
+    ~api_type
+    ~collapse_deleted_comments
+    ~crowd_control_mode
+    ~description
+    ~disable_contributor_requests
+    ~exclude_banned_modqueue
+    ~free_form_reports
+    ~g_recaptcha_response
+    ~header_title
+    ~hide_ads
+    ~key_color
+    ~lang
+    ~link_type
+    ~name
+    ~original_content_tag_enabled
+    ~over_18
+    ~public_description
+    ~restrict_commenting
+    ~restrict_posting
+    ~show_media
+    ~show_media_preview
+    ~spam_comments
+    ~spam_links
+    ~spam_selfposts
+    ~spoilers_enabled
+    ~subreddit
+    ~submit_link_label
+    ~submit_text
+    ~submit_text_label
+    ~suggested_comment_sort
+    ~title
+    ~type_
+    ~wiki_mode
+  =
+  let endpoint = "/api/site_admin" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ optional' int "comment_score_hide_mins" comment_score_hide_mins
+      ; optional' int "wiki_edit_age" wiki_edit_age
+      ; optional' int "wiki_edit_karma" wiki_edit_karma
+      ; required' bool "all_original_content" all_original_content
+      ; required' bool "allow_discovery" allow_discovery
+      ; required' bool "allow_images" allow_images
+      ; required' bool "allow_post_crossposts" allow_post_crossposts
+      ; required' bool "allow_top" allow_top
+      ; required' bool "allow_videos" allow_videos
+      ; api_type
+      ; required' bool "collapse_deleted_comments" collapse_deleted_comments
+      ; required' bool "crowd_control_mode" crowd_control_mode
+      ; required' string "description" description
+      ; required' bool "disable_contributor_requests" disable_contributor_requests
+      ; required' bool "exclude_banned_modqueue" exclude_banned_modqueue
+      ; required' bool "free_form_reports" free_form_reports
+      ; optional' string "g_recaptcha_response" g_recaptcha_response
+      ; required' string "header_title" header_title
+      ; required' bool "hide_ads" hide_ads
+      ; required' string "key_color" key_color
+      ; required' string "lang" lang
+      ; Link_type.params_of_t link_type
+      ; required' string "name" name
+      ; required' bool "original_content_tag_enabled" original_content_tag_enabled
+      ; required' bool "over_18" over_18
+      ; required' string "public_description" public_description
+      ; required' bool "restrict_commenting" restrict_commenting
+      ; required' bool "restrict_posting" restrict_posting
+      ; required' bool "show_media" show_media
+      ; required' bool "show_media_preview" show_media_preview
+      ; required' Spam_level.to_string "spam_comments" spam_comments
+      ; required' Spam_level.to_string "spam_links" spam_links
+      ; required' Spam_level.to_string "spam_selfposts" spam_selfposts
+      ; required' bool "spoilers_enabled" spoilers_enabled
+      ; required' Subreddit_name.to_string "sr" subreddit
+      ; required' string "submit_link_label" submit_link_label
+      ; required' string "submit_text" submit_text
+      ; required' string "submit_text_label" submit_text_label
+      ; required' Comment_sort.to_string "suggested_comment_sort" suggested_comment_sort
+      ; required' string "title" title
+      ; required' Subreddit_type.to_string "type_" type_
+      ; required' Wiki_mode.to_string "wikimode" wiki_mode
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let submit_text ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
+  get ~endpoint ~params:[]
+;;
+
+let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
+  let endpoint = "/api/subreddit_autocomplete" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ optional' bool "include_over_18" include_over_18
+      ; optional' bool "include_profiles" include_profiles
+      ; required' string "query" query
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let subreddit_autocomplete_v2
+    ?limit
+    ?include_categories
+    ?include_over_18
+    ?include_profiles
+    ~query
+  =
+  let endpoint = "/api/subreddit_autocomplete_v2" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ optional' int "limit" limit
+      ; optional' bool "include_categories" include_categories
+      ; optional' bool "include_over_18" include_over_18
+      ; optional' bool "include_profiles" include_profiles
+      ; required' string "query" query
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+module Stylesheet_operation = struct
+  type t =
+    | Save
+    | Preview
+  [@@deriving sexp]
+
+  let to_string t =
+    match t with
+    | Save -> "save"
+    | Preview -> "preview"
+  ;;
+end
+
+let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
+  let params =
+    let open Param_dsl in
+    combine
+      [ api_type
+      ; optional' string "reason" reason
+      ; required' Stylesheet_operation.to_string "op" operation
+      ; required' string "stylesheet_contents" stylesheet_contents
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+module Subscription_action = struct
+  type t =
+    | Subscribe
+    | Unsubscribe
+
+  let to_string t =
+    match t with
+    | Subscribe -> "sub"
+    | Unsubscribe -> "unsub"
+  ;;
+end
+
+let subscribe ?skip_initial_defaults ~action =
+  let endpoint = "/api/subscribe" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' Subscription_action.to_string "action" action
+      ; optional' bool "skip_initial_defaults" skip_initial_defaults
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+module Image_type = struct
+  type t =
+    | Png
+    | Jpg
+
+  let to_string t =
+    match t with
+    | Png -> "png"
+    | Jpg -> "jpg"
+  ;;
+end
+
+module Upload_type = struct
+  type t =
+    | Image
+    | Header
+    | Icon
+    | Banner
+
+  let to_string t =
+    match t with
+    | Image -> "img"
+    | Header -> "header"
+    | Icon -> "icon"
+    | Banner -> "banner"
+  ;;
+end
+
+let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
+  let params =
+    let header = Bool.to_int header in
+    let open Param_dsl in
+    combine
+      [ optional' string "formid" form_id
+      ; required' string "file" file
+      ; required' int "header" header
+      ; required' Image_type.to_string "img_type" image_type
+      ; required' string "name" name
+      ; required' Upload_type.to_string "upload_type" upload_type
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+module Subreddit_search_sort = struct
+  type t =
+    | Relevance
+    | Activity
+
+  let to_string t =
+    match t with
+    | Relevance -> "relevance"
+    | Activity -> "activity"
+  ;;
+end
+
+let search_profiles ?listing_params ?subreddit_detail ?sort ~query =
+  let endpoint = "/profiles/search" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' bool "sr_detail" subreddit_detail
+      ; required' string "q" query
+      ; optional' Subreddit_search_sort.to_string "sort" sort
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let about ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
+  get ~endpoint ~params:[]
+;;
+
+let subreddit_about ?(params = []) ~subreddit endpoint =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
+  get ~endpoint ~params
+;;
+
+let subreddit_settings ?created ?location =
+  let params =
+    let open Param_dsl in
+    combine [ optional' bool "created" created; optional' string "location" location ]
+  in
+  subreddit_about ~params "edit"
+;;
+
+let subreddit_rules = subreddit_about "rules"
+let subreddit_traffic = subreddit_about "traffic"
+let subreddit_sidebar = subreddit_about "sidebar"
+
+let sticky ?number ~subreddit =
+  let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
+  let params =
+    let open Param_dsl in
+    combine [ optional' int "num" number ]
+  in
+  get ~endpoint ~params
+;;
+
+module Subreddit_relationship = struct
+  type t =
+    | Subscriber
+    | Contributor
+    | Moderator
+    | Stream_subscriber
+
+  let to_string t =
+    match t with
+    | Subscriber -> "subscriber"
+    | Contributor -> "contributor"
+    | Moderator -> "moderator"
+    | Stream_subscriber -> "streams"
+  ;;
+end
+
+let get_subreddits ?include_categories ?listing_params ?subreddit_detail ~relationship =
+  let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' string "sr_detail" subreddit_detail
+      ; optional' bool "include_categories" include_categories
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let search_subreddits ?listing_params ?show_users ?sort ?subreddit_detail ~query =
+  let endpoint = "/subreddits/search" in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' bool "show_users" show_users
+      ; required' string "q" query
+      ; optional' Subreddit_search_sort.to_string "sort" sort
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+module Subreddit_listing_sort = struct
+  type t =
+    | Popular
+    | New
+    | Gold
+    | Default
+
+  let to_string t =
+    match t with
+    | Popular -> "popular"
+    | New -> "new"
+    | Gold -> "gold"
+    | Default -> "default"
+  ;;
+end
+
+let list_subreddits
+    ?listing_params
+    ?subreddit_detail
+    ?include_categories
+    ?show_users
+    ~sort
+  =
+  let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' bool "include_categories" include_categories
+      ; optional' bool "show_users" show_users
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+module User_subreddit_sort = struct
+  type t =
+    | Popular
+    | New
+
+  let to_string t =
+    match t with
+    | Popular -> "popular"
+    | New -> "new"
+  ;;
+end
+
+let list_user_subreddits ?listing_params ?subreddit_detail ?include_categories ~sort =
+  let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' bool "sr_detail" subreddit_detail
+      ; optional' bool "include_categories" include_categories
+      ]
+  in
+  get ~endpoint ~params
+;;
 
 module Relationship = struct
   module Duration = struct
