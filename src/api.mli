@@ -894,3 +894,74 @@ val remove_relationship
   -> username:Username.t
   -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+(** Wiki *)
+
+module Add_or_remove : sig
+  type t =
+    | Add
+    | Remove
+end
+
+val add_or_remove_wiki_editor
+  :  add_or_remove:Add_or_remove.t
+  -> page:string
+  -> user:Username.t
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val edit_wiki_page
+  :  ?previous:string
+  -> ?reason:string
+  -> content:string
+  -> page:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val toggle_wiki_revision_visibility
+  :  page:string
+  -> revision:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val revert_wiki_page
+  :  page:string
+  -> revision:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_discussions
+  :  ?listing_params:Listing_params.t
+  -> ?subreddit_detail:string
+  -> page:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_pages
+  :  subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_revisions
+  :  ?listing_params:Listing_params.t
+  -> ?page:string
+  -> ?subreddit_detail:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_permissions
+  :  page:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val set_wiki_permissions
+  :  listed:bool
+  -> page:string
+  -> permission_level:int
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_page
+  :  ?compare_revisions:string option * string option
+  -> page:string
+  -> subreddit:Subreddit_name.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t) call

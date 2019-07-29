@@ -1498,3 +1498,122 @@ let remove_relationship ~relationship ~username ~subreddit =
   in
   post ~endpoint ~params
 ;;
+
+module Add_or_remove = struct
+  type t =
+    | Add
+    | Remove
+
+  let to_string t =
+    match t with
+    | Add -> "add"
+    | Remove -> "del"
+  ;;
+end
+
+let add_or_remove_wiki_editor ~add_or_remove ~page ~user ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' Add_or_remove.to_string "act" add_or_remove
+      ; required' string "page" page
+      ; required' username_ "username" user
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let edit_wiki_page ?previous ?reason ~content ~page ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' string "content" content
+      ; required' string "page" page
+      ; optional' string "previous" previous
+      ; optional' string "reason" reason
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let toggle_wiki_revision_visibility ~page ~revision ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
+  let params =
+    let open Param_dsl in
+    combine [ required' string "page" page; required' string "revision" revision ]
+  in
+  post ~endpoint ~params
+;;
+
+let revert_wiki_page ~page ~revision ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
+  let params =
+    let open Param_dsl in
+    combine [ required' string "page" page; required' string "revision" revision ]
+  in
+  post ~endpoint ~params
+;;
+
+(* TODO: Wiki page ID as a type? *)
+let wiki_discussions ?listing_params ?subreddit_detail ~page ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' string "sr_detail" subreddit_detail
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let wiki_pages ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/pages" subreddit in
+  get ~endpoint ~params:[]
+;;
+
+let wiki_revisions ?listing_params ?page ?subreddit_detail ~subreddit =
+  let endpoint =
+    let page_part = Option.value_map page ~default:"" ~f:(( ^ ) "/") in
+    sprintf !"%{Subreddit_name}/wiki/revisions%s" subreddit page_part
+  in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' string "sr_detail" subreddit_detail
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let wiki_permissions ~page ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+  get ~endpoint ~params:[]
+;;
+
+let set_wiki_permissions ~listed ~page ~permission_level ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' bool "listed" listed (* boolean value *)
+      ; required' string "page" page (* the name of an existing wiki page *)
+      ; required' int "permlevel" permission_level (* an integer *)
+      ]
+  in
+  post ~endpoint ~params
+;;
+
+let wiki_page ?compare_revisions ~page ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
+  let v1, v2 = Option.value compare_revisions ~default:(None, None) in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' string "page" page; optional' string "v" v1; optional' string "v2" v2 ]
+  in
+  get ~endpoint ~params
+;;
