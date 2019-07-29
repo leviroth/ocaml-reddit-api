@@ -1,0 +1,5 @@
+(library
+ (name ocaml_reddit_test)
+ (libraries core ocaml_reddit)
+ (inline_tests)
+ (preprocess (pps ppx_jane)))
