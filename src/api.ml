@@ -1499,6 +1499,14 @@ let remove_relationship ~relationship ~username ~subreddit =
   post ~endpoint ~params
 ;;
 
+module Wiki_page = struct
+  type t =
+    { subreddit : Subreddit_name.t
+    ; page : string
+    }
+  [@@deriving sexp]
+end
+
 module Add_or_remove = struct
   type t =
     | Add
@@ -1511,7 +1519,11 @@ module Add_or_remove = struct
   ;;
 end
 
-let add_or_remove_wiki_editor ~add_or_remove ~page ~user ~subreddit =
+let add_or_remove_wiki_editor
+    ~add_or_remove
+    ~page:({ subreddit; page } : Wiki_page.t)
+    ~user
+  =
   let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
   let params =
     let open Param_dsl in
@@ -1524,7 +1536,7 @@ let add_or_remove_wiki_editor ~add_or_remove ~page ~user ~subreddit =
   post ~endpoint ~params
 ;;
 
-let edit_wiki_page ?previous ?reason ~content ~page ~subreddit =
+let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_page.t) =
   let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
   let params =
     let open Param_dsl in
@@ -1538,7 +1550,7 @@ let edit_wiki_page ?previous ?reason ~content ~page ~subreddit =
   post ~endpoint ~params
 ;;
 
-let toggle_wiki_revision_visibility ~page ~revision ~subreddit =
+let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
   let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
   let params =
     let open Param_dsl in
@@ -1547,7 +1559,7 @@ let toggle_wiki_revision_visibility ~page ~revision ~subreddit =
   post ~endpoint ~params
 ;;
 
-let revert_wiki_page ~page ~revision ~subreddit =
+let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.t) ~revision =
   let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
   let params =
     let open Param_dsl in
@@ -1556,8 +1568,11 @@ let revert_wiki_page ~page ~revision ~subreddit =
   post ~endpoint ~params
 ;;
 
-(* TODO: Wiki page ID as a type? *)
-let wiki_discussions ?listing_params ?subreddit_detail ~page ~subreddit =
+let wiki_discussions
+    ?listing_params
+    ?subreddit_detail
+    ~page:({ subreddit; page } : Wiki_page.t)
+  =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
   let params =
     let open Param_dsl in
@@ -1574,11 +1589,8 @@ let wiki_pages ~subreddit =
   get ~endpoint ~params:[]
 ;;
 
-let wiki_revisions ?listing_params ?page ?subreddit_detail ~subreddit =
-  let endpoint =
-    let page_part = Option.value_map page ~default:"" ~f:(( ^ ) "/") in
-    sprintf !"%{Subreddit_name}/wiki/revisions%s" subreddit page_part
-  in
+let subreddit_wiki_revisions ?listing_params ?subreddit_detail ~subreddit =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions" subreddit in
   let params =
     let open Param_dsl in
     combine
@@ -1589,25 +1601,45 @@ let wiki_revisions ?listing_params ?page ?subreddit_detail ~subreddit =
   get ~endpoint ~params
 ;;
 
-let wiki_permissions ~page ~subreddit =
+let wiki_page_revisions
+    ?listing_params
+    ?subreddit_detail
+    ~page:({ subreddit; page } : Wiki_page.t)
+  =
+  let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions/%s" subreddit page in
+  let params =
+    let open Param_dsl in
+    combine
+      [ include_optional Listing_params.params_of_t listing_params
+      ; optional' string "sr_detail" subreddit_detail
+      ]
+  in
+  get ~endpoint ~params
+;;
+
+let wiki_permissions ~page:({ subreddit; page } : Wiki_page.t) =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
   get ~endpoint ~params:[]
 ;;
 
-let set_wiki_permissions ~listed ~page ~permission_level ~subreddit =
+let set_wiki_permissions
+    ~listed
+    ~page:({ subreddit; page } : Wiki_page.t)
+    ~permission_level
+  =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
   let params =
     let open Param_dsl in
     combine
-      [ required' bool "listed" listed (* boolean value *)
-      ; required' string "page" page (* the name of an existing wiki page *)
-      ; required' int "permlevel" permission_level (* an integer *)
+      [ required' bool "listed" listed
+      ; required' string "page" page
+      ; required' int "permlevel" permission_level
       ]
   in
   post ~endpoint ~params
 ;;
 
-let wiki_page ?compare_revisions ~page ~subreddit =
+let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
   let v1, v2 = Option.value compare_revisions ~default:(None, None) in
   let params =

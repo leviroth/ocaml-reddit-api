@@ -897,6 +897,14 @@ val remove_relationship
 
 (** Wiki *)
 
+module Wiki_page : sig
+  type t =
+    { subreddit : Subreddit_name.t
+    ; page : string
+    }
+  [@@deriving sexp]
+end
+
 module Add_or_remove : sig
   type t =
     | Add
@@ -905,63 +913,58 @@ end
 
 val add_or_remove_wiki_editor
   :  add_or_remove:Add_or_remove.t
-  -> page:string
+  -> page:Wiki_page.t
   -> user:Username.t
-  -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val edit_wiki_page
   :  ?previous:string
   -> ?reason:string
   -> content:string
-  -> page:string
-  -> subreddit:Subreddit_name.t
+  -> page:Wiki_page.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val toggle_wiki_revision_visibility
-  :  page:string
+  :  page:Wiki_page.t
   -> revision:string
-  -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val revert_wiki_page
-  :  page:string
+  :  page:Wiki_page.t
   -> revision:string
-  -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val wiki_discussions
   :  ?listing_params:Listing_params.t
   -> ?subreddit_detail:string
-  -> page:string
-  -> subreddit:Subreddit_name.t
+  -> page:Wiki_page.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val wiki_pages
   :  subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-val wiki_revisions
+val subreddit_wiki_revisions
   :  ?listing_params:Listing_params.t
-  -> ?page:string
   -> ?subreddit_detail:string
   -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-val wiki_permissions
-  :  page:string
-  -> subreddit:Subreddit_name.t
+val wiki_page_revisions
+  :  ?listing_params:Listing_params.t
+  -> ?subreddit_detail:string
+  -> page:Wiki_page.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+val wiki_permissions : page:Wiki_page.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val set_wiki_permissions
   :  listed:bool
-  -> page:string
+  -> page:Wiki_page.t
   -> permission_level:int
-  -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val wiki_page
   :  ?compare_revisions:string option * string option
-  -> page:string
-  -> subreddit:Subreddit_name.t
+  -> page:Wiki_page.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
