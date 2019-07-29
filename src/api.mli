@@ -543,6 +543,323 @@ val search
   -> query:string
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
+(** Subreddits *)
+
+module Subreddits : sig
+  val banned
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val muted
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val wiki_banned
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val contributors
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val wiki_contributors
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val moderators
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?user:Username.t
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val delete_subreddit_banner
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val delete_subreddit_header
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val delete_subreddit_icon
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val delete_subreddit_image
+    :  image_name:string
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val recommended
+    :  ?over_18:bool
+    -> subreddits:Subreddit_name.t list
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val search_subreddit_names
+    :  ?exact:bool
+    -> ?include_over_18:bool
+    -> ?include_unadvertisable:bool
+    -> query:string
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Link_type : sig
+    type t =
+      | Any
+      | Link
+      | Self
+  end
+
+  module Spam_level : sig
+    type t =
+      | Low
+      | High
+      | All
+  end
+
+  module Subreddit_type : sig
+    type t =
+      | Gold_restricted
+      | Archived
+      | Restricted
+      | Employees_only
+      | Gold_only
+      | Private
+      | User
+      | Public
+  end
+
+  module Wiki_mode : sig
+    type t =
+      | Disabled
+      | Mod_only
+      | Anyone
+  end
+
+  val create_or_edit_subreddit
+    :  ?comment_score_hide_mins:int
+    -> ?wiki_edit_age:int
+    -> ?wiki_edit_karma:int
+    -> all_original_content:bool
+    -> allow_discovery:bool
+    -> allow_images:bool
+    -> allow_post_crossposts:bool
+    -> allow_top:bool
+    -> allow_videos:bool
+    -> api_type:(string * string list) list
+    -> collapse_deleted_comments:bool
+    -> crowd_control_mode:bool
+    -> description:string
+    -> disable_contributor_requests:bool
+    -> exclude_banned_modqueue:bool
+    -> free_form_reports:bool
+    -> g_recaptcha_response:string option
+    -> header_title:string
+    -> hide_ads:bool
+    -> key_color:string
+    -> lang:string
+    -> link_type:Link_type.t
+    -> name:string
+    -> original_content_tag_enabled:bool
+    -> over_18:bool
+    -> public_description:string
+    -> restrict_commenting:bool
+    -> restrict_posting:bool
+    -> show_media:bool
+    -> show_media_preview:bool
+    -> spam_comments:Spam_level.t
+    -> spam_links:Spam_level.t
+    -> spam_selfposts:Spam_level.t
+    -> spoilers_enabled:bool
+    -> subreddit:Subreddit_name.t
+    -> submit_link_label:string
+    -> submit_text:string
+    -> submit_text_label:string
+    -> suggested_comment_sort:Comment_sort.t
+    -> title:string
+    -> type_:Subreddit_type.t
+    -> wiki_mode:Wiki_mode.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val submit_text
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_autocomplete
+    :  ?include_over_18:bool
+    -> ?include_profiles:bool
+    -> query:string
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_autocomplete_v2
+    :  ?limit:int
+    -> ?include_categories:bool
+    -> ?include_over_18:bool
+    -> ?include_profiles:bool
+    -> query:string
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Stylesheet_operation : sig
+    type t =
+      | Save
+      | Preview
+  end
+
+  val subreddit_stylesheet
+    :  ?reason:string
+    -> operation:Stylesheet_operation.t
+    -> stylesheet_contents:string
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Subscription_action : sig
+    type t =
+      | Subscribe
+      | Unsubscribe
+  end
+
+  val subscribe
+    :  ?skip_initial_defaults:bool
+    -> action:Subscription_action.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Image_type : sig
+    type t =
+      | Png
+      | Jpg
+  end
+
+  module Upload_type : sig
+    type t =
+      | Image
+      | Header
+      | Icon
+      | Banner
+  end
+
+  val upload_sr_img
+    :  ?form_id:string
+    -> file:string
+    -> header:bool
+    -> image_type:Image_type.t
+    -> name:string
+    -> subreddit:Subreddit_name.t
+    -> upload_type:Upload_type.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Subreddit_search_sort : sig
+    type t =
+      | Relevance
+      | Activity
+  end
+
+  val search_profiles
+    :  ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?sort:Subreddit_search_sort.t
+    -> query:string
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val about
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_settings
+    :  ?created:bool
+    -> ?location:string
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_rules
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_traffic
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val subreddit_sidebar
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val sticky
+    :  ?number:int
+    -> subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Subreddit_relationship : sig
+    type t =
+      | Subscriber
+      | Contributor
+      | Moderator
+      | Stream_subscriber
+  end
+
+  val get_subreddits
+    :  ?include_categories:bool
+    -> ?listing_params:Listing_params.t
+    -> ?subreddit_detail:string
+    -> relationship:Subreddit_relationship.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val search_subreddits
+    :  ?listing_params:Listing_params.t
+    -> ?show_users:bool
+    -> ?sort:Subreddit_search_sort.t
+    -> ?subreddit_detail:bool
+    -> query:string
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module Subreddit_listing_sort : sig
+    type t =
+      | Popular
+      | New
+      | Gold
+      | Default
+  end
+
+  val list_subreddits
+    :  ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?include_categories:bool
+    -> ?show_users:bool
+    -> sort:Subreddit_listing_sort.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  module User_subreddit_sort : sig
+    type t =
+      | Popular
+      | New
+  end
+
+  val list_user_subreddits
+    :  ?listing_params:Listing_params.t
+    -> ?subreddit_detail:bool
+    -> ?include_categories:bool
+    -> sort:User_subreddit_sort.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+end
+
 (** Users *)
 
 module Relationship : sig

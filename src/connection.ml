@@ -195,18 +195,18 @@ end = struct
                  upon (at reset_time) job
                | n ->
                  t.server_side_info
-                 <- Some { server_side_info with remaining_api_calls = n - 1 };
+                   <- Some { server_side_info with remaining_api_calls = n - 1 };
                  job ();
                  clear_queue t))
   ;;
 
   let update_server_side_info t new_server_side_info =
     t.server_side_info
-    <- Some
-         (match t.server_side_info with
-         | None -> new_server_side_info
-         | Some server_side_info ->
-           Server_side_info.update server_side_info new_server_side_info)
+      <- Some
+           (match t.server_side_info with
+           | None -> new_server_side_info
+           | Some server_side_info ->
+             Server_side_info.update server_side_info new_server_side_info)
   ;;
 
   let with_t t ~f =
