@@ -8,6 +8,7 @@ type 'a call =
   -> 'a Deferred.t
 
 let call_api ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+  let params = ("raw_json", [ "1" ]) :: params in
   let params = param_list_override params in
   let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
   match http_verb with
