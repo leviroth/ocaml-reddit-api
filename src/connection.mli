@@ -11,13 +11,7 @@ module Config : sig
   [@@deriving sexp]
 end
 
-module Auth : sig
-  type t [@@deriving sexp]
-
-  val create : Config.t -> unit -> t
-end
-
-type t [@@deriving sexp]
+type t [@@deriving sexp_of]
 
 val create : Config.t -> t
 
