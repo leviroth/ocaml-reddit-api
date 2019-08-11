@@ -15,18 +15,6 @@ type t [@@deriving sexp_of]
 
 val create : Config.t -> t
 
-val with_t
-  :  t
-  -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
-  -> headers:Cohttp.Header.t
-  -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-
-val with_retry
-  :  t
-  -> f:(Cohttp.Header.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
-  -> headers:Cohttp.Header.t
-  -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-
 val post_form
   :  t
   -> Uri.t
@@ -34,3 +22,24 @@ val post_form
   -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 
 val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+module For_testing : sig
+  module type Cohttp_client_wrapper = sig
+    val get
+      :  Uri.t
+      -> headers:Cohttp.Header.t
+      -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+    val post_form
+      :  Uri.t
+      -> headers:Cohttp.Header.t
+      -> params:(string * string list) list
+      -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+  end
+
+  val create
+    :  (module Cohttp_client_wrapper)
+    -> Config.t
+    -> time_source:Time_source.t
+    -> t
+end

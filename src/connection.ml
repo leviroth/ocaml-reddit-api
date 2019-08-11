@@ -19,17 +19,37 @@ module Config = struct
   ;;
 end
 
+module type Cohttp_client_wrapper = sig
+  val get
+    :  Uri.t
+    -> headers:Cohttp.Header.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+
+  val post_form
+    :  Uri.t
+    -> headers:Cohttp.Header.t
+    -> params:(string * string list) list
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+end
+
+module Live_cohttp_client : Cohttp_client_wrapper = struct
+  let get uri ~headers = Cohttp_async.Client.get uri ~headers
+  let post_form uri ~headers ~params = Cohttp_async.Client.post_form uri ~headers ~params
+end
+
 module Auth = struct
   module Access_token = struct
     type t =
       { token : string
-      ; expiration : Time.t
+      ; expiration : Time_ns.t
       }
     [@@deriving sexp]
 
-    let is_almost_expired { expiration; _ } =
-      let time_with_padding = Time.add (Time.now ()) (Time.Span.of_int_sec 10) in
-      Time.( <= ) expiration time_with_padding
+    let is_almost_expired { expiration; _ } ~time_source =
+      let time_with_padding =
+        Time_ns.add (Time_source.now time_source) (Time_ns.Span.of_int_sec 10)
+      in
+      Time_ns.( <= ) expiration time_with_padding
     ;;
   end
 
@@ -41,7 +61,7 @@ module Auth = struct
 
   let create config () = { config; access_token = None }
 
-  let get_token t =
+  let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
     let open Async.Let_syntax in
     let%bind _response, body =
       let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
@@ -50,7 +70,7 @@ module Auth = struct
         |> add_user_agent
         |> Cohttp.Header.of_list
       in
-      Cohttp_async.Client.post_form
+      Cohttp_client_wrapper.post_form
         ~headers
         uri
         ~params:
@@ -60,15 +80,15 @@ module Auth = struct
           ]
     in
     let%bind response_string = Cohttp_async.Body.to_string body in
-    let response_json = Yojson.Basic.from_string response_string in
+    let response_json = Yojson.Safe.from_string response_string in
     let access_token : Access_token.t =
-      let open Yojson.Basic.Util in
+      let open Yojson.Safe.Util in
       let token = response_json |> member "access_token" |> to_string in
       let expiration =
         let additional_seconds =
-          response_json |> member "expires_in" |> to_int |> Time.Span.of_int_sec
+          response_json |> member "expires_in" |> to_int |> Time_ns.Span.of_int_sec
         in
-        Time.add (Time.now ()) additional_seconds
+        Time_ns.add (Time_source.now time_source) additional_seconds
       in
       { token; expiration }
     in
@@ -76,15 +96,15 @@ module Auth = struct
     return access_token
   ;;
 
-  let with_t t ~f ~headers =
+  let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
     let%bind access_token =
       match t.access_token with
-      | None -> get_token t
+      | None -> get_token cohttp_client_wrapper t ~time_source
       | Some access_token -> return access_token
     in
     let%bind { token; _ } =
-      match Access_token.is_almost_expired access_token with
-      | true -> get_token t
+      match Access_token.is_almost_expired access_token ~time_source with
+      | true -> get_token cohttp_client_wrapper t ~time_source
       | false -> return access_token
     in
     let headers =
@@ -104,16 +124,17 @@ module Rate_limiter : sig
   val with_t
     :  t
     -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
+    -> time_source:Time_source.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 end = struct
   module Server_side_info = struct
     type t =
       { remaining_api_calls : int
-      ; reset_time : Time.t
+      ; reset_time : Time_ns.t
       }
     [@@deriving sexp, fields]
 
-    let t_of_headers headers =
+    let t_of_headers headers ~time_source =
       let open Option.Let_syntax in
       let%bind remaining_api_calls =
         Cohttp.Header.get headers "X-Ratelimit-Remaining"
@@ -123,19 +144,19 @@ end = struct
         let%bind relative_reset_time =
           Cohttp.Header.get headers "X-Ratelimit-Reset"
           >>| Int.of_string
-          >>| Time.Span.of_int_sec
+          >>| Time_ns.Span.of_int_sec
         in
-        return (Time.add (Time.now ()) relative_reset_time)
+        return (Time_ns.add (Time_source.now time_source) relative_reset_time)
       in
       return { remaining_api_calls; reset_time }
     ;;
 
     let compare_approximate_reset_times time1 time2 =
-      let tolerance = Time.Span.of_int_sec 60 in
-      let lower = Maybe_bound.Incl (Time.sub time2 tolerance) in
-      let upper = Maybe_bound.Incl (Time.add time2 tolerance) in
+      let tolerance = Time_ns.Span.of_int_sec 60 in
+      let lower = Maybe_bound.Incl (Time_ns.sub time2 tolerance) in
+      let upper = Maybe_bound.Incl (Time_ns.add time2 tolerance) in
       match
-        Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time.compare
+        Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time_ns.compare
       with
       | Below_lower_bound -> -1
       | In_range -> 0
@@ -178,7 +199,7 @@ end = struct
     { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
   ;;
 
-  let rec clear_queue t =
+  let rec clear_queue t ~time_source =
     match t.waiting_for_reset with
     | true -> ()
     | false ->
@@ -192,12 +213,12 @@ end = struct
                (match remaining_api_calls with
                | 0 ->
                  t.waiting_for_reset <- true;
-                 upon (at reset_time) job
+                 upon (Time_source.at time_source reset_time) job
                | n ->
                  t.server_side_info
                    <- Some { server_side_info with remaining_api_calls = n - 1 };
                  job ();
-                 clear_queue t))
+                 clear_queue t ~time_source))
   ;;
 
   let update_server_side_info t new_server_side_info =
@@ -209,12 +230,12 @@ end = struct
              Server_side_info.update server_side_info new_server_side_info)
   ;;
 
-  let with_t t ~f =
+  let with_t t ~f ~time_source =
     let ivar = Ivar.create () in
     Queue.enqueue t.jobs (fun () ->
         upon (f ()) (fun ((response, _body) as result) ->
             let headers = Cohttp.Response.headers response in
-            Server_side_info.t_of_headers headers
+            Server_side_info.t_of_headers headers ~time_source
             |> Option.iter ~f:(fun new_server_side_info ->
                    (match t.server_side_info with
                    | None -> t.waiting_for_reset <- false
@@ -228,8 +249,8 @@ end = struct
                      | true -> t.waiting_for_reset <- false));
                    update_server_side_info t new_server_side_info);
             Ivar.fill ivar result;
-            clear_queue t));
-    clear_queue t;
+            clear_queue t ~time_source));
+    clear_queue t ~time_source;
     Ivar.read ivar
   ;;
 end
@@ -237,20 +258,36 @@ end
 type t =
   { auth : Auth.t
   ; rate_limiter : Rate_limiter.t
+  ; cohttp_client_wrapper : (module Cohttp_client_wrapper) sexp_opaque
+  ; time_source : Time_source.t
   }
-[@@deriving sexp]
+[@@deriving sexp_of]
 
-let create config =
-  { auth = Auth.create config (); rate_limiter = Rate_limiter.create () }
+let create_internal cohttp_client_wrapper config ~time_source =
+  { auth = Auth.create config ()
+  ; rate_limiter = Rate_limiter.create ()
+  ; cohttp_client_wrapper
+  ; time_source
+  }
 ;;
 
-let with_t t ~f ~headers =
-  Auth.with_t t.auth ~headers ~f:(fun headers ->
-      Rate_limiter.with_t t.rate_limiter ~f:(fun () -> f headers))
+let create config =
+  create_internal
+    (module Live_cohttp_client)
+    config
+    ~time_source:(Time_source.wall_clock ())
+;;
+
+let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
+  Auth.with_t t.auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
+      Rate_limiter.with_t t.rate_limiter ~time_source:t.time_source ~f:(fun () ->
+          f headers))
 ;;
 
 let with_retry_internal f =
-  let next_time_to_wait time = Time.Span.max time Time.Span.minute in
+  let next_time_to_wait time =
+    Time_ns.Span.(max (Time_ns.Span.scale_int time 2) Time_ns.Span.minute)
+  in
   let rec with_retry f time_to_wait =
     match%bind try_with f with
     | Ok ((response, _body) as result) ->
@@ -264,20 +301,36 @@ let with_retry_internal f =
       Log.Global.info_s [%message "saw exception" (exn : Exn.t)];
       with_retry f (next_time_to_wait time_to_wait)
   in
-  with_retry f Time.Span.second
+  with_retry f Time_ns.Span.second
 ;;
 
-let with_retry t ~f ~headers = with_retry_internal (fun () -> with_t t ~f ~headers)
+let with_retry t ~f ~headers =
+  with_retry_internal (fun () ->
+      with_t
+        t
+        ~f
+        ~headers
+        ~cohttp_client_wrapper:t.cohttp_client_wrapper
+        ~time_source:t.time_source)
+;;
 
 let post_form t uri ~params =
+  let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
   with_retry
     t
-    ~f:(fun headers -> Cohttp_async.Client.post_form ~headers ~params uri)
+    ~f:(fun headers -> Cohttp_client_wrapper.post_form ~headers ~params uri)
     ~headers
 ;;
 
 let get t uri =
+  let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
-  with_retry t ~f:(fun headers -> Cohttp_async.Client.get ~headers uri) ~headers
+  with_retry t ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri) ~headers
 ;;
+
+module For_testing = struct
+  module type Cohttp_client_wrapper = Cohttp_client_wrapper
+
+  let create = create_internal
+end
