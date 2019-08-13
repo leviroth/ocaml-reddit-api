@@ -284,24 +284,29 @@ let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
           f headers))
 ;;
 
-let with_retry_internal f =
+let with_retry_internal ?(allowed_exception_retries = 3) f =
   let next_time_to_wait time =
     Time_ns.Span.(max (Time_ns.Span.scale_int time 2) Time_ns.Span.minute)
   in
-  let rec with_retry f time_to_wait =
+  let rec with_retry f time_to_wait allowed_exception_retries =
     match%bind try_with f with
     | Ok ((response, _body) as result) ->
       (match Cohttp.Response.status response with
       | #Cohttp.Code.server_error_status ->
-        Log.Global.info_s
+        Log.Global.error_s
           [%message "got server error status code" (response : Cohttp.Response.t)];
-        with_retry f (next_time_to_wait time_to_wait)
+        with_retry f (next_time_to_wait time_to_wait) allowed_exception_retries
       | _ -> return result)
     | Error exn ->
-      Log.Global.info_s [%message "saw exception" (exn : Exn.t)];
-      with_retry f (next_time_to_wait time_to_wait)
+      (match allowed_exception_retries with
+      | 0 ->
+        raise_s
+          [%message "Saw repeated exceptions while retrying HTTP request" (exn : Exn.t)]
+      | n ->
+        Log.Global.error_s [%message "saw exception" (exn : Exn.t)];
+        with_retry f (next_time_to_wait time_to_wait) (n - 1))
   in
-  with_retry f Time_ns.Span.second
+  with_retry f Time_ns.Span.second allowed_exception_retries
 ;;
 
 let with_retry t ~f ~headers =
