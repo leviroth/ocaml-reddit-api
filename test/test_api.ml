@@ -13,7 +13,7 @@ module Harness = struct
     header, Cohttp_async.Body.of_string body
   ;;
 
-  let server_stub responses =
+  let server_stub responses : (module Connection.For_testing.Cohttp_client_wrapper) =
     let responses =
       ref
         (make_response {|{"access_token": "foo", "expires_in": 600}|}
@@ -41,7 +41,7 @@ module Harness = struct
         Out_channel.flush stdout;
         return_reponse_and_advance ()
       ;;
-    end : Connection.For_testing.Cohttp_client_wrapper)
+    end)
   ;;
 
   let create responses =
