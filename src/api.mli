@@ -39,26 +39,26 @@ val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val friends
   :  ?listing_params:Listing_params.t
-  -> subreddit_detail:bool option
-  -> include_categories:bool option
+  -> ?subreddit_detail:bool
+  -> ?include_categories:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val blocked
   :  ?listing_params:Listing_params.t
-  -> subreddit_detail:bool option
-  -> include_categories:bool option
+  -> ?subreddit_detail:bool
+  -> ?include_categories:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val messaging
   :  ?listing_params:Listing_params.t
-  -> subreddit_detail:bool option
-  -> include_categories:bool option
+  -> ?subreddit_detail:bool
+  -> ?include_categories:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val trusted
   :  ?listing_params:Listing_params.t
-  -> subreddit_detail:bool option
-  -> include_categories:bool option
+  -> ?subreddit_detail:bool
+  -> ?include_categories:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 (** Captcha *)

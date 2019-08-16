@@ -120,7 +120,7 @@ let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
 let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
 let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
 
-let prefs which ?listing_params ~subreddit_detail ~include_categories =
+let prefs which ?listing_params ?subreddit_detail ?include_categories =
   let endpoint = sprintf "/api/%s" which in
   let params =
     let open Param_dsl in
