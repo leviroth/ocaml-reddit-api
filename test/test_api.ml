@@ -49,7 +49,8 @@ let create responses =
 ;;
 
 let basic_responses_with_repeating_tail =
-  [ Sequence.singleton (make_response {|{"access_token": "foo", "expires_in": 600}|})
+  [ Sequence.singleton
+      (make_response {|{"access_token": "<FAKE_ACCESS_TOKEN>", "expires_in": 600}|})
   ; Sequence.repeat
       (make_response
          ""
@@ -75,7 +76,7 @@ let%expect_test "info" =
       ((scheme (https)) (host (oauth.reddit.com)) (path /api/info)
        (query ((raw_json (1)) (url (http://example.com))))))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))) |}]
 ;;
 
@@ -95,7 +96,7 @@ let%expect_test "me" =
       ((scheme (https)) (host (oauth.reddit.com)) (path /api/v1/me)
        (query ((raw_json (1))))))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))) |}]
 ;;
 
@@ -115,7 +116,7 @@ let%expect_test "karma" =
       ((scheme (https)) (host (oauth.reddit.com)) (path /api/v1/me/karma)
        (query ((raw_json (1))))))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))) |}]
 ;;
 
@@ -135,7 +136,7 @@ let%expect_test "trophies" =
       ((scheme (https)) (host (oauth.reddit.com)) (path /api/v1/me/trophies)
        (query ((raw_json (1))))))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))) |}]
 ;;
 
@@ -154,7 +155,7 @@ let%expect_test "friends" =
     (post_from
      (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/friends)))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1))))) |}]
   in
@@ -166,7 +167,7 @@ let%expect_test "friends" =
     (post_from
      (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/friends)))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1)) (after (t3_1jklj))))) |}]
 ;;
@@ -185,7 +186,7 @@ let%expect_test "blocked" =
     (post_from
      (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/blocked)))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1))))) |}]
 ;;
@@ -204,7 +205,7 @@ let%expect_test "messaging" =
     (post_from
      (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/messaging)))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1))))) |}]
 ;;
@@ -223,7 +224,7 @@ let%expect_test "trusted" =
     (post_from
      (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/trusted)))
      (headers
-      ((authorization "bearer foo")
+      ((authorization "bearer <FAKE_ACCESS_TOKEN>")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1))))) |}]
 ;;
