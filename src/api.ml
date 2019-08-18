@@ -234,9 +234,9 @@ let more_children ?id ?limit_children ~submission ~children ~sort =
     let open Param_dsl in
     combine
       [ api_type
-      ; required Id36.Comment.to_string "children" children
+      ; required Id36.to_string "children" children
       ; required' fullname_ "link_id" submission
-      ; optional' Id36.More_children.to_string "id" id
+      ; optional' Id36.to_string "id" id
       ; optional' bool "limit_children" limit_children
       ; required' Comment_sort.to_string "sort" sort
       ]
@@ -246,14 +246,13 @@ let more_children ?id ?limit_children ~submission ~children ~sort =
 
 module Report_target = struct
   type t =
-    | Modmail_conversation of Id36.Modmail_conversation.t
+    | Modmail_conversation of Id36.t
     | Fullname of Fullname.t
   [@@deriving sexp]
 
   let params_of_t t =
     match t with
-    | Modmail_conversation id ->
-      [ "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ] ]
+    | Modmail_conversation id -> [ "modmail_conv_id", [ Id36.to_string id ] ]
     | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
   ;;
 end
@@ -530,13 +529,11 @@ let comments
     ?truncate
     ~submission
   =
-  let endpoint =
-    optional_subreddit_endpoint ?subreddit (Id36.Submission.to_string submission)
-  in
+  let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string submission) in
   let params =
     let open Param_dsl in
     combine
-      [ optional' Id36.Comment.to_string "comment" comment
+      [ optional' Id36.to_string "comment" comment
       ; optional' int "context" context
       ; optional' int "depth" depth
       ; optional' int "limit" limit
@@ -566,7 +563,7 @@ module Duplicate_sort = struct
 end
 
 let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submission_id =
-  let endpoint = sprintf !"/duplicates/%{Id36.Submission}" submission_id in
+  let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
   let params =
     let open Param_dsl in
     combine

@@ -6,9 +6,9 @@ let%expect_test "roundtrip: int -> string -> int" =
     [ 85562; 18527; 61915; 6302; 60590; 2723; 97946; 78956; 48802; 84286 ]
   in
   List.iter test_cases ~f:(fun test_case ->
-      let id36 = Id36.Comment.of_int test_case in
-      let int = Id36.Comment.to_int id36 in
-      print_s [%message (test_case : int) (id36 : Id36.Comment.t) (int : int)]);
+      let id36 = Id36.of_int test_case in
+      let int = Id36.to_int id36 in
+      print_s [%message (test_case : int) (id36 : Id36.t) (int : int)]);
   [%expect
     {|
     ((test_case 85562) (id36 1u0q) (int 85562))
@@ -40,9 +40,9 @@ let%expect_test "roundtrip: string -> int -> string" =
     ]
   in
   List.iter test_cases ~f:(fun test_case ->
-      let id36 = Id36.Comment.of_string test_case in
-      let int = Id36.Comment.to_int id36 in
-      print_s [%message (test_case : string) (int : int) (id36 : Id36.Comment.t)]);
+      let id36 = Id36.of_string test_case in
+      let int = Id36.to_int id36 in
+      print_s [%message (test_case : string) (int : int) (id36 : Id36.t)]);
   [%expect
     {|
     ((test_case 0) (int 0) (id36 0))

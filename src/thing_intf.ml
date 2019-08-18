@@ -27,10 +27,5 @@ module type Thing = sig
     val moderation_info : t -> Moderation_info.t option
   end
 
-  type t =
-    | Comment of Comment.t
-    | User of User.t
-    | Submission of Submission.t
-
-  include Common with type t := t
+  include Common
 end
