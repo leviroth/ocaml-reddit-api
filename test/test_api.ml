@@ -2,7 +2,12 @@ open! Core
 open! Async
 open Ocaml_reddit
 
-let make_response ?(header = Cohttp.Response.make ()) body =
+let make_response ?headers body =
+  let header =
+    match headers with
+    | None -> Cohttp.Response.make ()
+    | Some headers -> Cohttp.Response.make ~headers:(Cohttp.Header.of_list headers) ()
+  in
   header, Cohttp_async.Body.of_string body
 ;;
 
@@ -44,12 +49,14 @@ let create responses =
 ;;
 
 let basic_responses_with_repeating_tail =
-  [ Sequence.singleton {|{"access_token": "foo", "expires_in": 600}|}
-  ; Sequence.repeat ""
+  [ Sequence.singleton (make_response {|{"access_token": "foo", "expires_in": 600}|})
+  ; Sequence.repeat
+      (make_response
+         ""
+         ~headers:[ "X-Ratelimit-Remaining", "600.0"; "X-Ratelimit-Reset", "600" ])
   ]
   |> Sequence.of_list
   |> Sequence.concat
-  |> Sequence.map ~f:make_response
 ;;
 
 let%expect_test "info" =
@@ -135,8 +142,9 @@ let%expect_test "trophies" =
 let%expect_test "friends" =
   let connection = create basic_responses_with_repeating_tail in
   let%bind _response = Api.friends connection in
-  [%expect
-    {|
+  let%bind () =
+    [%expect
+      {|
     (post_from
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers
@@ -149,6 +157,18 @@ let%expect_test "friends" =
       ((authorization "bearer foo")
        (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
      (params ((raw_json (1))))) |}]
+  in
+  let%bind _response =
+    Api.friends ~pagination:(After (Fullname.of_string "t3_1jklj")) connection
+  in
+  [%expect
+    {|
+    (post_from
+     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/friends)))
+     (headers
+      ((authorization "bearer foo")
+       (user-agent "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken")))
+     (params ((raw_json (1)) (after (t3_1jklj))))) |}]
 ;;
 
 let%expect_test "blocked" =
