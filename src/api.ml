@@ -629,23 +629,23 @@ let hot' ~listing_params ?location =
     let open Param_dsl in
     optional' string "location" location
   in
-  basic_post_listing' "hot" ~extra_params ~listing_params
+  basic_post_listing' "/hot" ~extra_params ~listing_params
 ;;
 
 let hot = with_listing_params hot'
-let new_ = basic_post_listing "new"
-let rising = basic_post_listing "rising"
+let new_ = basic_post_listing "/new"
+let rising = basic_post_listing "/rising"
 
 let top' ~listing_params ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "top" ~extra_params ~listing_params
+  basic_post_listing' "/top" ~extra_params ~listing_params
 ;;
 
 let top = with_listing_params top'
 
 let controversial' ~listing_params ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "controversial" ~extra_params ~listing_params
+  basic_post_listing' "/controversial" ~extra_params ~listing_params
 ;;
 
 let controversial = with_listing_params controversial'
@@ -764,11 +764,11 @@ let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~e
 ;;
 
 let mod_listing = with_listing_params mod_listing'
-let reports = mod_listing ~endpoint:"reports"
-let spam = mod_listing ~endpoint:"spam"
-let modqueue = mod_listing ~endpoint:"modqueue"
-let unmoderated = mod_listing ~endpoint:"unmoderated"
-let edited = mod_listing ~endpoint:"edited"
+let reports = mod_listing ~endpoint:"/reports"
+let spam = mod_listing ~endpoint:"/spam"
+let modqueue = mod_listing ~endpoint:"/modqueue"
+let unmoderated = mod_listing ~endpoint:"/unmoderated"
+let edited = mod_listing ~endpoint:"/edited"
 
 let accept_moderator_invite ~subreddit =
   let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
