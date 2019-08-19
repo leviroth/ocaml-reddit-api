@@ -25,14 +25,16 @@ module T = struct
       [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
   ;;
 
-  let username_of_field { data; _ } ~field_name =
+  let get_field { data; _ } field_name = Map.find data field_name
+
+  let username_of_field t ~field_name =
     let open Option.Monad_infix in
-    Map.find data field_name >>| Yojson.Safe.Util.to_string >>| Username.of_string
+    get_field t field_name >>| Yojson.Safe.Util.to_string >>| Username.of_string
   ;;
 
-  let time_of_field { data; _ } ~field_name =
+  let time_of_field t ~field_name =
     let open Option.Monad_infix in
-    Map.find data field_name
+    get_field t field_name
     >>| Yojson.Safe.Util.to_float
     >>| Time.Span.of_sec
     >>| Time.of_span_since_epoch
@@ -48,8 +50,8 @@ module T = struct
     Moderation_info.of_listing_fields ~approved_by ~approved_at ~banned_by ~banned_at
   ;;
 
-  let id { data; _ } =
-    Map.find data "id"
+  let id t =
+    get_field t "id"
     |> Option.map ~f:(Fn.compose Id36.of_string Yojson.Safe.Util.to_string)
   ;;
 

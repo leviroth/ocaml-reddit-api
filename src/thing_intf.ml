@@ -6,6 +6,7 @@ module type Common = sig
   val of_json : Yojson.Safe.t -> t
   val to_json : t -> Yojson.Safe.t
   val fullname : t -> Fullname.t option
+  val get_field : t -> string -> Json_derivers.Yojson.t option
 end
 
 module type Thing = sig
