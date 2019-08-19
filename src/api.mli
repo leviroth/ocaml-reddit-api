@@ -329,11 +329,11 @@ val trending_subreddits : (Cohttp.Response.t * Cohttp_async.Body.t) call
 val block : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val collapse_message
-  :  fullnames:Fullname.t sexp_list
+  :  fullnames:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val uncollapse_message
-  :  fullnames:Fullname.t sexp_list
+  :  fullnames:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val compose
@@ -349,39 +349,39 @@ val delete_message
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val read_message
-  :  fullnames:Fullname.t sexp_list
+  :  fullnames:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val unread_message
-  :  fullnames:Fullname.t sexp_list
+  :  fullnames:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val unblock_subreddit
-  :  fullnames:Fullname.t sexp_list
+  :  fullnames:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 val inbox
-  : (?include_categories:sexp_bool
+  : (?include_categories:bool
      -> ?mid:string
-     -> ?subreddit_detail:sexp_bool
-     -> mark_read:sexp_bool sexp_list
+     -> ?subreddit_detail:bool
+     -> mark_read:bool list
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 
 val unread
-  : (?include_categories:sexp_bool
+  : (?include_categories:bool
      -> ?mid:string
-     -> ?subreddit_detail:sexp_bool
-     -> mark_read:sexp_bool sexp_list
+     -> ?subreddit_detail:bool
+     -> mark_read:bool list
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 
 (** Moderation *)
 val sent
-  : (?include_categories:sexp_bool
+  : (?include_categories:bool
      -> ?mid:string
-     -> ?subreddit_detail:sexp_bool
-     -> mark_read:sexp_bool sexp_list
+     -> ?subreddit_detail:bool
+     -> mark_read:bool list
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 

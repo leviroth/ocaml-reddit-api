@@ -51,8 +51,7 @@ type 'a listing =
   ?pagination:Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
 type 'a call =
-  ?param_list_override:((string * string sexp_list) sexp_list
-                        -> (string * string sexp_list) sexp_list)
+  ?param_list_override:((string * string list) list -> (string * string list) list)
   -> Connection.t
   -> 'a Deferred.t
 
