@@ -55,15 +55,15 @@ type 'a call =
   -> Connection.t
   -> 'a Deferred.t
 
-let call_api ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
   let params = ("raw_json", [ "1" ]) :: params in
   let params = param_list_override params in
   let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
   match http_verb with
   | `GET ->
     let uri = Uri.add_query_params uri params in
-    Connection.get connection uri
-  | `POST -> Connection.post_form connection uri ~params
+    Connection.get connection uri |> k
+  | `POST -> Connection.post_form connection uri ~params |> k
 ;;
 
 let get = call_api ~http_verb:`GET
@@ -85,12 +85,12 @@ let simple_post_fullname_as_id ~fullname =
   simple_post_fullnames_as_id ~fullnames:[ fullname ]
 ;;
 
-let simple_toggle verb =
-  simple_post_fullnames_as_id verb, simple_post_fullnames_as_id ("un" ^ verb)
+let simple_toggle verb k =
+  simple_post_fullnames_as_id verb k, simple_post_fullnames_as_id ("un" ^ verb) k
 ;;
 
-let simple_toggle' verb =
-  simple_post_fullname_as_id verb, simple_post_fullname_as_id ("un" ^ verb)
+let simple_toggle' verb k =
+  simple_post_fullname_as_id verb k, simple_post_fullname_as_id ("un" ^ verb) k
 ;;
 
 let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
@@ -112,7 +112,7 @@ let with_listing_params k ?pagination ?count ?limit ?show_all =
   k ~listing_params
 ;;
 
-let prefs' which ~listing_params ?subreddit_detail ?include_categories =
+let prefs' which k ~listing_params ?subreddit_detail ?include_categories =
   let endpoint = sprintf "/api/%s" which in
   let params =
     let open Param_dsl in
@@ -122,16 +122,16 @@ let prefs' which ~listing_params ?subreddit_detail ?include_categories =
       ; optional' bool "include_categories" include_categories
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
-let prefs = Fn.compose with_listing_params prefs'
+let prefs endpoint k = with_listing_params (prefs' endpoint k)
 let friends = prefs "friends"
 let blocked = prefs "blocked"
 let messaging = prefs "messaging"
 let trusted = prefs "trusted"
 
-let add_comment ?return_rtjson ?richtext_json ~parent ~text =
+let add_comment k ?return_rtjson ?richtext_json ~parent ~text =
   let endpoint = "/api/comment" in
   let params =
     let open Param_dsl in
@@ -143,7 +143,7 @@ let add_comment ?return_rtjson ?richtext_json ~parent ~text =
       ; optional' json "richtext_json" richtext_json
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let delete ~fullname =
@@ -155,7 +155,7 @@ let delete ~fullname =
   post ~endpoint ~params
 ;;
 
-let edit ?return_rtjson ?richtext_json ~fullname ~text =
+let edit k ?return_rtjson ?richtext_json ~fullname ~text =
   let endpoint = "/api/editusertext" in
   let params =
     let open Param_dsl in
@@ -167,7 +167,7 @@ let edit ?return_rtjson ?richtext_json ~fullname ~text =
       ; optional' json "richtext_json" richtext_json
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let follow ~submission ~follow =
@@ -179,8 +179,8 @@ let follow ~submission ~follow =
   post ~endpoint ~params
 ;;
 
-let hide, unhide =
-  let hide', unhide' = simple_toggle "hide" in
+let hide_and_unhide k =
+  let hide', unhide' = simple_toggle "hide" k in
   ( (fun ~submissions -> hide' ~fullnames:submissions)
   , fun ~submissions -> unhide' ~fullnames:submissions )
 ;;
@@ -198,14 +198,14 @@ module Info_query = struct
   ;;
 end
 
-let info ?subreddit query =
+let info k ?subreddit query =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
   let params = Info_query.params_of_t query in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let lock, unlock = simple_toggle' "lock"
-let mark_nsfw, unmark_nsfw = simple_toggle' "marknsfw"
+let lock_and_unlock k = simple_toggle' "lock" k
+let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
 
 module Comment_sort = struct
   type t =
@@ -227,7 +227,7 @@ module Comment_sort = struct
 end
 
 (* TODO: mutex *)
-let more_children ?id ?limit_children ~submission ~children ~sort =
+let more_children k ?id ?limit_children ~submission ~children ~sort =
   let endpoint = "/api/morechildren" in
   let params =
     let open Param_dsl in
@@ -240,7 +240,7 @@ let more_children ?id ?limit_children ~submission ~children ~sort =
       ; required' Comment_sort.to_string "sort" sort
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 module Report_target = struct
@@ -257,6 +257,7 @@ module Report_target = struct
 end
 
 let report
+    k
     ?from_modmail
     ?from_help_desk
     ?additional_info
@@ -285,7 +286,7 @@ let report
       ; optional' bool "from_help_desk" from_help_desk
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let report_award ~award_id =
@@ -294,13 +295,13 @@ let report_award ~award_id =
   post ~endpoint ~params
 ;;
 
-let save ?category ~fullname =
+let save k ?category ~fullname =
   let endpoint = "/api/save" in
   let params =
     let open Param_dsl in
     combine [ required' fullname_ "id" fullname; optional' string "category" category ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let unsave ~fullname =
@@ -344,7 +345,7 @@ module Sticky_state = struct
   ;;
 end
 
-let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
+let set_subreddit_sticky k ?to_profile ~fullname ~sticky_state =
   let endpoint = "/api/set_subreddit_sticky" in
   let params =
     let open Param_dsl in
@@ -355,7 +356,7 @@ let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
       ; optional' bool "to_profile" to_profile
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let set_suggested_sort ~fullname ~sort =
@@ -374,7 +375,7 @@ let set_suggested_sort ~fullname ~sort =
   post ~endpoint ~params
 ;;
 
-let spoiler, unspoiler = simple_toggle' "spoiler"
+let spoiler_and_unspoiler k = simple_toggle' "spoiler" k
 
 let store_visits ~submissions =
   let endpoint = "/api/store_visits" in
@@ -418,6 +419,7 @@ module Submission_kind = struct
 end
 
 let submit
+    k
     ?ad
     ?nsfw
     ?resubmit
@@ -455,7 +457,7 @@ let submit
       ; optional' string "event_tz" event_tz
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 module Vote_direction = struct
@@ -475,7 +477,7 @@ module Vote_direction = struct
   let params_of_t t = [ "dir", [ int_of_t t |> Int.to_string ] ]
 end
 
-let vote ?rank ~direction ~fullname =
+let vote k ?rank ~direction ~fullname =
   let endpoint = "/api/vote" in
   let params =
     let open Param_dsl in
@@ -485,12 +487,12 @@ let vote ?rank ~direction ~fullname =
       ; optional' int "rank" rank
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
 
-let best' ~listing_params ?include_categories ?subreddit_detail =
+let best' k ~listing_params ?include_categories ?subreddit_detail =
   let endpoint = "/best" in
   let params =
     let open Param_dsl in
@@ -500,10 +502,10 @@ let best' ~listing_params ?include_categories ?subreddit_detail =
       ; optional' bool "sr_detail" subreddit_detail
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let best = with_listing_params best'
+let best k = with_listing_params (best' k)
 
 let by_id ~fullnames =
   let endpoint =
@@ -515,6 +517,7 @@ let by_id ~fullnames =
 ;;
 
 let comments
+    k
     ?subreddit
     ?comment
     ?context
@@ -544,7 +547,7 @@ let comments
       ; optional' int "truncate" truncate
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 module Duplicate_sort = struct
@@ -561,7 +564,8 @@ module Duplicate_sort = struct
   ;;
 end
 
-let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submission_id =
+let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submission_id
+  =
   let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
   let params =
     let open Param_dsl in
@@ -572,10 +576,10 @@ let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submis
       ; include_optional Duplicate_sort.params_of_t sort
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let duplicates = with_listing_params duplicates'
+let duplicates k = with_listing_params (duplicates' k)
 
 module Historical_span = struct
   module T = struct
@@ -597,6 +601,7 @@ end
 
 let basic_post_listing'
     endpoint_part
+    k
     ~listing_params
     ?include_categories
     ?subreddit_detail
@@ -613,48 +618,48 @@ let basic_post_listing'
       ; extra_params
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let basic_post_listing =
-  Fn.compose with_listing_params (basic_post_listing' ~extra_params:[])
+let basic_post_listing endpoint k =
+  with_listing_params (basic_post_listing' endpoint k ~extra_params:[])
 ;;
 
-let hot' ~listing_params ?location =
+let hot' k ~listing_params ?location =
   let extra_params =
     let open Param_dsl in
     optional' string "location" location
   in
-  basic_post_listing' "/hot" ~extra_params ~listing_params
+  basic_post_listing' "/hot" k ~extra_params ~listing_params
 ;;
 
-let hot = with_listing_params hot'
-let new_ = basic_post_listing "/new"
-let rising = basic_post_listing "/rising"
+let hot k = with_listing_params (hot' k)
+let new_ k = basic_post_listing "/new" k
+let rising k = basic_post_listing "/rising" k
 
-let top' ~listing_params ?since =
+let top' k ~listing_params ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "/top" ~extra_params ~listing_params
+  basic_post_listing' "/top" k ~extra_params ~listing_params
 ;;
 
-let top = with_listing_params top'
+let top k = with_listing_params (top' k)
 
-let controversial' ~listing_params ?since =
+let controversial' k ~listing_params ?since =
   let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "/controversial" ~extra_params ~listing_params
+  basic_post_listing' "/controversial" k ~extra_params ~listing_params
 ;;
 
-let controversial = with_listing_params controversial'
+let controversial k = with_listing_params (controversial' k)
 
-let random ?subreddit =
+let random k ?subreddit =
   let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-  get ~endpoint ~params:[]
+  get k ~endpoint ~params:[]
 ;;
 
 let block = simple_post_fullname_as_id "block"
-let collapse_message, uncollapse_message = simple_toggle "collapse_message"
+let collapse_and_uncollapse_message k = simple_toggle "collapse_message" k
 
-let compose ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+let compose k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
   let endpoint = "/api/compose" in
   let params =
     let open Param_dsl in
@@ -667,15 +672,16 @@ let compose ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
       ; required' string "text" text
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let delete_message = simple_post_fullname_as_id "del_msg"
-let read_message, unread_message = simple_toggle "read_message"
-let unblock_subreddit = simple_post_fullnames_as_id "unblock_subreddit"
+let read_and_unread_message k = simple_toggle "read_message" k
+let unblock_subreddit k = simple_post_fullnames_as_id "unblock_subreddit" k
 
 let message_listing'
     endpoint
+    k
     ~listing_params
     ?include_categories
     ?mid
@@ -693,13 +699,13 @@ let message_listing'
       ; required bool "mark" mark_read
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let message_listing = Fn.compose with_listing_params message_listing'
-let inbox = message_listing "inbox"
-let unread = message_listing "unread"
-let sent = message_listing "sent"
+let message_listing endpoint k = with_listing_params (message_listing' endpoint k)
+let inbox k = message_listing "inbox" k
+let unread k = message_listing "unread" k
+let sent k = message_listing "sent" k
 
 module Mod_filter = struct
   type t =
@@ -715,7 +721,7 @@ module Mod_filter = struct
   ;;
 end
 
-let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
+let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
   let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
   let params =
     let open Param_dsl in
@@ -726,10 +732,10 @@ let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
       ; optional' string "type" type_
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let log = with_listing_params log'
+let log k = with_listing_params (log' k)
 
 module Links_or_comments = struct
   type t =
@@ -745,7 +751,8 @@ module Links_or_comments = struct
   ;;
 end
 
-let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
+let mod_listing' k ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint
+  =
   let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
   let params =
     let open Param_dsl in
@@ -756,10 +763,10 @@ let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~e
       ; optional' string "location" location
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let mod_listing = with_listing_params mod_listing'
+let mod_listing k = with_listing_params (mod_listing' k)
 let reports = mod_listing ~endpoint:"/reports"
 let spam = mod_listing ~endpoint:"/spam"
 let modqueue = mod_listing ~endpoint:"/modqueue"
@@ -793,7 +800,7 @@ module How_to_distinguish = struct
   ;;
 end
 
-let distinguish ?sticky ~fullname ~how =
+let distinguish k ?sticky ~fullname ~how =
   let endpoint = "/api/distinguish" in
   let params =
     let open Param_dsl in
@@ -803,13 +810,13 @@ let distinguish ?sticky ~fullname ~how =
       ; optional' bool "sticky" sticky
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
-let ignore_reports, unignore_reports = simple_toggle' "ignore_reports"
+let ignore_and_unignore_reports k = simple_toggle' "ignore_reports" k
 let leavecontributor = simple_post_fullname_as_id "leavecontributor"
 let leavemoderator = simple_post_fullname_as_id "leavemoderator"
-let mute_message_author, unmute_message_author = simple_toggle' "mute_message_author"
+let mute_and_unmute_message_author k = simple_toggle' "mute_message_author" k
 
 let stylesheet ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
@@ -858,6 +865,7 @@ module Search_type = struct
 end
 
 let search'
+    k
     ~listing_params
     ?category
     ?include_facets
@@ -892,13 +900,14 @@ let search'
       ; restrict_param
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let search = with_listing_params search'
+let search k = with_listing_params (search' k)
 
 let about_endpoint'
     endpoint
+    k
     ~listing_params
     ?include_categories
     ?subreddit_detail
@@ -915,10 +924,10 @@ let about_endpoint'
       ; optional' username_ "user" user
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let about_endpoint = Fn.compose with_listing_params about_endpoint'
+let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
 let banned = about_endpoint "banned"
 let muted = about_endpoint "muted"
 let wiki_banned = about_endpoint "wikibanned"
@@ -931,26 +940,26 @@ let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
   post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
 ;;
 
-let delete_subreddit_banner = removal_endpoints "delete_sr_banner"
-let delete_subreddit_header = removal_endpoints "delete_sr_header"
-let delete_subreddit_icon = removal_endpoints "delete_sr_icon"
+let delete_subreddit_banner k = removal_endpoints "delete_sr_banner" k
+let delete_subreddit_header k = removal_endpoints "delete_sr_header" k
+let delete_subreddit_icon k = removal_endpoints "delete_sr_icon" k
 
 let delete_subreddit_image ~image_name =
   let extra_params = Param_dsl.(required' string "img_name" image_name) in
   removal_endpoints "delete_sr_img" ~extra_params
 ;;
 
-let recommended ?over_18 ~subreddits =
+let recommended k ?over_18 ~subreddits =
   let endpoint =
     List.map subreddits ~f:Subreddit_name.to_string
     |> String.concat ~sep:","
     |> sprintf "/api/recommend/sr/%s"
   in
   let params = Param_dsl.(optional' bool "over_18" over_18) in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
+let search_subreddit_names k ?exact ?include_over_18 ?include_unadvertisable ~query =
   let endpoint = "/api/search_reddit_names" in
   let params =
     let open Param_dsl in
@@ -961,7 +970,7 @@ let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~quer
       ; optional' bool "include_unadvertisable" include_unadvertisable
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 module Link_type = struct
@@ -1034,6 +1043,7 @@ module Wiki_mode = struct
 end
 
 let create_or_edit_subreddit
+    k
     ?comment_score_hide_mins
     ?wiki_edit_age
     ?wiki_edit_karma
@@ -1125,7 +1135,7 @@ let create_or_edit_subreddit
       ; required' Wiki_mode.to_string "wikimode" wiki_mode
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let submit_text ~subreddit =
@@ -1133,7 +1143,7 @@ let submit_text ~subreddit =
   get ~endpoint ~params:[]
 ;;
 
-let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
+let subreddit_autocomplete k ?include_over_18 ?include_profiles ~query =
   let endpoint = "/api/subreddit_autocomplete" in
   let params =
     let open Param_dsl in
@@ -1143,10 +1153,11 @@ let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
       ; required' string "query" query
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 let subreddit_autocomplete_v2
+    k
     ?limit
     ?include_categories
     ?include_over_18
@@ -1164,7 +1175,7 @@ let subreddit_autocomplete_v2
       ; required' string "query" query
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 module Stylesheet_operation = struct
@@ -1180,7 +1191,7 @@ module Stylesheet_operation = struct
   ;;
 end
 
-let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
+let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
   let params =
     let open Param_dsl in
@@ -1191,7 +1202,7 @@ let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
       ; required' string "stylesheet_contents" stylesheet_contents
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 module Subscription_action = struct
@@ -1206,7 +1217,7 @@ module Subscription_action = struct
   ;;
 end
 
-let subscribe ?skip_initial_defaults ~action =
+let subscribe k ?skip_initial_defaults ~action =
   let endpoint = "/api/subscribe" in
   let params =
     let open Param_dsl in
@@ -1215,7 +1226,7 @@ let subscribe ?skip_initial_defaults ~action =
       ; optional' bool "skip_initial_defaults" skip_initial_defaults
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 module Image_type = struct
@@ -1246,7 +1257,7 @@ module Upload_type = struct
   ;;
 end
 
-let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
+let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
   let params =
     let header = Bool.to_int header in
@@ -1260,7 +1271,7 @@ let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_ty
       ; required' Upload_type.to_string "upload_type" upload_type
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 module Subreddit_search_sort = struct
@@ -1275,7 +1286,7 @@ module Subreddit_search_sort = struct
   ;;
 end
 
-let search_profiles' ~listing_params ?subreddit_detail ?sort ~query =
+let search_profiles' k ~listing_params ?subreddit_detail ?sort ~query =
   let endpoint = "/profiles/search" in
   let params =
     let open Param_dsl in
@@ -1286,10 +1297,10 @@ let search_profiles' ~listing_params ?subreddit_detail ?sort ~query =
       ; optional' Subreddit_search_sort.to_string "sort" sort
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let search_profiles = with_listing_params search_profiles'
+let search_profiles k = with_listing_params (search_profiles' k)
 
 let about ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
@@ -1301,25 +1312,25 @@ let subreddit_about ?(params = []) ~subreddit endpoint =
   get ~endpoint ~params
 ;;
 
-let subreddit_settings ?created ?location =
+let subreddit_settings k ?created ?location =
   let params =
     let open Param_dsl in
     combine [ optional' bool "created" created; optional' string "location" location ]
   in
-  subreddit_about ~params "edit"
+  subreddit_about ~params "edit" k
 ;;
 
-let subreddit_rules = subreddit_about "rules"
-let subreddit_traffic = subreddit_about "traffic"
-let subreddit_sidebar = subreddit_about "sidebar"
+let subreddit_rules k = subreddit_about "rules" k
+let subreddit_traffic k = subreddit_about "traffic" k
+let subreddit_sidebar k = subreddit_about "sidebar" k
 
-let sticky ?number ~subreddit =
+let sticky k ?number ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
   let params =
     let open Param_dsl in
     combine [ optional' int "num" number ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
 module Subreddit_relationship = struct
@@ -1338,7 +1349,8 @@ module Subreddit_relationship = struct
   ;;
 end
 
-let get_subreddits' ~listing_params ?include_categories ?subreddit_detail ~relationship =
+let get_subreddits' k ~listing_params ?include_categories ?subreddit_detail ~relationship
+  =
   let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
   let params =
     let open Param_dsl in
@@ -1348,12 +1360,12 @@ let get_subreddits' ~listing_params ?include_categories ?subreddit_detail ~relat
       ; optional' bool "include_categories" include_categories
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let get_subreddits = with_listing_params get_subreddits'
+let get_subreddits k = with_listing_params (get_subreddits' k)
 
-let search_subreddits' ~listing_params ?show_users ?sort ?subreddit_detail ~query =
+let search_subreddits' k ~listing_params ?show_users ?sort ?subreddit_detail ~query =
   let endpoint = "/subreddits/search" in
   let params =
     let open Param_dsl in
@@ -1365,10 +1377,10 @@ let search_subreddits' ~listing_params ?show_users ?sort ?subreddit_detail ~quer
       ; optional' Subreddit_search_sort.to_string "sort" sort
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let search_subreddits = with_listing_params search_subreddits'
+let search_subreddits k = with_listing_params (search_subreddits' k)
 
 module Subreddit_listing_sort = struct
   type t =
@@ -1387,6 +1399,7 @@ module Subreddit_listing_sort = struct
 end
 
 let list_subreddits'
+    k
     ~listing_params
     ?subreddit_detail
     ?include_categories
@@ -1403,10 +1416,10 @@ let list_subreddits'
       ; optional' bool "show_users" show_users
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let list_subreddits = with_listing_params list_subreddits'
+let list_subreddits k = with_listing_params (list_subreddits' k)
 
 module User_subreddit_sort = struct
   type t =
@@ -1420,7 +1433,7 @@ module User_subreddit_sort = struct
   ;;
 end
 
-let list_user_subreddits' ~listing_params ?subreddit_detail ?include_categories ~sort =
+let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
   let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
   let params =
     let open Param_dsl in
@@ -1430,10 +1443,10 @@ let list_user_subreddits' ~listing_params ?subreddit_detail ?include_categories 
       ; optional' bool "include_categories" include_categories
       ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let list_user_subreddits = with_listing_params list_user_subreddits'
+let list_user_subreddits k = with_listing_params (list_user_subreddits' k)
 
 module Relationship = struct
   module Duration = struct
@@ -1478,6 +1491,7 @@ module Relationship = struct
 end
 
 let add_relationship
+    k
     ~relationship
     ~username
     ~subreddit
@@ -1504,7 +1518,7 @@ let add_relationship
       ; optional' fullname_ "ban_context" ban_context
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let remove_relationship ~relationship ~username ~subreddit =
@@ -1557,7 +1571,8 @@ let add_or_remove_wiki_editor
   post ~endpoint ~params
 ;;
 
-let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_page.t) =
+let edit_wiki_page k ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_page.t)
+  =
   let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
   let params =
     let open Param_dsl in
@@ -1568,7 +1583,7 @@ let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_
       ; optional' string "reason" reason
       ]
   in
-  post ~endpoint ~params
+  post k ~endpoint ~params
 ;;
 
 let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
@@ -1590,6 +1605,7 @@ let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.t) ~revision =
 ;;
 
 let wiki_discussions'
+    k
     ~listing_params
     ?subreddit_detail
     ~page:({ subreddit; page } : Wiki_page.t)
@@ -1599,28 +1615,29 @@ let wiki_discussions'
     let open Param_dsl in
     combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let wiki_discussions = with_listing_params wiki_discussions'
+let wiki_discussions k = with_listing_params (wiki_discussions' k)
 
 let wiki_pages ~subreddit =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/pages" subreddit in
   get ~endpoint ~params:[]
 ;;
 
-let subreddit_wiki_revisions' ~listing_params ?subreddit_detail ~subreddit =
+let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ~subreddit =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions" subreddit in
   let params =
     let open Param_dsl in
     combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'
+let subreddit_wiki_revisions k = with_listing_params (subreddit_wiki_revisions' k)
 
 let wiki_page_revisions'
+    k
     ~listing_params
     ?subreddit_detail
     ~page:({ subreddit; page } : Wiki_page.t)
@@ -1630,10 +1647,10 @@ let wiki_page_revisions'
     let open Param_dsl in
     combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
 
-let wiki_page_revisions = with_listing_params wiki_page_revisions'
+let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
 
 let wiki_permissions ~page:({ subreddit; page } : Wiki_page.t) =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
@@ -1657,7 +1674,7 @@ let set_wiki_permissions
   post ~endpoint ~params
 ;;
 
-let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
+let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
   let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
   let v1, v2 = Option.value compare_revisions ~default:(None, None) in
   let params =
@@ -1665,5 +1682,115 @@ let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
     combine
       [ required' string "page" page; optional' string "v" v1; optional' string "v2" v2 ]
   in
-  get ~endpoint ~params
+  get k ~endpoint ~params
 ;;
+
+let me = me Fn.id
+let karma = karma Fn.id
+let trophies = trophies Fn.id
+let needs_captcha = needs_captcha Fn.id
+let friends = friends Fn.id
+let blocked = blocked Fn.id
+let messaging = messaging Fn.id
+let trusted = trusted Fn.id
+let add_comment = add_comment Fn.id
+let delete = delete Fn.id
+let edit = edit Fn.id
+let follow = follow Fn.id
+let hide, unhide = hide_and_unhide Fn.id
+let lock, unlock = lock_and_unlock Fn.id
+let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw Fn.id
+let info = info Fn.id
+let more_children = more_children Fn.id
+let report = report Fn.id
+let report_award = report_award Fn.id
+let save = save Fn.id
+let unsave = unsave Fn.id
+let saved_categories = saved_categories Fn.id
+let send_replies = send_replies Fn.id
+let set_contest_mode = set_contest_mode Fn.id
+let set_subreddit_sticky = set_subreddit_sticky Fn.id
+let set_suggested_sort = set_suggested_sort Fn.id
+let spoiler, unspoiler = spoiler_and_unspoiler Fn.id
+let store_visits = store_visits Fn.id
+let submit = submit Fn.id
+let vote = vote Fn.id
+let best = best Fn.id
+let by_id = by_id Fn.id
+let comments = comments Fn.id
+let duplicates = duplicates Fn.id
+let hot = hot Fn.id
+let new_ = new_ Fn.id
+let rising = rising Fn.id
+let top = top Fn.id
+let controversial = controversial Fn.id
+let random = random Fn.id
+let trending_subreddits = trending_subreddits Fn.id
+let block = block Fn.id
+let collapse_message, uncollapse_message = collapse_and_uncollapse_message Fn.id
+let compose = compose Fn.id
+let delete_message = delete_message Fn.id
+let read_message, unread_message = read_and_unread_message Fn.id
+let unblock_subreddit = unblock_subreddit Fn.id
+let inbox = inbox Fn.id
+let unread = unread Fn.id
+let sent = sent Fn.id
+let log = log Fn.id
+let reports = reports Fn.id
+let spam = spam Fn.id
+let modqueue = modqueue Fn.id
+let unmoderated = unmoderated Fn.id
+let edited = edited Fn.id
+let accept_moderator_invite = accept_moderator_invite Fn.id
+let approve = approve Fn.id
+let remove = remove Fn.id
+let distinguish = distinguish Fn.id
+let ignore_reports, unignore_reports = ignore_and_unignore_reports Fn.id
+let leavecontributor = leavecontributor Fn.id
+let leavemoderator = leavemoderator Fn.id
+let mute_message_author, unmute_message_author = mute_and_unmute_message_author Fn.id
+let stylesheet = stylesheet Fn.id
+let search = search Fn.id
+let banned = banned Fn.id
+let muted = muted Fn.id
+let wiki_banned = wiki_banned Fn.id
+let contributors = contributors Fn.id
+let wiki_contributors = wiki_contributors Fn.id
+let moderators = moderators Fn.id
+let delete_subreddit_banner = delete_subreddit_banner Fn.id
+let delete_subreddit_header = delete_subreddit_header Fn.id
+let delete_subreddit_icon = delete_subreddit_icon Fn.id
+let delete_subreddit_image = delete_subreddit_image Fn.id
+let recommended = recommended Fn.id
+let search_subreddit_names = search_subreddit_names Fn.id
+let create_or_edit_subreddit = create_or_edit_subreddit Fn.id
+let submit_text = submit_text Fn.id
+let subreddit_autocomplete = subreddit_autocomplete Fn.id
+let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 Fn.id
+let subreddit_stylesheet = subreddit_stylesheet Fn.id
+let subscribe = subscribe Fn.id
+let upload_sr_img = upload_sr_img Fn.id
+let search_profiles = search_profiles Fn.id
+let about = about Fn.id
+let subreddit_settings = subreddit_settings Fn.id
+let subreddit_rules = subreddit_rules Fn.id
+let subreddit_traffic = subreddit_traffic Fn.id
+let subreddit_sidebar = subreddit_sidebar Fn.id
+let sticky = sticky Fn.id
+let get_subreddits = get_subreddits Fn.id
+let search_subreddits = search_subreddits Fn.id
+let list_subreddits = list_subreddits Fn.id
+let list_user_subreddits = list_user_subreddits Fn.id
+let add_relationship = add_relationship Fn.id
+let remove_relationship = remove_relationship Fn.id
+let add_or_remove_wiki_editor = add_or_remove_wiki_editor Fn.id
+let edit_wiki_page = edit_wiki_page Fn.id
+let toggle_wiki_revision_visibility = toggle_wiki_revision_visibility Fn.id
+let revert_wiki_page = revert_wiki_page Fn.id
+let wiki_discussions = wiki_discussions Fn.id
+let wiki_pages = wiki_pages Fn.id
+let subreddit_wiki_revisions = subreddit_wiki_revisions Fn.id
+let wiki_page_revisions = wiki_page_revisions Fn.id
+let wiki_permissions = wiki_permissions Fn.id
+let set_wiki_permissions = set_wiki_permissions Fn.id
+let wiki_page = wiki_page Fn.id
