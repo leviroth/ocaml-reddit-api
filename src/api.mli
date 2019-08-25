@@ -16,6 +16,242 @@ end
 type 'a listing =
   ?pagination:Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
+module Comment_sort : sig
+  type t =
+    | Confidence
+    | Top
+    | New
+    | Controversial
+    | Old
+    | Random
+    | Q_and_a
+    | Live
+  [@@deriving sexp]
+end
+
+module Report_target : sig
+  type t =
+    | Modmail_conversation of Id36.t
+    | Fullname of Fullname.t
+  [@@deriving sexp]
+end
+
+module Sticky_state : sig
+  type t =
+    | Sticky of { slot : int }
+    | Unsticky
+  [@@deriving sexp]
+end
+
+module Submission_kind : sig
+  module Self_post_body : sig
+    type t =
+      | Markdown of string
+      | Richtext_json of Json_derivers.Yojson.t
+    [@@deriving sexp]
+  end
+
+  type t =
+    | Link of { url : string }
+    | Self of Self_post_body.t
+    | Image
+    | Video
+    | Videogif
+  [@@deriving sexp]
+end
+
+module Vote_direction : sig
+  type t =
+    | Up
+    | Neutral
+    | Down
+  [@@deriving sexp]
+end
+
+module Info_query : sig
+  type t =
+    | Id of Fullname.t list
+    | Url of Uri.t
+  [@@deriving sexp]
+end
+
+module Duplicate_sort : sig
+  type t =
+    | Number_of_comments
+    | New
+end
+
+module Historical_span : sig
+  type t =
+    | Hour
+    | Day
+    | Week
+    | Month
+    | Year
+    | All
+  [@@deriving sexp]
+end
+
+module Mod_filter : sig
+  type t =
+    | Moderators of Username.t list
+    | Admin
+end
+
+module Links_or_comments : sig
+  type t =
+    | Links
+    | Comments
+end
+
+module How_to_distinguish : sig
+  type t =
+    | Mod
+    | Admin
+    | Special
+    | Undistinguish
+end
+
+module Search_sort : sig
+  type t =
+    | Relevance
+    | Hot
+    | Top
+    | New
+    | Comments
+end
+
+module Search_type : sig
+  type t =
+    | Subreddit
+    | Submission
+    | User
+  [@@deriving sexp]
+
+  include Comparable.S with type t := t
+end
+
+module Link_type : sig
+  type t =
+    | Any
+    | Link
+    | Self
+end
+
+module Spam_level : sig
+  type t =
+    | Low
+    | High
+    | All
+end
+
+module Subreddit_type : sig
+  type t =
+    | Gold_restricted
+    | Archived
+    | Restricted
+    | Employees_only
+    | Gold_only
+    | Private
+    | User
+    | Public
+end
+
+module Wiki_mode : sig
+  type t =
+    | Disabled
+    | Mod_only
+    | Anyone
+end
+
+module Stylesheet_operation : sig
+  type t =
+    | Save
+    | Preview
+end
+
+module Subscription_action : sig
+  type t =
+    | Subscribe
+    | Unsubscribe
+end
+
+module Image_type : sig
+  type t =
+    | Png
+    | Jpg
+end
+
+module Upload_type : sig
+  type t =
+    | Image
+    | Header
+    | Icon
+    | Banner
+end
+
+module Subreddit_search_sort : sig
+  type t =
+    | Relevance
+    | Activity
+end
+
+module Subreddit_relationship : sig
+  type t =
+    | Subscriber
+    | Contributor
+    | Moderator
+    | Stream_subscriber
+end
+
+module Subreddit_listing_sort : sig
+  type t =
+    | Popular
+    | New
+    | Gold
+    | Default
+end
+
+module User_subreddit_sort : sig
+  type t =
+    | Popular
+    | New
+end
+
+module Relationship : sig
+  module Duration : sig
+    type t =
+      | Permanent
+      | Days of int
+    [@@deriving sexp]
+  end
+
+  type t =
+    | Friend
+    | Moderator
+    | Moderator_invite
+    | Contributor
+    | Banned
+    | Muted
+    | Wiki_banned
+    | Wiki_contributor
+  [@@deriving sexp]
+end
+
+module Wiki_page : sig
+  type t =
+    { subreddit : Subreddit_name.t
+    ; page : string
+    }
+  [@@deriving sexp]
+end
+
+module Add_or_remove : sig
+  type t =
+    | Add
+    | Remove
+end
+
 (** Account *)
 
 val me : (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -51,19 +287,6 @@ val trusted
 val needs_captcha : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 (** Links and comments *)
-
-module Comment_sort : sig
-  type t =
-    | Confidence
-    | Top
-    | New
-    | Controversial
-    | Old
-    | Random
-    | Q_and_a
-    | Live
-  [@@deriving sexp]
-end
 
 val add_comment
   :  ?return_rtjson:bool
@@ -105,13 +328,6 @@ val more_children
   -> sort:Comment_sort.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Report_target : sig
-  type t =
-    | Modmail_conversation of Id36.t
-    | Fullname of Fullname.t
-  [@@deriving sexp]
-end
-
 val report
   :  ?from_modmail:bool
   -> ?from_help_desk:bool
@@ -145,13 +361,6 @@ val set_contest_mode
   -> enabled:bool
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Sticky_state : sig
-  type t =
-    | Sticky of { slot : int }
-    | Unsticky
-  [@@deriving sexp]
-end
-
 val set_subreddit_sticky
   :  ?to_profile:bool
   -> fullname:Fullname.t
@@ -170,23 +379,6 @@ val store_visits
   :  submissions:Fullname.t list
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Submission_kind : sig
-  module Self_post_body : sig
-    type t =
-      | Markdown of string
-      | Richtext_json of Json_derivers.Yojson.t
-    [@@deriving sexp]
-  end
-
-  type t =
-    | Link of { url : string }
-    | Self of Self_post_body.t
-    | Image
-    | Video
-    | Videogif
-  [@@deriving sexp]
-end
-
 val submit
   :  ?ad:bool
   -> ?nsfw:bool
@@ -204,26 +396,11 @@ val submit
   -> kind:Submission_kind.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Vote_direction : sig
-  type t =
-    | Up
-    | Neutral
-    | Down
-  [@@deriving sexp]
-end
-
 val vote
   :  ?rank:int
   -> direction:Vote_direction.t
   -> fullname:Fullname.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-module Info_query : sig
-  type t =
-    | Id of Fullname.t list
-    | Url of Uri.t
-  [@@deriving sexp]
-end
 
 val info
   :  ?subreddit:Subreddit_name.t
@@ -239,12 +416,6 @@ val best
     listing
 
 val by_id : fullnames:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-module Duplicate_sort : sig
-  type t =
-    | Number_of_comments
-    | New
-end
 
 val comments
   :  ?subreddit:Subreddit_name.t
@@ -268,17 +439,6 @@ val duplicates
      -> submission_id:Id36.t
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
-
-module Historical_span : sig
-  type t =
-    | Hour
-    | Day
-    | Week
-    | Month
-    | Year
-    | All
-  [@@deriving sexp]
-end
 
 val hot
   : (?location:string
@@ -377,6 +537,7 @@ val unread
     listing
 
 (** Moderation *)
+
 val sent
   : (?include_categories:bool
      -> ?mid:string
@@ -385,12 +546,6 @@ val sent
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 
-module Mod_filter : sig
-  type t =
-    | Moderators of Username.t list
-    | Admin
-end
-
 val log
   : (?mod_filter:Mod_filter.t
      -> ?subreddit_detail:bool
@@ -398,12 +553,6 @@ val log
      -> ?type_:string
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
-
-module Links_or_comments : sig
-  type t =
-    | Links
-    | Comments
-end
 
 val reports
   : (?location:string
@@ -452,14 +601,6 @@ val accept_moderator_invite
 val approve : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 val remove : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module How_to_distinguish : sig
-  type t =
-    | Mod
-    | Admin
-    | Special
-    | Undistinguish
-end
-
 val distinguish
   :  ?sticky:bool
   -> fullname:Fullname.t
@@ -496,27 +637,6 @@ val stylesheet
 
 (** Search *)
 
-module Search_sort : sig
-  type t =
-    | Relevance
-    | Hot
-    | Top
-    | New
-    | Comments
-end
-
-module Search_type : sig
-  type t =
-    | Subreddit
-    | Submission
-    | User
-  [@@deriving sexp]
-
-  include Comparable.S with type t := t
-end
-
-(** Subreddits *)
-
 val search
   : (?category:string
      -> ?include_facets:bool
@@ -528,6 +648,8 @@ val search
      -> query:string
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
+
+(** Subreddits *)
 
 val banned
   : (?include_categories:bool
@@ -606,39 +728,6 @@ val search_subreddit_names
   -> query:string
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Link_type : sig
-  type t =
-    | Any
-    | Link
-    | Self
-end
-
-module Spam_level : sig
-  type t =
-    | Low
-    | High
-    | All
-end
-
-module Subreddit_type : sig
-  type t =
-    | Gold_restricted
-    | Archived
-    | Restricted
-    | Employees_only
-    | Gold_only
-    | Private
-    | User
-    | Public
-end
-
-module Wiki_mode : sig
-  type t =
-    | Disabled
-    | Mod_only
-    | Anyone
-end
-
 val create_or_edit_subreddit
   :  ?comment_score_hide_mins:int
   -> ?wiki_edit_age:int
@@ -702,12 +791,6 @@ val subreddit_autocomplete_v2
   -> query:string
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Stylesheet_operation : sig
-  type t =
-    | Save
-    | Preview
-end
-
 val subreddit_stylesheet
   :  ?reason:string
   -> operation:Stylesheet_operation.t
@@ -715,30 +798,10 @@ val subreddit_stylesheet
   -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Subscription_action : sig
-  type t =
-    | Subscribe
-    | Unsubscribe
-end
-
 val subscribe
   :  ?skip_initial_defaults:bool
   -> action:Subscription_action.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-module Image_type : sig
-  type t =
-    | Png
-    | Jpg
-end
-
-module Upload_type : sig
-  type t =
-    | Image
-    | Header
-    | Icon
-    | Banner
-end
 
 val upload_sr_img
   :  ?form_id:string
@@ -749,12 +812,6 @@ val upload_sr_img
   -> subreddit:Subreddit_name.t
   -> upload_type:Upload_type.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-module Subreddit_search_sort : sig
-  type t =
-    | Relevance
-    | Activity
-end
 
 val search_profiles
   : (?subreddit_detail:bool
@@ -788,14 +845,6 @@ val sticky
   -> subreddit:Subreddit_name.t
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-module Subreddit_relationship : sig
-  type t =
-    | Subscriber
-    | Contributor
-    | Moderator
-    | Stream_subscriber
-end
-
 val get_subreddits
   : (?include_categories:bool
      -> ?subreddit_detail:string
@@ -811,14 +860,6 @@ val search_subreddits
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 
-module Subreddit_listing_sort : sig
-  type t =
-    | Popular
-    | New
-    | Gold
-    | Default
-end
-
 val list_subreddits
   : (?subreddit_detail:bool
      -> ?include_categories:bool
@@ -827,39 +868,14 @@ val list_subreddits
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
 
-module User_subreddit_sort : sig
-  type t =
-    | Popular
-    | New
-end
-
 (** Users *)
+
 val list_user_subreddits
   : (?subreddit_detail:bool
      -> ?include_categories:bool
      -> sort:User_subreddit_sort.t
      -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
     listing
-
-module Relationship : sig
-  module Duration : sig
-    type t =
-      | Permanent
-      | Days of int
-    [@@deriving sexp]
-  end
-
-  type t =
-    | Friend
-    | Moderator
-    | Moderator_invite
-    | Contributor
-    | Banned
-    | Muted
-    | Wiki_banned
-    | Wiki_contributor
-  [@@deriving sexp]
-end
 
 val add_relationship
   :  relationship:Relationship.t
@@ -879,20 +895,6 @@ val remove_relationship
   -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
 (** Wiki *)
-
-module Wiki_page : sig
-  type t =
-    { subreddit : Subreddit_name.t
-    ; page : string
-    }
-  [@@deriving sexp]
-end
-
-module Add_or_remove : sig
-  type t =
-    | Add
-    | Remove
-end
 
 val add_or_remove_wiki_editor
   :  add_or_remove:Add_or_remove.t
