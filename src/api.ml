@@ -1,5 +1,20 @@
 open! Core
 open! Async
+include Api_parameters
+
+let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+  let params = ("raw_json", [ "1" ]) :: params in
+  let params = param_list_override params in
+  let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
+  match http_verb with
+  | `GET ->
+    let uri = Uri.add_query_params uri params in
+    Connection.get connection uri |> k
+  | `POST -> Connection.post_form connection uri ~params |> k
+;;
+
+let get = call_api ~http_verb:`GET
+let post = call_api ~http_verb:`POST
 
 module Param_dsl = struct
   type t = (string * string list) list
@@ -26,48 +41,6 @@ module Param_dsl = struct
   let json = Yojson.Safe.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
-
-module Pagination = struct
-  type t =
-    | Before of Fullname.t
-    | After of Fullname.t
-  [@@deriving sexp]
-
-  let params_of_t t =
-    let key =
-      match t with
-      | Before _ -> "before"
-      | After _ -> "after"
-    in
-    let value =
-      match t with
-      | Before fullname | After fullname -> Fullname.to_string fullname
-    in
-    [ key, [ value ] ]
-  ;;
-end
-
-type 'a listing =
-  ?pagination:Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
-
-type 'a call =
-  ?param_list_override:((string * string list) list -> (string * string list) list)
-  -> Connection.t
-  -> 'a Deferred.t
-
-let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
-  let params = ("raw_json", [ "1" ]) :: params in
-  let params = param_list_override params in
-  let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
-  match http_verb with
-  | `GET ->
-    let uri = Uri.add_query_params uri params in
-    Connection.get connection uri |> k
-  | `POST -> Connection.post_form connection uri ~params |> k
-;;
-
-let get = call_api ~http_verb:`GET
-let post = call_api ~http_verb:`POST
 
 let optional_subreddit_endpoint ?subreddit suffix =
   let subreddit_part =
@@ -185,19 +158,6 @@ let hide_and_unhide k =
   , fun ~submissions -> unhide' ~fullnames:submissions )
 ;;
 
-module Info_query = struct
-  type t =
-    | Id of Fullname.t list
-    | Url of Uri_sexp.t
-  [@@deriving sexp]
-
-  let params_of_t t =
-    match t with
-    | Id fullnames -> [ "id", List.map fullnames ~f:Fullname.to_string ]
-    | Url uri -> [ "url", [ Uri.to_string uri ] ]
-  ;;
-end
-
 let info k ?subreddit query =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
   let params = Info_query.params_of_t query in
@@ -206,25 +166,6 @@ let info k ?subreddit query =
 
 let lock_and_unlock k = simple_toggle' "lock" k
 let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
-
-module Comment_sort = struct
-  type t =
-    | Confidence
-    | Top
-    | New
-    | Controversial
-    | Old
-    | Random
-    | Q_and_a
-    | Live
-  [@@deriving sexp]
-
-  let to_string t =
-    match t with
-    | Q_and_a -> "qa"
-    | _ -> sexp_of_t t |> Sexp.to_string |> String.lowercase
-  ;;
-end
 
 (* TODO: mutex *)
 let more_children k ?id ?limit_children ~submission ~children ~sort =
@@ -242,19 +183,6 @@ let more_children k ?id ?limit_children ~submission ~children ~sort =
   in
   get k ~endpoint ~params
 ;;
-
-module Report_target = struct
-  type t =
-    | Modmail_conversation of Id36.t
-    | Fullname of Fullname.t
-  [@@deriving sexp]
-
-  let params_of_t t =
-    match t with
-    | Modmail_conversation id -> [ "modmail_conv_id", [ Id36.to_string id ] ]
-    | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
-  ;;
-end
 
 let report
     k
@@ -331,20 +259,6 @@ let set_contest_mode ~fullname ~enabled =
   post ~endpoint ~params
 ;;
 
-module Sticky_state = struct
-  type t =
-    | Sticky of { slot : int }
-    | Unsticky
-  [@@deriving sexp]
-
-  let params_of_t t =
-    match t with
-    | Sticky { slot } ->
-      [ "state", [ Bool.to_string true ]; "num", [ Int.to_string slot ] ]
-    | Unsticky -> [ "state", [ Bool.to_string false ] ]
-  ;;
-end
-
 let set_subreddit_sticky k ?to_profile ~fullname ~sticky_state =
   let endpoint = "/api/set_subreddit_sticky" in
   let params =
@@ -385,38 +299,6 @@ let store_visits ~submissions =
   in
   post ~endpoint ~params
 ;;
-
-module Submission_kind = struct
-  module Self_post_body = struct
-    type t =
-      | Markdown of string
-      | Richtext_json of Json_derivers.Yojson.t
-    [@@deriving sexp]
-  end
-
-  type t =
-    | Link of { url : string }
-    | Self of Self_post_body.t
-    | Image
-    | Video
-    | Videogif
-  [@@deriving sexp]
-
-  let params_of_t t =
-    match t with
-    | Link { url } -> [ "kind", [ "link" ]; "url", [ url ] ]
-    | Self body ->
-      [ "kind", [ "link" ]
-      ; ( "text"
-        , [ (match body with
-            | Markdown markdown -> markdown
-            | Richtext_json json -> Yojson.Safe.to_string json)
-          ] )
-      ]
-    (* TODO Should we disallow these? *)
-    | Image | Video | Videogif -> assert false
-  ;;
-end
 
 let submit
     k
@@ -459,23 +341,6 @@ let submit
   in
   post k ~endpoint ~params
 ;;
-
-module Vote_direction = struct
-  type t =
-    | Up
-    | Neutral
-    | Down
-  [@@deriving sexp]
-
-  let int_of_t t =
-    match t with
-    | Up -> 1
-    | Neutral -> 0
-    | Down -> -1
-  ;;
-
-  let params_of_t t = [ "dir", [ int_of_t t |> Int.to_string ] ]
-end
 
 let vote k ?rank ~direction ~fullname =
   let endpoint = "/api/vote" in
@@ -550,20 +415,6 @@ let comments
   get k ~endpoint ~params
 ;;
 
-module Duplicate_sort = struct
-  type t =
-    | Number_of_comments
-    | New
-
-  let params_of_t t =
-    [ ( "sort"
-      , match t with
-        | Number_of_comments -> [ "number_of_comments" ]
-        | New -> [ "new" ] )
-    ]
-  ;;
-end
-
 let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submission_id
   =
   let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
@@ -580,24 +431,6 @@ let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~subm
 ;;
 
 let duplicates k = with_listing_params (duplicates' k)
-
-module Historical_span = struct
-  module T = struct
-    type t =
-      | Hour
-      | Day
-      | Week
-      | Month
-      | Year
-      | All
-    [@@deriving sexp]
-  end
-
-  include T
-  include Sexpable.To_stringable (T)
-
-  let params_of_t t = [ "t", [ to_string t |> String.lowercase ] ]
-end
 
 let basic_post_listing'
     endpoint_part
@@ -707,20 +540,6 @@ let inbox k = message_listing "inbox" k
 let unread k = message_listing "unread" k
 let sent k = message_listing "sent" k
 
-module Mod_filter = struct
-  type t =
-    | Moderators of Username.t list
-    | Admin
-
-  let params_of_t t =
-    [ ( "mod"
-      , match t with
-        | Admin -> [ "a" ]
-        | Moderators moderators -> List.map moderators ~f:Username.to_string )
-    ]
-  ;;
-end
-
 let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
   let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
   let params =
@@ -736,20 +555,6 @@ let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
 ;;
 
 let log k = with_listing_params (log' k)
-
-module Links_or_comments = struct
-  type t =
-    | Links
-    | Comments
-
-  let params_of_t t =
-    [ ( "only"
-      , match t with
-        | Links -> [ "links" ]
-        | Comments -> [ "comments" ] )
-    ]
-  ;;
-end
 
 let mod_listing' k ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint
   =
@@ -781,25 +586,6 @@ let accept_moderator_invite ~subreddit =
 let approve = simple_post_fullname_as_id "approve"
 let remove = simple_post_fullname_as_id "remove"
 
-module How_to_distinguish = struct
-  type t =
-    | Mod
-    | Admin
-    | Special
-    | Undistinguish
-
-  let params_of_t t =
-    [ ( "how"
-      , [ (match t with
-          | Mod -> "yes"
-          | Admin -> "admin"
-          | Special -> "special"
-          | Undistinguish -> "no")
-        ] )
-    ]
-  ;;
-end
-
 let distinguish k ?sticky ~fullname ~how =
   let endpoint = "/api/distinguish" in
   let params =
@@ -822,47 +608,6 @@ let stylesheet ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
   get ~endpoint ~params:[]
 ;;
-
-module Search_sort = struct
-  type t =
-    | Relevance
-    | Hot
-    | Top
-    | New
-    | Comments
-
-  let params_of_t t =
-    [ ( "sort"
-      , [ (match t with
-          | Relevance -> "relevance"
-          | Hot -> "hot"
-          | Top -> "top"
-          | New -> "new"
-          | Comments -> "comments")
-        ] )
-    ]
-  ;;
-end
-
-module Search_type = struct
-  module T = struct
-    type t =
-      | Subreddit
-      | Submission
-      | User
-    [@@deriving compare, sexp]
-  end
-
-  include T
-  include Comparable.Make (T)
-
-  let to_string t =
-    match t with
-    | Subreddit -> "sr"
-    | Submission -> "link"
-    | User -> "user"
-  ;;
-end
 
 let search'
     k
@@ -972,75 +717,6 @@ let search_subreddit_names k ?exact ?include_over_18 ?include_unadvertisable ~qu
   in
   get k ~endpoint ~params
 ;;
-
-module Link_type = struct
-  type t =
-    | Any
-    | Link
-    | Self
-
-  let params_of_t t =
-    [ ( "link_type"
-      , [ (match t with
-          | Any -> "any"
-          | Link -> "link"
-          | Self -> "self")
-        ] )
-    ]
-  ;;
-end
-
-module Spam_level = struct
-  type t =
-    | Low
-    | High
-    | All
-
-  let to_string t =
-    match t with
-    | Low -> "low"
-    | High -> "high"
-    | All -> "all"
-  ;;
-end
-
-module Subreddit_type = struct
-  type t =
-    | Gold_restricted
-    | Archived
-    | Restricted
-    | Employees_only
-    | Gold_only
-    | Private
-    | User
-    | Public
-
-  let to_string t =
-    match t with
-    | Gold_restricted -> "gold_restricted"
-    | Archived -> "archived"
-    | Restricted -> "restricted"
-    | Employees_only -> "employees_only"
-    | Gold_only -> "gold_only"
-    | Private -> "private"
-    | User -> "user"
-    | Public -> "public"
-  ;;
-end
-
-module Wiki_mode = struct
-  type t =
-    | Disabled
-    | Mod_only
-    | Anyone
-
-  let to_string t =
-    match t with
-    | Disabled -> "disabled"
-    | Mod_only -> "modonly"
-    | Anyone -> "anyone"
-  ;;
-end
 
 let create_or_edit_subreddit
     k
@@ -1178,19 +854,6 @@ let subreddit_autocomplete_v2
   get k ~endpoint ~params
 ;;
 
-module Stylesheet_operation = struct
-  type t =
-    | Save
-    | Preview
-  [@@deriving sexp]
-
-  let to_string t =
-    match t with
-    | Save -> "save"
-    | Preview -> "preview"
-  ;;
-end
-
 let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
   let params =
@@ -1205,18 +868,6 @@ let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
   post k ~endpoint ~params
 ;;
 
-module Subscription_action = struct
-  type t =
-    | Subscribe
-    | Unsubscribe
-
-  let to_string t =
-    match t with
-    | Subscribe -> "sub"
-    | Unsubscribe -> "unsub"
-  ;;
-end
-
 let subscribe k ?skip_initial_defaults ~action =
   let endpoint = "/api/subscribe" in
   let params =
@@ -1228,34 +879,6 @@ let subscribe k ?skip_initial_defaults ~action =
   in
   post k ~endpoint ~params
 ;;
-
-module Image_type = struct
-  type t =
-    | Png
-    | Jpg
-
-  let to_string t =
-    match t with
-    | Png -> "png"
-    | Jpg -> "jpg"
-  ;;
-end
-
-module Upload_type = struct
-  type t =
-    | Image
-    | Header
-    | Icon
-    | Banner
-
-  let to_string t =
-    match t with
-    | Image -> "img"
-    | Header -> "header"
-    | Icon -> "icon"
-    | Banner -> "banner"
-  ;;
-end
 
 let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
@@ -1273,18 +896,6 @@ let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_
   in
   post k ~endpoint ~params
 ;;
-
-module Subreddit_search_sort = struct
-  type t =
-    | Relevance
-    | Activity
-
-  let to_string t =
-    match t with
-    | Relevance -> "relevance"
-    | Activity -> "activity"
-  ;;
-end
 
 let search_profiles' k ~listing_params ?subreddit_detail ?sort ~query =
   let endpoint = "/profiles/search" in
@@ -1333,22 +944,6 @@ let sticky k ?number ~subreddit =
   get k ~endpoint ~params
 ;;
 
-module Subreddit_relationship = struct
-  type t =
-    | Subscriber
-    | Contributor
-    | Moderator
-    | Stream_subscriber
-
-  let to_string t =
-    match t with
-    | Subscriber -> "subscriber"
-    | Contributor -> "contributor"
-    | Moderator -> "moderator"
-    | Stream_subscriber -> "streams"
-  ;;
-end
-
 let get_subreddits' k ~listing_params ?include_categories ?subreddit_detail ~relationship
   =
   let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
@@ -1382,22 +977,6 @@ let search_subreddits' k ~listing_params ?show_users ?sort ?subreddit_detail ~qu
 
 let search_subreddits k = with_listing_params (search_subreddits' k)
 
-module Subreddit_listing_sort = struct
-  type t =
-    | Popular
-    | New
-    | Gold
-    | Default
-
-  let to_string t =
-    match t with
-    | Popular -> "popular"
-    | New -> "new"
-    | Gold -> "gold"
-    | Default -> "default"
-  ;;
-end
-
 let list_subreddits'
     k
     ~listing_params
@@ -1421,18 +1000,6 @@ let list_subreddits'
 
 let list_subreddits k = with_listing_params (list_subreddits' k)
 
-module User_subreddit_sort = struct
-  type t =
-    | Popular
-    | New
-
-  let to_string t =
-    match t with
-    | Popular -> "popular"
-    | New -> "new"
-  ;;
-end
-
 let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
   let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
   let params =
@@ -1447,48 +1014,6 @@ let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categorie
 ;;
 
 let list_user_subreddits k = with_listing_params (list_user_subreddits' k)
-
-module Relationship = struct
-  module Duration = struct
-    type t =
-      | Permanent
-      | Days of int
-    [@@deriving sexp]
-
-    let params_of_t t =
-      [ ( "duration"
-        , match t with
-          | Permanent -> []
-          | Days days -> [ Int.to_string days ] )
-      ]
-    ;;
-  end
-
-  type t =
-    | Friend
-    | Moderator
-    | Moderator_invite
-    | Contributor
-    | Banned
-    | Muted
-    | Wiki_banned
-    | Wiki_contributor
-  [@@deriving sexp]
-
-  let to_string t =
-    match t with
-    | Friend -> "friend"
-    | Moderator -> "moderator"
-    | Moderator_invite -> "moderator_invite"
-    | Contributor -> "contributor"
-    | Banned -> "banned"
-    | Muted -> "muted"
-    | Wiki_banned -> "wikibanned"
-    | Wiki_contributor -> "wikicontributor"
-  ;;
-
-  let params_of_t t = [ "type", [ to_string t ] ]
-end
 
 let add_relationship
     k
@@ -1533,26 +1058,6 @@ let remove_relationship ~relationship ~username ~subreddit =
   in
   post ~endpoint ~params
 ;;
-
-module Wiki_page = struct
-  type t =
-    { subreddit : Subreddit_name.t
-    ; page : string
-    }
-  [@@deriving sexp]
-end
-
-module Add_or_remove = struct
-  type t =
-    | Add
-    | Remove
-
-  let to_string t =
-    match t with
-    | Add -> "add"
-    | Remove -> "del"
-  ;;
-end
 
 let add_or_remove_wiki_editor
     ~add_or_remove
@@ -1685,112 +1190,114 @@ let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
   get k ~endpoint ~params
 ;;
 
-let me = me Fn.id
-let karma = karma Fn.id
-let trophies = trophies Fn.id
-let needs_captcha = needs_captcha Fn.id
-let friends = friends Fn.id
-let blocked = blocked Fn.id
-let messaging = messaging Fn.id
-let trusted = trusted Fn.id
-let add_comment = add_comment Fn.id
-let delete = delete Fn.id
-let edit = edit Fn.id
-let follow = follow Fn.id
-let hide, unhide = hide_and_unhide Fn.id
-let lock, unlock = lock_and_unlock Fn.id
-let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw Fn.id
-let info = info Fn.id
-let more_children = more_children Fn.id
-let report = report Fn.id
-let report_award = report_award Fn.id
-let save = save Fn.id
-let unsave = unsave Fn.id
-let saved_categories = saved_categories Fn.id
-let send_replies = send_replies Fn.id
-let set_contest_mode = set_contest_mode Fn.id
-let set_subreddit_sticky = set_subreddit_sticky Fn.id
-let set_suggested_sort = set_suggested_sort Fn.id
-let spoiler, unspoiler = spoiler_and_unspoiler Fn.id
-let store_visits = store_visits Fn.id
-let submit = submit Fn.id
-let vote = vote Fn.id
-let best = best Fn.id
-let by_id = by_id Fn.id
-let comments = comments Fn.id
-let duplicates = duplicates Fn.id
-let hot = hot Fn.id
-let new_ = new_ Fn.id
-let rising = rising Fn.id
-let top = top Fn.id
-let controversial = controversial Fn.id
-let random = random Fn.id
-let trending_subreddits = trending_subreddits Fn.id
-let block = block Fn.id
-let collapse_message, uncollapse_message = collapse_and_uncollapse_message Fn.id
-let compose = compose Fn.id
-let delete_message = delete_message Fn.id
-let read_message, unread_message = read_and_unread_message Fn.id
-let unblock_subreddit = unblock_subreddit Fn.id
-let inbox = inbox Fn.id
-let unread = unread Fn.id
-let sent = sent Fn.id
-let log = log Fn.id
-let reports = reports Fn.id
-let spam = spam Fn.id
-let modqueue = modqueue Fn.id
-let unmoderated = unmoderated Fn.id
-let edited = edited Fn.id
-let accept_moderator_invite = accept_moderator_invite Fn.id
-let approve = approve Fn.id
-let remove = remove Fn.id
-let distinguish = distinguish Fn.id
-let ignore_reports, unignore_reports = ignore_and_unignore_reports Fn.id
-let leavecontributor = leavecontributor Fn.id
-let leavemoderator = leavemoderator Fn.id
-let mute_message_author, unmute_message_author = mute_and_unmute_message_author Fn.id
-let stylesheet = stylesheet Fn.id
-let search = search Fn.id
-let banned = banned Fn.id
-let muted = muted Fn.id
-let wiki_banned = wiki_banned Fn.id
-let contributors = contributors Fn.id
-let wiki_contributors = wiki_contributors Fn.id
-let moderators = moderators Fn.id
-let delete_subreddit_banner = delete_subreddit_banner Fn.id
-let delete_subreddit_header = delete_subreddit_header Fn.id
-let delete_subreddit_icon = delete_subreddit_icon Fn.id
-let delete_subreddit_image = delete_subreddit_image Fn.id
-let recommended = recommended Fn.id
-let search_subreddit_names = search_subreddit_names Fn.id
-let create_or_edit_subreddit = create_or_edit_subreddit Fn.id
-let submit_text = submit_text Fn.id
-let subreddit_autocomplete = subreddit_autocomplete Fn.id
-let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 Fn.id
-let subreddit_stylesheet = subreddit_stylesheet Fn.id
-let subscribe = subscribe Fn.id
-let upload_sr_img = upload_sr_img Fn.id
-let search_profiles = search_profiles Fn.id
-let about = about Fn.id
-let subreddit_settings = subreddit_settings Fn.id
-let subreddit_rules = subreddit_rules Fn.id
-let subreddit_traffic = subreddit_traffic Fn.id
-let subreddit_sidebar = subreddit_sidebar Fn.id
-let sticky = sticky Fn.id
-let get_subreddits = get_subreddits Fn.id
-let search_subreddits = search_subreddits Fn.id
-let list_subreddits = list_subreddits Fn.id
-let list_user_subreddits = list_user_subreddits Fn.id
-let add_relationship = add_relationship Fn.id
-let remove_relationship = remove_relationship Fn.id
-let add_or_remove_wiki_editor = add_or_remove_wiki_editor Fn.id
-let edit_wiki_page = edit_wiki_page Fn.id
-let toggle_wiki_revision_visibility = toggle_wiki_revision_visibility Fn.id
-let revert_wiki_page = revert_wiki_page Fn.id
-let wiki_discussions = wiki_discussions Fn.id
-let wiki_pages = wiki_pages Fn.id
-let subreddit_wiki_revisions = subreddit_wiki_revisions Fn.id
-let wiki_page_revisions = wiki_page_revisions Fn.id
-let wiki_permissions = wiki_permissions Fn.id
-let set_wiki_permissions = set_wiki_permissions Fn.id
-let wiki_page = wiki_page Fn.id
+module Raw = struct
+  let me = me Fn.id
+  let karma = karma Fn.id
+  let trophies = trophies Fn.id
+  let needs_captcha = needs_captcha Fn.id
+  let friends = friends Fn.id
+  let blocked = blocked Fn.id
+  let messaging = messaging Fn.id
+  let trusted = trusted Fn.id
+  let add_comment = add_comment Fn.id
+  let delete = delete Fn.id
+  let edit = edit Fn.id
+  let follow = follow Fn.id
+  let hide, unhide = hide_and_unhide Fn.id
+  let lock, unlock = lock_and_unlock Fn.id
+  let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw Fn.id
+  let info = info Fn.id
+  let more_children = more_children Fn.id
+  let report = report Fn.id
+  let report_award = report_award Fn.id
+  let save = save Fn.id
+  let unsave = unsave Fn.id
+  let saved_categories = saved_categories Fn.id
+  let send_replies = send_replies Fn.id
+  let set_contest_mode = set_contest_mode Fn.id
+  let set_subreddit_sticky = set_subreddit_sticky Fn.id
+  let set_suggested_sort = set_suggested_sort Fn.id
+  let spoiler, unspoiler = spoiler_and_unspoiler Fn.id
+  let store_visits = store_visits Fn.id
+  let submit = submit Fn.id
+  let vote = vote Fn.id
+  let best = best Fn.id
+  let by_id = by_id Fn.id
+  let comments = comments Fn.id
+  let duplicates = duplicates Fn.id
+  let hot = hot Fn.id
+  let new_ = new_ Fn.id
+  let rising = rising Fn.id
+  let top = top Fn.id
+  let controversial = controversial Fn.id
+  let random = random Fn.id
+  let trending_subreddits = trending_subreddits Fn.id
+  let block = block Fn.id
+  let collapse_message, uncollapse_message = collapse_and_uncollapse_message Fn.id
+  let compose = compose Fn.id
+  let delete_message = delete_message Fn.id
+  let read_message, unread_message = read_and_unread_message Fn.id
+  let unblock_subreddit = unblock_subreddit Fn.id
+  let inbox = inbox Fn.id
+  let unread = unread Fn.id
+  let sent = sent Fn.id
+  let log = log Fn.id
+  let reports = reports Fn.id
+  let spam = spam Fn.id
+  let modqueue = modqueue Fn.id
+  let unmoderated = unmoderated Fn.id
+  let edited = edited Fn.id
+  let accept_moderator_invite = accept_moderator_invite Fn.id
+  let approve = approve Fn.id
+  let remove = remove Fn.id
+  let distinguish = distinguish Fn.id
+  let ignore_reports, unignore_reports = ignore_and_unignore_reports Fn.id
+  let leavecontributor = leavecontributor Fn.id
+  let leavemoderator = leavemoderator Fn.id
+  let mute_message_author, unmute_message_author = mute_and_unmute_message_author Fn.id
+  let stylesheet = stylesheet Fn.id
+  let search = search Fn.id
+  let banned = banned Fn.id
+  let muted = muted Fn.id
+  let wiki_banned = wiki_banned Fn.id
+  let contributors = contributors Fn.id
+  let wiki_contributors = wiki_contributors Fn.id
+  let moderators = moderators Fn.id
+  let delete_subreddit_banner = delete_subreddit_banner Fn.id
+  let delete_subreddit_header = delete_subreddit_header Fn.id
+  let delete_subreddit_icon = delete_subreddit_icon Fn.id
+  let delete_subreddit_image = delete_subreddit_image Fn.id
+  let recommended = recommended Fn.id
+  let search_subreddit_names = search_subreddit_names Fn.id
+  let create_or_edit_subreddit = create_or_edit_subreddit Fn.id
+  let submit_text = submit_text Fn.id
+  let subreddit_autocomplete = subreddit_autocomplete Fn.id
+  let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 Fn.id
+  let subreddit_stylesheet = subreddit_stylesheet Fn.id
+  let subscribe = subscribe Fn.id
+  let upload_sr_img = upload_sr_img Fn.id
+  let search_profiles = search_profiles Fn.id
+  let about = about Fn.id
+  let subreddit_settings = subreddit_settings Fn.id
+  let subreddit_rules = subreddit_rules Fn.id
+  let subreddit_traffic = subreddit_traffic Fn.id
+  let subreddit_sidebar = subreddit_sidebar Fn.id
+  let sticky = sticky Fn.id
+  let get_subreddits = get_subreddits Fn.id
+  let search_subreddits = search_subreddits Fn.id
+  let list_subreddits = list_subreddits Fn.id
+  let list_user_subreddits = list_user_subreddits Fn.id
+  let add_relationship = add_relationship Fn.id
+  let remove_relationship = remove_relationship Fn.id
+  let add_or_remove_wiki_editor = add_or_remove_wiki_editor Fn.id
+  let edit_wiki_page = edit_wiki_page Fn.id
+  let toggle_wiki_revision_visibility = toggle_wiki_revision_visibility Fn.id
+  let revert_wiki_page = revert_wiki_page Fn.id
+  let wiki_discussions = wiki_discussions Fn.id
+  let wiki_pages = wiki_pages Fn.id
+  let subreddit_wiki_revisions = subreddit_wiki_revisions Fn.id
+  let wiki_page_revisions = wiki_page_revisions Fn.id
+  let wiki_permissions = wiki_permissions Fn.id
+  let set_wiki_permissions = set_wiki_permissions Fn.id
+  let wiki_page = wiki_page Fn.id
+end

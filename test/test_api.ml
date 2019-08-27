@@ -62,7 +62,9 @@ let basic_responses_with_repeating_tail =
 
 let%expect_test "info" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.info (Url (Uri.of_string "http://example.com")) connection in
+  let%bind _response =
+    Api.Raw.info (Url (Uri.of_string "http://example.com")) connection
+  in
   [%expect
     {|
     (post_from
@@ -82,7 +84,7 @@ let%expect_test "info" =
 
 let%expect_test "me" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.me connection in
+  let%bind _response = Api.Raw.me connection in
   [%expect
     {|
     (post_from
@@ -102,7 +104,7 @@ let%expect_test "me" =
 
 let%expect_test "karma" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.karma connection in
+  let%bind _response = Api.Raw.karma connection in
   [%expect
     {|
     (post_from
@@ -122,7 +124,7 @@ let%expect_test "karma" =
 
 let%expect_test "trophies" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.trophies connection in
+  let%bind _response = Api.Raw.trophies connection in
   [%expect
     {|
     (post_from
@@ -142,7 +144,7 @@ let%expect_test "trophies" =
 
 let%expect_test "friends" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.friends connection in
+  let%bind _response = Api.Raw.friends connection in
   let%bind () =
     [%expect
       {|
@@ -160,7 +162,7 @@ let%expect_test "friends" =
      (params ((raw_json (1))))) |}]
   in
   let%bind _response =
-    Api.friends ~pagination:(After (Fullname.of_string "t3_1jklj")) connection
+    Api.Raw.friends ~pagination:(After (Fullname.of_string "t3_1jklj")) connection
   in
   [%expect
     {|
@@ -174,7 +176,7 @@ let%expect_test "friends" =
 
 let%expect_test "blocked" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.blocked connection in
+  let%bind _response = Api.Raw.blocked connection in
   [%expect
     {|
     (post_from
@@ -193,7 +195,7 @@ let%expect_test "blocked" =
 
 let%expect_test "messaging" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.messaging connection in
+  let%bind _response = Api.Raw.messaging connection in
   [%expect
     {|
     (post_from
@@ -212,7 +214,7 @@ let%expect_test "messaging" =
 
 let%expect_test "trusted" =
   let connection = create basic_responses_with_repeating_tail in
-  let%bind _response = Api.trusted connection in
+  let%bind _response = Api.Raw.trusted connection in
   [%expect
     {|
     (post_from
