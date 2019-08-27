@@ -67,1130 +67,1167 @@ let simple_toggle' verb k =
 ;;
 
 let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
-let me = get ~endpoint:"/api/v1/me" ~params:[]
-let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
-let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
-let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
-
-let with_listing_params k ?pagination ?count ?limit ?show_all =
-  let listing_params =
-    let open Param_dsl in
-    combine
-      [ include_optional Pagination.params_of_t pagination
-      ; optional' int "count" count
-      ; optional' int "limit" limit
-      ; optional' (const "all") "show" show_all
-      ]
-  in
-  k ~listing_params
-;;
-
-let prefs' which k ~listing_params ?subreddit_detail ?include_categories =
-  let endpoint = sprintf "/api/%s" which in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' bool "include_categories" include_categories
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let prefs endpoint k = with_listing_params (prefs' endpoint k)
-let friends = prefs "friends"
-let blocked = prefs "blocked"
-let messaging = prefs "messaging"
-let trusted = prefs "trusted"
-
-let add_comment k ?return_rtjson ?richtext_json ~parent ~text =
-  let endpoint = "/api/comment" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; required' fullname_ "thing_id" parent
-      ; required' string "text" text
-      ; optional' bool "return_rtjson" return_rtjson
-      ; optional' json "richtext_json" richtext_json
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let delete ~fullname =
-  let endpoint = "/api/comment" in
-  let params =
-    let open Param_dsl in
-    Param_dsl.combine [ required' fullname_ "id" fullname ]
-  in
-  post ~endpoint ~params
-;;
-
-let edit k ?return_rtjson ?richtext_json ~fullname ~text =
-  let endpoint = "/api/editusertext" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; required' fullname_ "thing_id" fullname
-      ; required' string "text" text
-      ; optional' bool "return_rtjson" return_rtjson
-      ; optional' json "richtext_json" richtext_json
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let follow ~submission ~follow =
-  let endpoint = "/api/follow_post" in
-  let params =
-    let open Param_dsl in
-    combine [ required' fullname_ "fullname" submission; required' bool "follow" follow ]
-  in
-  post ~endpoint ~params
-;;
-
-let hide_and_unhide k =
-  let hide', unhide' = simple_toggle "hide" k in
-  ( (fun ~submissions -> hide' ~fullnames:submissions)
-  , fun ~submissions -> unhide' ~fullnames:submissions )
-;;
-
-let info k ?subreddit query =
-  let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
-  let params = Info_query.params_of_t query in
-  get k ~endpoint ~params
-;;
-
-let lock_and_unlock k = simple_toggle' "lock" k
-let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
-
-(* TODO: mutex *)
-let more_children k ?id ?limit_children ~submission ~children ~sort =
-  let endpoint = "/api/morechildren" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; required Id36.to_string "children" children
-      ; required' fullname_ "link_id" submission
-      ; optional' Id36.to_string "id" id
-      ; optional' bool "limit_children" limit_children
-      ; required' Comment_sort.to_string "sort" sort
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let report
-    k
-    ?from_modmail
-    ?from_help_desk
-    ?additional_info
-    ?custom_text
-    ?other_reason
-    ?rule_reason
-    ?site_reason
-    ?sr_name
-    ~target
-    ~reason
-  =
-  let endpoint = "/api/report" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ Report_target.params_of_t target
-      ; api_type
-      ; required' string "reason" reason
-      ; optional' string "additional_info" additional_info
-      ; optional' string "custom_text" custom_text
-      ; optional' string "other_reason" other_reason
-      ; optional' string "rule_reason" rule_reason
-      ; optional' string "site_reason" site_reason
-      ; optional' string "sr_name" sr_name
-      ; optional' bool "from_modmail" from_modmail
-      ; optional' bool "from_help_desk" from_help_desk
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let report_award ~award_id =
-  let endpoint = "/api/report_award" in
-  let params = [ "award_id", [ award_id ] ] in
-  post ~endpoint ~params
-;;
-
-let save k ?category ~fullname =
-  let endpoint = "/api/save" in
-  let params =
-    let open Param_dsl in
-    combine [ required' fullname_ "id" fullname; optional' string "category" category ]
-  in
-  post k ~endpoint ~params
-;;
-
-let unsave ~fullname =
-  let endpoint = "/api/save" in
-  let params = [ "id", [ Fullname.to_string fullname ] ] in
-  post ~endpoint ~params
-;;
-
-let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[]
-
-let send_replies ~fullname ~enabled =
-  let endpoint = "/api/sendreplies" in
-  let params =
-    let open Param_dsl in
-    combine [ required' fullname_ "id" fullname; required' bool "state" enabled ]
-  in
-  post ~endpoint ~params
-;;
-
-let set_contest_mode ~fullname ~enabled =
-  let endpoint = "/api/set_contest_mode" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type; required' fullname_ "id" fullname; required' bool "state" enabled ]
-  in
-  post ~endpoint ~params
-;;
-
-let set_subreddit_sticky k ?to_profile ~fullname ~sticky_state =
-  let endpoint = "/api/set_subreddit_sticky" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ Sticky_state.params_of_t sticky_state
-      ; api_type
-      ; required' fullname_ "id" fullname
-      ; optional' bool "to_profile" to_profile
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let set_suggested_sort ~fullname ~sort =
-  let endpoint = "/api/set_suggested_sort" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; required' fullname_ "id" fullname
-      ; required'
-          string
-          "sort"
-          (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank")
-      ]
-  in
-  post ~endpoint ~params
-;;
-
-let spoiler_and_unspoiler k = simple_toggle' "spoiler" k
-
-let store_visits ~submissions =
-  let endpoint = "/api/store_visits" in
-  let params =
-    let open Param_dsl in
-    combine [ required Fullname.to_string "links" submissions ]
-  in
-  post ~endpoint ~params
-;;
-
-let submit
-    k
-    ?ad
-    ?nsfw
-    ?resubmit
-    ?sendreplies
-    ?spoiler
-    ?flair_id
-    ?flair_text
-    ?collection_id
-    ?event_start
-    ?event_end
-    ?event_tz
-    ~subreddit
-    ~title
-    ~kind
-  =
-  let endpoint = "/api/store_visits" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ Submission_kind.params_of_t kind
-      ; api_type
-      ; required' Subreddit_name.to_string "sr" subreddit
-      ; required' string "title" title
-      ; optional' bool "ad" ad
-      ; optional' bool "nsfw" nsfw
-      ; optional' bool "resubmit" resubmit
-      ; optional' bool "sendreplies" sendreplies
-      ; optional' bool "spoiler" spoiler
-      ; (* TODO Do these have to go together? *)
-        optional' string "flair_id" flair_id
-      ; optional' string "flair_text" flair_text
-      ; optional' string "collection_id" collection_id
-      ; optional' time "event_start" event_start
-      ; optional' time "event_end" event_end
-      ; optional' string "event_tz" event_tz
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let vote k ?rank ~direction ~fullname =
-  let endpoint = "/api/vote" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ Vote_direction.params_of_t direction
-      ; required' fullname_ "fullname" fullname
-      ; optional' int "rank" rank
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
-
-let best' k ~listing_params ?include_categories ?subreddit_detail =
-  let endpoint = "/best" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "include_categories" include_categories
-      ; optional' bool "sr_detail" subreddit_detail
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let best k = with_listing_params (best' k)
-
-let by_id ~fullnames =
-  let endpoint =
-    List.map fullnames ~f:Fullname.to_string
-    |> String.concat ~sep:","
-    |> sprintf "/by_id/%s"
-  in
-  get ~endpoint ~params:[]
-;;
-
-let comments
-    k
-    ?subreddit
-    ?comment
-    ?context
-    ?depth
-    ?limit
-    ?showedits
-    ?showmore
-    ?sort
-    ?subreddit_detail
-    ?threaded
-    ?truncate
-    ~submission
-  =
-  let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string submission) in
-  let params =
-    let open Param_dsl in
-    combine
-      [ optional' Id36.to_string "comment" comment
-      ; optional' int "context" context
-      ; optional' int "depth" depth
-      ; optional' int "limit" limit
-      ; optional' bool "showedits" showedits
-      ; optional' bool "showmore" showmore
-      ; optional' Comment_sort.to_string "sort" sort
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' bool "threaded" threaded
-      ; optional' int "truncate" truncate
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~submission_id
-  =
-  let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "crossposts_only" crossposts_only
-      ; optional' bool "sr_detail" subreddit_detail
-      ; include_optional Duplicate_sort.params_of_t sort
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let duplicates k = with_listing_params (duplicates' k)
-
-let basic_post_listing'
-    endpoint_part
-    k
-    ~listing_params
-    ?include_categories
-    ?subreddit_detail
-    ?subreddit
-    ~extra_params
-  =
-  let endpoint = optional_subreddit_endpoint ?subreddit endpoint_part in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "include_categories" include_categories
-      ; optional' bool "sr_detail" subreddit_detail
-      ; extra_params
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let basic_post_listing endpoint k =
-  with_listing_params (basic_post_listing' endpoint k ~extra_params:[])
-;;
-
-let hot' k ~listing_params ?location =
-  let extra_params =
-    let open Param_dsl in
-    optional' string "location" location
-  in
-  basic_post_listing' "/hot" k ~extra_params ~listing_params
-;;
-
-let hot k = with_listing_params (hot' k)
-let new_ k = basic_post_listing "/new" k
-let rising k = basic_post_listing "/rising" k
-
-let top' k ~listing_params ?since =
-  let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "/top" k ~extra_params ~listing_params
-;;
-
-let top k = with_listing_params (top' k)
-
-let controversial' k ~listing_params ?since =
-  let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-  basic_post_listing' "/controversial" k ~extra_params ~listing_params
-;;
-
-let controversial k = with_listing_params (controversial' k)
-
-let random k ?subreddit =
-  let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-  get k ~endpoint ~params:[]
-;;
-
-let block = simple_post_fullname_as_id "block"
-let collapse_and_uncollapse_message k = simple_toggle "collapse_message" k
-
-let compose k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
-  let endpoint = "/api/compose" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; optional' string "g-recaptcha-response" g_recaptcha_response
-      ; optional' Subreddit_name.to_string "from_sr" from_subreddit
-      ; required' username_ "to" to_
-      ; required' string "subject" subject
-      ; required' string "text" text
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let delete_message = simple_post_fullname_as_id "del_msg"
-let read_and_unread_message k = simple_toggle "read_message" k
-let unblock_subreddit k = simple_post_fullnames_as_id "unblock_subreddit" k
-
-let message_listing'
-    endpoint
-    k
-    ~listing_params
-    ?include_categories
-    ?mid
-    ?subreddit_detail
-    ~mark_read
-  =
-  let endpoint = "/message/" ^ endpoint in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "include_categories" include_categories
-      ; optional' string "mid" mid
-      ; optional' bool "sr_detail" subreddit_detail
-      ; required bool "mark" mark_read
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let message_listing endpoint k = with_listing_params (message_listing' endpoint k)
-let inbox k = message_listing "inbox" k
-let unread k = message_listing "unread" k
-let sent k = message_listing "sent" k
-
-let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
-  let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; include_optional Mod_filter.params_of_t mod_filter
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' string "type" type_
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let log k = with_listing_params (log' k)
-
-let mod_listing' k ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint
-  =
-  let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; include_optional Links_or_comments.params_of_t only
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' string "location" location
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let mod_listing k = with_listing_params (mod_listing' k)
-let reports = mod_listing ~endpoint:"/reports"
-let spam = mod_listing ~endpoint:"/spam"
-let modqueue = mod_listing ~endpoint:"/modqueue"
-let unmoderated = mod_listing ~endpoint:"/unmoderated"
-let edited = mod_listing ~endpoint:"/edited"
-
-let accept_moderator_invite ~subreddit =
-  let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
-  post ~endpoint ~params:api_type
-;;
-
-let approve = simple_post_fullname_as_id "approve"
-let remove = simple_post_fullname_as_id "remove"
-
-let distinguish k ?sticky ~fullname ~how =
-  let endpoint = "/api/distinguish" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ How_to_distinguish.params_of_t how
-      ; required' fullname_ "id" fullname
-      ; optional' bool "sticky" sticky
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let ignore_and_unignore_reports k = simple_toggle' "ignore_reports" k
-let leavecontributor = simple_post_fullname_as_id "leavecontributor"
-let leavemoderator = simple_post_fullname_as_id "leavemoderator"
-let mute_and_unmute_message_author k = simple_toggle' "mute_message_author" k
-
-let stylesheet ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
-  get ~endpoint ~params:[]
-;;
-
-let search'
-    k
-    ~listing_params
-    ?category
-    ?include_facets
-    ?restrict_to_subreddit
-    ?since
-    ?sort
-    ?subreddit_detail
-    ?types
-    ~query
-  =
-  let subreddit_part, restrict_param =
-    match restrict_to_subreddit with
-    | None -> "", []
-    | Some subreddit ->
-      sprintf !"/r/%{Subreddit_name}" subreddit, [ "restrict_sr", [ "true" ] ]
-  in
-  let endpoint = sprintf !"%s/search" subreddit_part in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' string "category" category
-      ; optional' bool "include_facets" include_facets
-      ; required' string "q" query
-      ; include_optional Historical_span.params_of_t since
-      ; include_optional Search_sort.params_of_t sort
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional
-          Search_type.to_string
-          "type"
-          (Option.map types ~f:Search_type.Set.to_list)
-      ; restrict_param
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let search k = with_listing_params (search' k)
-
-let about_endpoint'
-    endpoint
-    k
-    ~listing_params
-    ?include_categories
-    ?subreddit_detail
-    ?user
-    ~subreddit
-  =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "include_categories" include_categories
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' username_ "user" user
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
-let banned = about_endpoint "banned"
-let muted = about_endpoint "muted"
-let wiki_banned = about_endpoint "wikibanned"
-let contributors = about_endpoint "contributors"
-let wiki_contributors = about_endpoint "wikicontributors"
-let moderators = about_endpoint "moderators"
-
-let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
-  let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
-  post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
-;;
-
-let delete_subreddit_banner k = removal_endpoints "delete_sr_banner" k
-let delete_subreddit_header k = removal_endpoints "delete_sr_header" k
-let delete_subreddit_icon k = removal_endpoints "delete_sr_icon" k
-
-let delete_subreddit_image ~image_name =
-  let extra_params = Param_dsl.(required' string "img_name" image_name) in
-  removal_endpoints "delete_sr_img" ~extra_params
-;;
-
-let recommended k ?over_18 ~subreddits =
-  let endpoint =
-    List.map subreddits ~f:Subreddit_name.to_string
-    |> String.concat ~sep:","
-    |> sprintf "/api/recommend/sr/%s"
-  in
-  let params = Param_dsl.(optional' bool "over_18" over_18) in
-  get k ~endpoint ~params
-;;
-
-let search_subreddit_names k ?exact ?include_over_18 ?include_unadvertisable ~query =
-  let endpoint = "/api/search_reddit_names" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' string "query" query
-      ; optional' bool "exact" exact
-      ; optional' bool "include_over_18" include_over_18
-      ; optional' bool "include_unadvertisable" include_unadvertisable
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let create_or_edit_subreddit
-    k
-    ?comment_score_hide_mins
-    ?wiki_edit_age
-    ?wiki_edit_karma
-    ~all_original_content
-    ~allow_discovery
-    ~allow_images
-    ~allow_post_crossposts
-    ~allow_top
-    ~allow_videos
-    ~api_type
-    ~collapse_deleted_comments
-    ~crowd_control_mode
-    ~description
-    ~disable_contributor_requests
-    ~exclude_banned_modqueue
-    ~free_form_reports
-    ~g_recaptcha_response
-    ~header_title
-    ~hide_ads
-    ~key_color
-    ~lang
-    ~link_type
-    ~name
-    ~original_content_tag_enabled
-    ~over_18
-    ~public_description
-    ~restrict_commenting
-    ~restrict_posting
-    ~show_media
-    ~show_media_preview
-    ~spam_comments
-    ~spam_links
-    ~spam_selfposts
-    ~spoilers_enabled
-    ~subreddit
-    ~submit_link_label
-    ~submit_text
-    ~submit_text_label
-    ~suggested_comment_sort
-    ~title
-    ~type_
-    ~wiki_mode
-  =
-  let endpoint = "/api/site_admin" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ optional' int "comment_score_hide_mins" comment_score_hide_mins
-      ; optional' int "wiki_edit_age" wiki_edit_age
-      ; optional' int "wiki_edit_karma" wiki_edit_karma
-      ; required' bool "all_original_content" all_original_content
-      ; required' bool "allow_discovery" allow_discovery
-      ; required' bool "allow_images" allow_images
-      ; required' bool "allow_post_crossposts" allow_post_crossposts
-      ; required' bool "allow_top" allow_top
-      ; required' bool "allow_videos" allow_videos
-      ; api_type
-      ; required' bool "collapse_deleted_comments" collapse_deleted_comments
-      ; required' bool "crowd_control_mode" crowd_control_mode
-      ; required' string "description" description
-      ; required' bool "disable_contributor_requests" disable_contributor_requests
-      ; required' bool "exclude_banned_modqueue" exclude_banned_modqueue
-      ; required' bool "free_form_reports" free_form_reports
-      ; optional' string "g_recaptcha_response" g_recaptcha_response
-      ; required' string "header_title" header_title
-      ; required' bool "hide_ads" hide_ads
-      ; required' string "key_color" key_color
-      ; required' string "lang" lang
-      ; Link_type.params_of_t link_type
-      ; required' string "name" name
-      ; required' bool "original_content_tag_enabled" original_content_tag_enabled
-      ; required' bool "over_18" over_18
-      ; required' string "public_description" public_description
-      ; required' bool "restrict_commenting" restrict_commenting
-      ; required' bool "restrict_posting" restrict_posting
-      ; required' bool "show_media" show_media
-      ; required' bool "show_media_preview" show_media_preview
-      ; required' Spam_level.to_string "spam_comments" spam_comments
-      ; required' Spam_level.to_string "spam_links" spam_links
-      ; required' Spam_level.to_string "spam_selfposts" spam_selfposts
-      ; required' bool "spoilers_enabled" spoilers_enabled
-      ; required' Subreddit_name.to_string "sr" subreddit
-      ; required' string "submit_link_label" submit_link_label
-      ; required' string "submit_text" submit_text
-      ; required' string "submit_text_label" submit_text_label
-      ; required' Comment_sort.to_string "suggested_comment_sort" suggested_comment_sort
-      ; required' string "title" title
-      ; required' Subreddit_type.to_string "type_" type_
-      ; required' Wiki_mode.to_string "wikimode" wiki_mode
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let submit_text ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
-  get ~endpoint ~params:[]
-;;
-
-let subreddit_autocomplete k ?include_over_18 ?include_profiles ~query =
-  let endpoint = "/api/subreddit_autocomplete" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ optional' bool "include_over_18" include_over_18
-      ; optional' bool "include_profiles" include_profiles
-      ; required' string "query" query
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let subreddit_autocomplete_v2
-    k
-    ?limit
-    ?include_categories
-    ?include_over_18
-    ?include_profiles
-    ~query
-  =
-  let endpoint = "/api/subreddit_autocomplete_v2" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ optional' int "limit" limit
-      ; optional' bool "include_categories" include_categories
-      ; optional' bool "include_over_18" include_over_18
-      ; optional' bool "include_profiles" include_profiles
-      ; required' string "query" query
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; optional' string "reason" reason
-      ; required' Stylesheet_operation.to_string "op" operation
-      ; required' string "stylesheet_contents" stylesheet_contents
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let subscribe k ?skip_initial_defaults ~action =
-  let endpoint = "/api/subscribe" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' Subscription_action.to_string "action" action
-      ; optional' bool "skip_initial_defaults" skip_initial_defaults
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
-  let params =
-    let header = Bool.to_int header in
-    let open Param_dsl in
-    combine
-      [ optional' string "formid" form_id
-      ; required' string "file" file
-      ; required' int "header" header
-      ; required' Image_type.to_string "img_type" image_type
-      ; required' string "name" name
-      ; required' Upload_type.to_string "upload_type" upload_type
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let search_profiles' k ~listing_params ?subreddit_detail ?sort ~query =
-  let endpoint = "/profiles/search" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "sr_detail" subreddit_detail
-      ; required' string "q" query
-      ; optional' Subreddit_search_sort.to_string "sort" sort
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let search_profiles k = with_listing_params (search_profiles' k)
-
-let about ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
-  get ~endpoint ~params:[]
-;;
-
-let subreddit_about ?(params = []) ~subreddit endpoint =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
-  get ~endpoint ~params
-;;
-
-let subreddit_settings k ?created ?location =
-  let params =
-    let open Param_dsl in
-    combine [ optional' bool "created" created; optional' string "location" location ]
-  in
-  subreddit_about ~params "edit" k
-;;
-
-let subreddit_rules k = subreddit_about "rules" k
-let subreddit_traffic k = subreddit_about "traffic" k
-let subreddit_sidebar k = subreddit_about "sidebar" k
-
-let sticky k ?number ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
-  let params =
-    let open Param_dsl in
-    combine [ optional' int "num" number ]
-  in
-  get k ~endpoint ~params
-;;
-
-let get_subreddits' k ~listing_params ?include_categories ?subreddit_detail ~relationship
-  =
-  let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' string "sr_detail" subreddit_detail
-      ; optional' bool "include_categories" include_categories
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let get_subreddits k = with_listing_params (get_subreddits' k)
-
-let search_subreddits' k ~listing_params ?show_users ?sort ?subreddit_detail ~query =
-  let endpoint = "/subreddits/search" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' bool "show_users" show_users
-      ; required' string "q" query
-      ; optional' Subreddit_search_sort.to_string "sort" sort
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let search_subreddits k = with_listing_params (search_subreddits' k)
-
-let list_subreddits'
-    k
-    ~listing_params
-    ?subreddit_detail
-    ?include_categories
-    ?show_users
-    ~sort
-  =
-  let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' bool "include_categories" include_categories
-      ; optional' bool "show_users" show_users
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let list_subreddits k = with_listing_params (list_subreddits' k)
-
-let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
-  let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
-  let params =
-    let open Param_dsl in
-    combine
-      [ listing_params
-      ; optional' bool "sr_detail" subreddit_detail
-      ; optional' bool "include_categories" include_categories
-      ]
-  in
-  get k ~endpoint ~params
-;;
-
-let list_user_subreddits k = with_listing_params (list_user_subreddits' k)
-
-let add_relationship
-    k
-    ~relationship
-    ~username
-    ~subreddit
-    ~duration
-    ?note
-    ?ban_reason
-    ?ban_message
-    ?ban_context
-  =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
-  let params =
-    Relationship.Duration.params_of_t duration
-    @ Relationship.params_of_t relationship
-    @
-    let open Param_dsl in
-    combine
-      [ Relationship.Duration.params_of_t duration
-      ; Relationship.params_of_t relationship
-      ; api_type
-      ; required' username_ "name" username
-      ; optional' string "note" note
-      ; optional' string "ban_reason" ban_reason
-      ; optional' string "ban_message" ban_message
-      ; optional' fullname_ "ban_context" ban_context
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let remove_relationship ~relationship ~username ~subreddit =
-  let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
-  let params =
-    let open Param_dsl in
-    combine
-      [ Relationship.params_of_t relationship
-      ; api_type
-      ; required' username_ "name" username
-      ]
-  in
-  post ~endpoint ~params
-;;
-
-let add_or_remove_wiki_editor
-    ~add_or_remove
-    ~page:({ subreddit; page } : Wiki_page.t)
-    ~user
-  =
-  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' Add_or_remove.to_string "act" add_or_remove
-      ; required' string "page" page
-      ; required' username_ "username" user
-      ]
-  in
-  post ~endpoint ~params
-;;
-
-let edit_wiki_page k ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_page.t)
-  =
-  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' string "content" content
-      ; required' string "page" page
-      ; optional' string "previous" previous
-      ; optional' string "reason" reason
-      ]
-  in
-  post k ~endpoint ~params
-;;
-
-let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
-  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
-  let params =
-    let open Param_dsl in
-    combine [ required' string "page" page; required' string "revision" revision ]
-  in
-  post ~endpoint ~params
-;;
-
-let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.t) ~revision =
-  let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
-  let params =
-    let open Param_dsl in
-    combine [ required' string "page" page; required' string "revision" revision ]
-  in
-  post ~endpoint ~params
-;;
-
-let wiki_discussions'
-    k
-    ~listing_params
-    ?subreddit_detail
-    ~page:({ subreddit; page } : Wiki_page.t)
-  =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
-  let params =
-    let open Param_dsl in
-    combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-  in
-  get k ~endpoint ~params
-;;
-
-let wiki_discussions k = with_listing_params (wiki_discussions' k)
-
-let wiki_pages ~subreddit =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/pages" subreddit in
-  get ~endpoint ~params:[]
-;;
-
-let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ~subreddit =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions" subreddit in
-  let params =
-    let open Param_dsl in
-    combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-  in
-  get k ~endpoint ~params
-;;
-
-let subreddit_wiki_revisions k = with_listing_params (subreddit_wiki_revisions' k)
-
-let wiki_page_revisions'
-    k
-    ~listing_params
-    ?subreddit_detail
-    ~page:({ subreddit; page } : Wiki_page.t)
-  =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions/%s" subreddit page in
-  let params =
-    let open Param_dsl in
-    combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-  in
-  get k ~endpoint ~params
-;;
-
-let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
-
-let wiki_permissions ~page:({ subreddit; page } : Wiki_page.t) =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
-  get ~endpoint ~params:[]
-;;
-
-let set_wiki_permissions
-    ~listed
-    ~page:({ subreddit; page } : Wiki_page.t)
-    ~permission_level
-  =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' bool "listed" listed
-      ; required' string "page" page
-      ; required' int "permlevel" permission_level
-      ]
-  in
-  post ~endpoint ~params
-;;
-
-let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
-  let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
-  let v1, v2 = Option.value compare_revisions ~default:(None, None) in
-  let params =
-    let open Param_dsl in
-    combine
-      [ required' string "page" page; optional' string "v" v1; optional' string "v2" v2 ]
-  in
-  get k ~endpoint ~params
-;;
+
+module With_continuations = struct
+  let me = get ~endpoint:"/api/v1/me" ~params:[]
+  let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
+  let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
+  let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
+
+  let with_listing_params k ?pagination ?count ?limit ?show_all =
+    let listing_params =
+      let open Param_dsl in
+      combine
+        [ include_optional Pagination.params_of_t pagination
+        ; optional' int "count" count
+        ; optional' int "limit" limit
+        ; optional' (const "all") "show" show_all
+        ]
+    in
+    k ~listing_params
+  ;;
+
+  let prefs' which k ~listing_params ?subreddit_detail ?include_categories =
+    let endpoint = sprintf "/api/%s" which in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' bool "include_categories" include_categories
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let prefs endpoint k = with_listing_params (prefs' endpoint k)
+  let friends = prefs "friends"
+  let blocked = prefs "blocked"
+  let messaging = prefs "messaging"
+  let trusted = prefs "trusted"
+
+  let add_comment k ?return_rtjson ?richtext_json ~parent ~text =
+    let endpoint = "/api/comment" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; required' fullname_ "thing_id" parent
+        ; required' string "text" text
+        ; optional' bool "return_rtjson" return_rtjson
+        ; optional' json "richtext_json" richtext_json
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let delete ~fullname =
+    let endpoint = "/api/comment" in
+    let params =
+      let open Param_dsl in
+      Param_dsl.combine [ required' fullname_ "id" fullname ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let edit k ?return_rtjson ?richtext_json ~fullname ~text =
+    let endpoint = "/api/editusertext" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; required' fullname_ "thing_id" fullname
+        ; required' string "text" text
+        ; optional' bool "return_rtjson" return_rtjson
+        ; optional' json "richtext_json" richtext_json
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let follow ~submission ~follow =
+    let endpoint = "/api/follow_post" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' fullname_ "fullname" submission; required' bool "follow" follow ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let hide_and_unhide k =
+    let hide', unhide' = simple_toggle "hide" k in
+    ( (fun ~submissions -> hide' ~fullnames:submissions)
+    , fun ~submissions -> unhide' ~fullnames:submissions )
+  ;;
+
+  let info k ?subreddit query =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
+    let params = Info_query.params_of_t query in
+    get k ~endpoint ~params
+  ;;
+
+  let lock_and_unlock k = simple_toggle' "lock" k
+  let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
+
+  (* TODO: mutex *)
+  let more_children k ?id ?limit_children ~submission ~children ~sort =
+    let endpoint = "/api/morechildren" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; required Id36.to_string "children" children
+        ; required' fullname_ "link_id" submission
+        ; optional' Id36.to_string "id" id
+        ; optional' bool "limit_children" limit_children
+        ; required' Comment_sort.to_string "sort" sort
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let report
+      k
+      ?from_modmail
+      ?from_help_desk
+      ?additional_info
+      ?custom_text
+      ?other_reason
+      ?rule_reason
+      ?site_reason
+      ?sr_name
+      ~target
+      ~reason
+    =
+    let endpoint = "/api/report" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Report_target.params_of_t target
+        ; api_type
+        ; required' string "reason" reason
+        ; optional' string "additional_info" additional_info
+        ; optional' string "custom_text" custom_text
+        ; optional' string "other_reason" other_reason
+        ; optional' string "rule_reason" rule_reason
+        ; optional' string "site_reason" site_reason
+        ; optional' string "sr_name" sr_name
+        ; optional' bool "from_modmail" from_modmail
+        ; optional' bool "from_help_desk" from_help_desk
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let report_award ~award_id =
+    let endpoint = "/api/report_award" in
+    let params = [ "award_id", [ award_id ] ] in
+    post ~endpoint ~params
+  ;;
+
+  let save k ?category ~fullname =
+    let endpoint = "/api/save" in
+    let params =
+      let open Param_dsl in
+      combine [ required' fullname_ "id" fullname; optional' string "category" category ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let unsave ~fullname =
+    let endpoint = "/api/save" in
+    let params = [ "id", [ Fullname.to_string fullname ] ] in
+    post ~endpoint ~params
+  ;;
+
+  let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[]
+
+  let send_replies ~fullname ~enabled =
+    let endpoint = "/api/sendreplies" in
+    let params =
+      let open Param_dsl in
+      combine [ required' fullname_ "id" fullname; required' bool "state" enabled ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let set_contest_mode ~fullname ~enabled =
+    let endpoint = "/api/set_contest_mode" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type; required' fullname_ "id" fullname; required' bool "state" enabled ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let set_subreddit_sticky k ?to_profile ~fullname ~sticky_state =
+    let endpoint = "/api/set_subreddit_sticky" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Sticky_state.params_of_t sticky_state
+        ; api_type
+        ; required' fullname_ "id" fullname
+        ; optional' bool "to_profile" to_profile
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let set_suggested_sort ~fullname ~sort =
+    let endpoint = "/api/set_suggested_sort" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; required' fullname_ "id" fullname
+        ; required'
+            string
+            "sort"
+            (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank")
+        ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let spoiler_and_unspoiler k = simple_toggle' "spoiler" k
+
+  let store_visits ~submissions =
+    let endpoint = "/api/store_visits" in
+    let params =
+      let open Param_dsl in
+      combine [ required Fullname.to_string "links" submissions ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let submit
+      k
+      ?ad
+      ?nsfw
+      ?resubmit
+      ?sendreplies
+      ?spoiler
+      ?flair_id
+      ?flair_text
+      ?collection_id
+      ?event_start
+      ?event_end
+      ?event_tz
+      ~subreddit
+      ~title
+      ~kind
+    =
+    let endpoint = "/api/store_visits" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Submission_kind.params_of_t kind
+        ; api_type
+        ; required' Subreddit_name.to_string "sr" subreddit
+        ; required' string "title" title
+        ; optional' bool "ad" ad
+        ; optional' bool "nsfw" nsfw
+        ; optional' bool "resubmit" resubmit
+        ; optional' bool "sendreplies" sendreplies
+        ; optional' bool "spoiler" spoiler
+        ; (* TODO Do these have to go together? *)
+          optional' string "flair_id" flair_id
+        ; optional' string "flair_text" flair_text
+        ; optional' string "collection_id" collection_id
+        ; optional' time "event_start" event_start
+        ; optional' time "event_end" event_end
+        ; optional' string "event_tz" event_tz
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let vote k ?rank ~direction ~fullname =
+    let endpoint = "/api/vote" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Vote_direction.params_of_t direction
+        ; required' fullname_ "fullname" fullname
+        ; optional' int "rank" rank
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
+
+  let best' k ~listing_params ?include_categories ?subreddit_detail =
+    let endpoint = "/best" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "include_categories" include_categories
+        ; optional' bool "sr_detail" subreddit_detail
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let best k = with_listing_params (best' k)
+
+  let by_id ~fullnames =
+    let endpoint =
+      List.map fullnames ~f:Fullname.to_string
+      |> String.concat ~sep:","
+      |> sprintf "/by_id/%s"
+    in
+    get ~endpoint ~params:[]
+  ;;
+
+  let comments
+      k
+      ?subreddit
+      ?comment
+      ?context
+      ?depth
+      ?limit
+      ?showedits
+      ?showmore
+      ?sort
+      ?subreddit_detail
+      ?threaded
+      ?truncate
+      ~submission
+    =
+    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string submission) in
+    let params =
+      let open Param_dsl in
+      combine
+        [ optional' Id36.to_string "comment" comment
+        ; optional' int "context" context
+        ; optional' int "depth" depth
+        ; optional' int "limit" limit
+        ; optional' bool "showedits" showedits
+        ; optional' bool "showmore" showmore
+        ; optional' Comment_sort.to_string "sort" sort
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' bool "threaded" threaded
+        ; optional' int "truncate" truncate
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let duplicates'
+      k
+      ~listing_params
+      ?crossposts_only
+      ?subreddit_detail
+      ?sort
+      ~submission_id
+    =
+    let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "crossposts_only" crossposts_only
+        ; optional' bool "sr_detail" subreddit_detail
+        ; include_optional Duplicate_sort.params_of_t sort
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let duplicates k = with_listing_params (duplicates' k)
+
+  let basic_post_listing'
+      endpoint_part
+      k
+      ~listing_params
+      ?include_categories
+      ?subreddit_detail
+      ?subreddit
+      ~extra_params
+    =
+    let endpoint = optional_subreddit_endpoint ?subreddit endpoint_part in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "include_categories" include_categories
+        ; optional' bool "sr_detail" subreddit_detail
+        ; extra_params
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let basic_post_listing endpoint k =
+    with_listing_params (basic_post_listing' endpoint k ~extra_params:[])
+  ;;
+
+  let hot' k ~listing_params ?location =
+    let extra_params =
+      let open Param_dsl in
+      optional' string "location" location
+    in
+    basic_post_listing' "/hot" k ~extra_params ~listing_params
+  ;;
+
+  let hot k = with_listing_params (hot' k)
+  let new_ k = basic_post_listing "/new" k
+  let rising k = basic_post_listing "/rising" k
+
+  let top' k ~listing_params ?since =
+    let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
+    basic_post_listing' "/top" k ~extra_params ~listing_params
+  ;;
+
+  let top k = with_listing_params (top' k)
+
+  let controversial' k ~listing_params ?since =
+    let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
+    basic_post_listing' "/controversial" k ~extra_params ~listing_params
+  ;;
+
+  let controversial k = with_listing_params (controversial' k)
+
+  let random k ?subreddit =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
+    get k ~endpoint ~params:[]
+  ;;
+
+  let block = simple_post_fullname_as_id "block"
+  let collapse_and_uncollapse_message k = simple_toggle "collapse_message" k
+
+  let compose k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+    let endpoint = "/api/compose" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; optional' string "g-recaptcha-response" g_recaptcha_response
+        ; optional' Subreddit_name.to_string "from_sr" from_subreddit
+        ; required' username_ "to" to_
+        ; required' string "subject" subject
+        ; required' string "text" text
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let delete_message = simple_post_fullname_as_id "del_msg"
+  let read_and_unread_message k = simple_toggle "read_message" k
+  let unblock_subreddit k = simple_post_fullnames_as_id "unblock_subreddit" k
+
+  let message_listing'
+      endpoint
+      k
+      ~listing_params
+      ?include_categories
+      ?mid
+      ?subreddit_detail
+      ~mark_read
+    =
+    let endpoint = "/message/" ^ endpoint in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "include_categories" include_categories
+        ; optional' string "mid" mid
+        ; optional' bool "sr_detail" subreddit_detail
+        ; required bool "mark" mark_read
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let message_listing endpoint k = with_listing_params (message_listing' endpoint k)
+  let inbox k = message_listing "inbox" k
+  let unread k = message_listing "unread" k
+  let sent k = message_listing "sent" k
+
+  let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; include_optional Mod_filter.params_of_t mod_filter
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' string "type" type_
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let log k = with_listing_params (log' k)
+
+  let mod_listing'
+      k
+      ~listing_params
+      ?location
+      ?only
+      ?subreddit
+      ?subreddit_detail
+      ~endpoint
+    =
+    let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; include_optional Links_or_comments.params_of_t only
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' string "location" location
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let mod_listing k = with_listing_params (mod_listing' k)
+  let reports = mod_listing ~endpoint:"/reports"
+  let spam = mod_listing ~endpoint:"/spam"
+  let modqueue = mod_listing ~endpoint:"/modqueue"
+  let unmoderated = mod_listing ~endpoint:"/unmoderated"
+  let edited = mod_listing ~endpoint:"/edited"
+
+  let accept_moderator_invite ~subreddit =
+    let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
+    post ~endpoint ~params:api_type
+  ;;
+
+  let approve = simple_post_fullname_as_id "approve"
+  let remove = simple_post_fullname_as_id "remove"
+
+  let distinguish k ?sticky ~fullname ~how =
+    let endpoint = "/api/distinguish" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ How_to_distinguish.params_of_t how
+        ; required' fullname_ "id" fullname
+        ; optional' bool "sticky" sticky
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let ignore_and_unignore_reports k = simple_toggle' "ignore_reports" k
+  let leavecontributor = simple_post_fullname_as_id "leavecontributor"
+  let leavemoderator = simple_post_fullname_as_id "leavemoderator"
+  let mute_and_unmute_message_author k = simple_toggle' "mute_message_author" k
+
+  let stylesheet ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
+    get ~endpoint ~params:[]
+  ;;
+
+  let search'
+      k
+      ~listing_params
+      ?category
+      ?include_facets
+      ?restrict_to_subreddit
+      ?since
+      ?sort
+      ?subreddit_detail
+      ?types
+      ~query
+    =
+    let subreddit_part, restrict_param =
+      match restrict_to_subreddit with
+      | None -> "", []
+      | Some subreddit ->
+        sprintf !"/r/%{Subreddit_name}" subreddit, [ "restrict_sr", [ "true" ] ]
+    in
+    let endpoint = sprintf !"%s/search" subreddit_part in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' string "category" category
+        ; optional' bool "include_facets" include_facets
+        ; required' string "q" query
+        ; include_optional Historical_span.params_of_t since
+        ; include_optional Search_sort.params_of_t sort
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional
+            Search_type.to_string
+            "type"
+            (Option.map types ~f:Search_type.Set.to_list)
+        ; restrict_param
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let search k = with_listing_params (search' k)
+
+  let about_endpoint'
+      endpoint
+      k
+      ~listing_params
+      ?include_categories
+      ?subreddit_detail
+      ?user
+      ~subreddit
+    =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "include_categories" include_categories
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' username_ "user" user
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
+  let banned = about_endpoint "banned"
+  let muted = about_endpoint "muted"
+  let wiki_banned = about_endpoint "wikibanned"
+  let contributors = about_endpoint "contributors"
+  let wiki_contributors = about_endpoint "wikicontributors"
+  let moderators = about_endpoint "moderators"
+
+  let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
+    let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
+    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
+  ;;
+
+  let delete_subreddit_banner k = removal_endpoints "delete_sr_banner" k
+  let delete_subreddit_header k = removal_endpoints "delete_sr_header" k
+  let delete_subreddit_icon k = removal_endpoints "delete_sr_icon" k
+
+  let delete_subreddit_image ~image_name =
+    let extra_params = Param_dsl.(required' string "img_name" image_name) in
+    removal_endpoints "delete_sr_img" ~extra_params
+  ;;
+
+  let recommended k ?over_18 ~subreddits =
+    let endpoint =
+      List.map subreddits ~f:Subreddit_name.to_string
+      |> String.concat ~sep:","
+      |> sprintf "/api/recommend/sr/%s"
+    in
+    let params = Param_dsl.(optional' bool "over_18" over_18) in
+    get k ~endpoint ~params
+  ;;
+
+  let search_subreddit_names k ?exact ?include_over_18 ?include_unadvertisable ~query =
+    let endpoint = "/api/search_reddit_names" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' string "query" query
+        ; optional' bool "exact" exact
+        ; optional' bool "include_over_18" include_over_18
+        ; optional' bool "include_unadvertisable" include_unadvertisable
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let create_or_edit_subreddit
+      k
+      ?comment_score_hide_mins
+      ?wiki_edit_age
+      ?wiki_edit_karma
+      ~all_original_content
+      ~allow_discovery
+      ~allow_images
+      ~allow_post_crossposts
+      ~allow_top
+      ~allow_videos
+      ~api_type
+      ~collapse_deleted_comments
+      ~crowd_control_mode
+      ~description
+      ~disable_contributor_requests
+      ~exclude_banned_modqueue
+      ~free_form_reports
+      ~g_recaptcha_response
+      ~header_title
+      ~hide_ads
+      ~key_color
+      ~lang
+      ~link_type
+      ~name
+      ~original_content_tag_enabled
+      ~over_18
+      ~public_description
+      ~restrict_commenting
+      ~restrict_posting
+      ~show_media
+      ~show_media_preview
+      ~spam_comments
+      ~spam_links
+      ~spam_selfposts
+      ~spoilers_enabled
+      ~subreddit
+      ~submit_link_label
+      ~submit_text
+      ~submit_text_label
+      ~suggested_comment_sort
+      ~title
+      ~type_
+      ~wiki_mode
+    =
+    let endpoint = "/api/site_admin" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ optional' int "comment_score_hide_mins" comment_score_hide_mins
+        ; optional' int "wiki_edit_age" wiki_edit_age
+        ; optional' int "wiki_edit_karma" wiki_edit_karma
+        ; required' bool "all_original_content" all_original_content
+        ; required' bool "allow_discovery" allow_discovery
+        ; required' bool "allow_images" allow_images
+        ; required' bool "allow_post_crossposts" allow_post_crossposts
+        ; required' bool "allow_top" allow_top
+        ; required' bool "allow_videos" allow_videos
+        ; api_type
+        ; required' bool "collapse_deleted_comments" collapse_deleted_comments
+        ; required' bool "crowd_control_mode" crowd_control_mode
+        ; required' string "description" description
+        ; required' bool "disable_contributor_requests" disable_contributor_requests
+        ; required' bool "exclude_banned_modqueue" exclude_banned_modqueue
+        ; required' bool "free_form_reports" free_form_reports
+        ; optional' string "g_recaptcha_response" g_recaptcha_response
+        ; required' string "header_title" header_title
+        ; required' bool "hide_ads" hide_ads
+        ; required' string "key_color" key_color
+        ; required' string "lang" lang
+        ; Link_type.params_of_t link_type
+        ; required' string "name" name
+        ; required' bool "original_content_tag_enabled" original_content_tag_enabled
+        ; required' bool "over_18" over_18
+        ; required' string "public_description" public_description
+        ; required' bool "restrict_commenting" restrict_commenting
+        ; required' bool "restrict_posting" restrict_posting
+        ; required' bool "show_media" show_media
+        ; required' bool "show_media_preview" show_media_preview
+        ; required' Spam_level.to_string "spam_comments" spam_comments
+        ; required' Spam_level.to_string "spam_links" spam_links
+        ; required' Spam_level.to_string "spam_selfposts" spam_selfposts
+        ; required' bool "spoilers_enabled" spoilers_enabled
+        ; required' Subreddit_name.to_string "sr" subreddit
+        ; required' string "submit_link_label" submit_link_label
+        ; required' string "submit_text" submit_text
+        ; required' string "submit_text_label" submit_text_label
+        ; required'
+            Comment_sort.to_string
+            "suggested_comment_sort"
+            suggested_comment_sort
+        ; required' string "title" title
+        ; required' Subreddit_type.to_string "type_" type_
+        ; required' Wiki_mode.to_string "wikimode" wiki_mode
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let submit_text ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
+    get ~endpoint ~params:[]
+  ;;
+
+  let subreddit_autocomplete k ?include_over_18 ?include_profiles ~query =
+    let endpoint = "/api/subreddit_autocomplete" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ optional' bool "include_over_18" include_over_18
+        ; optional' bool "include_profiles" include_profiles
+        ; required' string "query" query
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let subreddit_autocomplete_v2
+      k
+      ?limit
+      ?include_categories
+      ?include_over_18
+      ?include_profiles
+      ~query
+    =
+    let endpoint = "/api/subreddit_autocomplete_v2" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ optional' int "limit" limit
+        ; optional' bool "include_categories" include_categories
+        ; optional' bool "include_over_18" include_over_18
+        ; optional' bool "include_profiles" include_profiles
+        ; required' string "query" query
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
+    let params =
+      let open Param_dsl in
+      combine
+        [ api_type
+        ; optional' string "reason" reason
+        ; required' Stylesheet_operation.to_string "op" operation
+        ; required' string "stylesheet_contents" stylesheet_contents
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let subscribe k ?skip_initial_defaults ~action =
+    let endpoint = "/api/subscribe" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' Subscription_action.to_string "action" action
+        ; optional' bool "skip_initial_defaults" skip_initial_defaults
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
+    let params =
+      let header = Bool.to_int header in
+      let open Param_dsl in
+      combine
+        [ optional' string "formid" form_id
+        ; required' string "file" file
+        ; required' int "header" header
+        ; required' Image_type.to_string "img_type" image_type
+        ; required' string "name" name
+        ; required' Upload_type.to_string "upload_type" upload_type
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let search_profiles' k ~listing_params ?subreddit_detail ?sort ~query =
+    let endpoint = "/profiles/search" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "sr_detail" subreddit_detail
+        ; required' string "q" query
+        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let search_profiles k = with_listing_params (search_profiles' k)
+
+  let about ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
+    get ~endpoint ~params:[]
+  ;;
+
+  let subreddit_about ?(params = []) ~subreddit endpoint =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
+    get ~endpoint ~params
+  ;;
+
+  let subreddit_settings k ?created ?location =
+    let params =
+      let open Param_dsl in
+      combine [ optional' bool "created" created; optional' string "location" location ]
+    in
+    subreddit_about ~params "edit" k
+  ;;
+
+  let subreddit_rules k = subreddit_about "rules" k
+  let subreddit_traffic k = subreddit_about "traffic" k
+  let subreddit_sidebar k = subreddit_about "sidebar" k
+
+  let sticky k ?number ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
+    let params =
+      let open Param_dsl in
+      combine [ optional' int "num" number ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let get_subreddits'
+      k
+      ~listing_params
+      ?include_categories
+      ?subreddit_detail
+      ~relationship
+    =
+    let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' string "sr_detail" subreddit_detail
+        ; optional' bool "include_categories" include_categories
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let get_subreddits k = with_listing_params (get_subreddits' k)
+
+  let search_subreddits' k ~listing_params ?show_users ?sort ?subreddit_detail ~query =
+    let endpoint = "/subreddits/search" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' bool "show_users" show_users
+        ; required' string "q" query
+        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let search_subreddits k = with_listing_params (search_subreddits' k)
+
+  let list_subreddits'
+      k
+      ~listing_params
+      ?subreddit_detail
+      ?include_categories
+      ?show_users
+      ~sort
+    =
+    let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' bool "include_categories" include_categories
+        ; optional' bool "show_users" show_users
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let list_subreddits k = with_listing_params (list_subreddits' k)
+
+  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort
+    =
+    let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
+    let params =
+      let open Param_dsl in
+      combine
+        [ listing_params
+        ; optional' bool "sr_detail" subreddit_detail
+        ; optional' bool "include_categories" include_categories
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let list_user_subreddits k = with_listing_params (list_user_subreddits' k)
+
+  let add_relationship
+      k
+      ~relationship
+      ~username
+      ~subreddit
+      ~duration
+      ?note
+      ?ban_reason
+      ?ban_message
+      ?ban_context
+    =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
+    let params =
+      Relationship.Duration.params_of_t duration
+      @ Relationship.params_of_t relationship
+      @
+      let open Param_dsl in
+      combine
+        [ Relationship.Duration.params_of_t duration
+        ; Relationship.params_of_t relationship
+        ; api_type
+        ; required' username_ "name" username
+        ; optional' string "note" note
+        ; optional' string "ban_reason" ban_reason
+        ; optional' string "ban_message" ban_message
+        ; optional' fullname_ "ban_context" ban_context
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let remove_relationship ~relationship ~username ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Relationship.params_of_t relationship
+        ; api_type
+        ; required' username_ "name" username
+        ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let add_or_remove_wiki_editor
+      ~add_or_remove
+      ~page:({ subreddit; page } : Wiki_page.t)
+      ~user
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' Add_or_remove.to_string "act" add_or_remove
+        ; required' string "page" page
+        ; required' username_ "username" user
+        ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let edit_wiki_page
+      k
+      ?previous
+      ?reason
+      ~content
+      ~page:({ subreddit; page } : Wiki_page.t)
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' string "content" content
+        ; required' string "page" page
+        ; optional' string "previous" previous
+        ; optional' string "reason" reason
+        ]
+    in
+    post k ~endpoint ~params
+  ;;
+
+  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
+    let params =
+      let open Param_dsl in
+      combine [ required' string "page" page; required' string "revision" revision ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.t) ~revision =
+    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
+    let params =
+      let open Param_dsl in
+      combine [ required' string "page" page; required' string "revision" revision ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let wiki_discussions'
+      k
+      ~listing_params
+      ?subreddit_detail
+      ~page:({ subreddit; page } : Wiki_page.t)
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
+    let params =
+      let open Param_dsl in
+      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let wiki_discussions k = with_listing_params (wiki_discussions' k)
+
+  let wiki_pages ~subreddit =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/pages" subreddit in
+    get ~endpoint ~params:[]
+  ;;
+
+  let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ~subreddit =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions" subreddit in
+    let params =
+      let open Param_dsl in
+      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let subreddit_wiki_revisions k = with_listing_params (subreddit_wiki_revisions' k)
+
+  let wiki_page_revisions'
+      k
+      ~listing_params
+      ?subreddit_detail
+      ~page:({ subreddit; page } : Wiki_page.t)
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions/%s" subreddit page in
+    let params =
+      let open Param_dsl in
+      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
+    in
+    get k ~endpoint ~params
+  ;;
+
+  let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
+
+  let wiki_permissions ~page:({ subreddit; page } : Wiki_page.t) =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+    get ~endpoint ~params:[]
+  ;;
+
+  let set_wiki_permissions
+      ~listed
+      ~page:({ subreddit; page } : Wiki_page.t)
+      ~permission_level
+    =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' bool "listed" listed
+        ; required' string "page" page
+        ; required' int "permlevel" permission_level
+        ]
+    in
+    post ~endpoint ~params
+  ;;
+
+  let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
+    let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
+    let v1, v2 = Option.value compare_revisions ~default:(None, None) in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' string "page" page
+        ; optional' string "v" v1
+        ; optional' string "v2" v2
+        ]
+    in
+    get k ~endpoint ~params
+  ;;
+end
 
 module Raw = struct
+  open With_continuations
+
   let me = me Fn.id
   let karma = karma Fn.id
   let trophies = trophies Fn.id
@@ -1301,3 +1338,5 @@ module Raw = struct
   let set_wiki_permissions = set_wiki_permissions Fn.id
   let wiki_page = wiki_page Fn.id
 end
+
+include Raw

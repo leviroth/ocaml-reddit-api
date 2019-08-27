@@ -969,6 +969,14 @@ end
 module type Api = sig
   include Parameters
 
+  include
+    S
+      with type 'a call :=
+            ?param_list_override:((string * string list) list
+                                  -> (string * string list) list)
+            -> Connection.t
+            -> 'a Deferred.t
+
   module Raw :
     S
       with type _ call :=
