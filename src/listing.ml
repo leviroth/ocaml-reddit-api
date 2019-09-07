@@ -1,27 +1,31 @@
 open! Core
 
-type t = Json_derivers.Yojson.t String.Map.t [@@deriving sexp]
+type 'a t =
+  { children : 'a list
+  ; after : Fullname.t option
+  }
+[@@deriving sexp, fields]
 
-let of_json json =
-  match json with
-  | `Assoc list ->
-    List.Assoc.find_exn list "data" ~equal:String.equal
-    |> Yojson.Safe.Util.to_assoc
-    |> String.Map.of_alist_exn
-  | _ ->
-    raise_s
-      [%message
-        "Expected JSON map when creating [Listing.t]" (json : Json_derivers.Yojson.t)]
-;;
-
-let to_json t = `Assoc (Map.to_alist t)
-
-let after t =
-  Map.find t "after"
-  |> Option.bind ~f:Yojson.Safe.Util.to_string_option
-  |> Option.map ~f:Fullname.of_string
-;;
-
-let children (t : t) =
-  Map.find_exn t "children" |> Yojson.Safe.Util.to_list |> List.map ~f:Thing.of_json
+let of_json convert_element json =
+  let data =
+    match json with
+    | `Assoc list ->
+      List.Assoc.find_exn list "data" ~equal:String.equal
+      |> Yojson.Safe.Util.to_assoc
+      |> String.Map.of_alist_exn
+    | _ ->
+      raise_s
+        [%message
+          "Expected JSON map when creating [Listing.t]" (json : Json_derivers.Yojson.t)]
+  in
+  let children =
+    Map.find_exn data "children"
+    |> Yojson.Safe.Util.to_list
+    |> List.map ~f:convert_element
+  in
+  let after =
+    let open Option.Let_syntax in
+    Map.find data "after" >>= Yojson.Safe.Util.to_string_option >>| Fullname.of_string
+  in
+  { children; after }
 ;;
