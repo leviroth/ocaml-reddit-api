@@ -3,7 +3,7 @@ open! Core
 type t =
   | Comment
   | User
-  | Submission
+  | Link
   | Message
   | Subreddit
   | Award
@@ -13,7 +13,7 @@ let of_string s =
   match s with
   | "t1" -> Comment
   | "t2" -> User
-  | "t3" -> Submission
+  | "t3" -> Link
   | "t4" -> Message
   | "t5" -> Subreddit
   | "t6" -> Award
@@ -24,7 +24,7 @@ let to_string t =
   match t with
   | Comment -> "t1"
   | User -> "t2"
-  | Submission -> "t3"
+  | Link -> "t3"
   | Message -> "t4"
   | Subreddit -> "t5"
   | Award -> "t6"

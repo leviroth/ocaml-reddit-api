@@ -37,7 +37,7 @@ module type S = sig
       [@@deriving sexp]
     end
 
-    module Submission_kind : sig
+    module Link_kind : sig
       module Self_post_body : sig
         type t =
           | Markdown of string
@@ -118,7 +118,7 @@ module type S = sig
     module Search_type : sig
       type t =
         | Subreddit
-        | Submission
+        | Link
         | User
       [@@deriving sexp]
 
@@ -307,18 +307,12 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val follow
-    :  submission:Fullname.t
+    :  link:Fullname.t
     -> follow:bool
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val hide
-    :  submissions:Fullname.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unhide
-    :  submissions:Fullname.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
+  val hide : links:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val unhide : links:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
   val lock : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
   val unlock : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
   val mark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -327,7 +321,7 @@ module type S = sig
   val more_children
     :  ?id:Id36.t
     -> ?limit_children:bool
-    -> submission:Fullname.t
+    -> link:Fullname.t
     -> children:Id36.t list
     -> sort:Comment_sort.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -380,7 +374,7 @@ module type S = sig
   val unspoiler : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val store_visits
-    :  submissions:Fullname.t list
+    :  links:Fullname.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val submit
@@ -397,7 +391,7 @@ module type S = sig
     -> ?event_tz:string
     -> subreddit:Subreddit_name.t
     -> title:string
-    -> kind:Submission_kind.t
+    -> kind:Link_kind.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val vote
@@ -433,14 +427,14 @@ module type S = sig
     -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
-    -> submission:Id36.t
+    -> link:Id36.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val duplicates
     : (?crossposts_only:bool
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
-       -> submission_id:Id36.t
+       -> link_id:Id36.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 

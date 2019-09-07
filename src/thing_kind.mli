@@ -3,7 +3,7 @@ open! Core
 type t =
   | Comment
   | User
-  | Submission
+  | Link
   | Message
   | Subreddit
   | Award

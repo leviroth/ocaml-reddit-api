@@ -63,4 +63,4 @@ end
 include T
 module User = T
 module Comment = T
-module Submission = T
+module Link = T

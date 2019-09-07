@@ -14,7 +14,7 @@ module type Thing = sig
     include Common
   end
 
-  and Submission : sig
+  and Link : sig
     include Common
 
     val author : t -> Username.t option

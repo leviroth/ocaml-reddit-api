@@ -68,7 +68,7 @@ module Parameters = struct
     ;;
   end
 
-  module Submission_kind = struct
+  module Link_kind = struct
     module Self_post_body = struct
       type t =
         | Markdown of string
@@ -234,7 +234,7 @@ module Parameters = struct
     module T = struct
       type t =
         | Subreddit
-        | Submission
+        | Link
         | User
       [@@deriving compare, sexp]
     end
@@ -245,7 +245,7 @@ module Parameters = struct
     let to_string t =
       match t with
       | Subreddit -> "sr"
-      | Submission -> "link"
+      | Link -> "link"
       | User -> "user"
     ;;
   end
@@ -636,20 +636,18 @@ module With_continuations = struct
     post k ~endpoint ~params
   ;;
 
-  let follow ~submission ~follow =
+  let follow ~link ~follow =
     let endpoint = "/api/follow_post" in
     let params =
       let open Param_dsl in
-      combine
-        [ required' fullname_ "fullname" submission; required' bool "follow" follow ]
+      combine [ required' fullname_ "fullname" link; required' bool "follow" follow ]
     in
     post ~endpoint ~params
   ;;
 
   let hide_and_unhide k =
     let hide', unhide' = simple_toggle "hide" k in
-    ( (fun ~submissions -> hide' ~fullnames:submissions)
-    , fun ~submissions -> unhide' ~fullnames:submissions )
+    (fun ~links -> hide' ~fullnames:links), fun ~links -> unhide' ~fullnames:links
   ;;
 
   let info k ?subreddit query =
@@ -662,14 +660,14 @@ module With_continuations = struct
   let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
 
   (* TODO: mutex *)
-  let more_children k ?id ?limit_children ~submission ~children ~sort =
+  let more_children k ?id ?limit_children ~link ~children ~sort =
     let endpoint = "/api/morechildren" in
     let params =
       let open Param_dsl in
       combine
         [ api_type
         ; required Id36.to_string "children" children
-        ; required' fullname_ "link_id" submission
+        ; required' fullname_ "link_id" link
         ; optional' Id36.to_string "id" id
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
@@ -785,11 +783,11 @@ module With_continuations = struct
 
   let spoiler_and_unspoiler k = simple_toggle' "spoiler" k
 
-  let store_visits ~submissions =
+  let store_visits ~links =
     let endpoint = "/api/store_visits" in
     let params =
       let open Param_dsl in
-      combine [ required Fullname.to_string "links" submissions ]
+      combine [ required Fullname.to_string "links" links ]
     in
     post ~endpoint ~params
   ;;
@@ -815,7 +813,7 @@ module With_continuations = struct
     let params =
       let open Param_dsl in
       combine
-        [ Submission_kind.params_of_t kind
+        [ Link_kind.params_of_t kind
         ; api_type
         ; required' Subreddit_name.to_string "sr" subreddit
         ; required' string "title" title
@@ -888,9 +886,9 @@ module With_continuations = struct
       ?subreddit_detail
       ?threaded
       ?truncate
-      ~submission
+      ~link
     =
-    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string submission) in
+    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string link) in
     let params =
       let open Param_dsl in
       combine
@@ -909,15 +907,8 @@ module With_continuations = struct
     get k ~endpoint ~params
   ;;
 
-  let duplicates'
-      k
-      ~listing_params
-      ?crossposts_only
-      ?subreddit_detail
-      ?sort
-      ~submission_id
-    =
-    let endpoint = sprintf !"/duplicates/%{Id36}" submission_id in
+  let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link_id =
+    let endpoint = sprintf !"/duplicates/%{Id36}" link_id in
     let params =
       let open Param_dsl in
       combine
