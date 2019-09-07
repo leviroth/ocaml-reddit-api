@@ -1,31 +1,20 @@
 open! Core
 
-module T = struct
-  type t =
-    { kind : Thing_kind.t
-    ; data : Json_derivers.Yojson.t String.Map.t
-    }
-  [@@deriving sexp]
+let string_map_of_assoc_exn json =
+  Yojson.Safe.Util.to_assoc json |> String.Map.of_alist_exn
+;;
 
-  let string_map_of_assoc_exn json =
-    Yojson.Safe.Util.to_assoc json |> String.Map.of_alist_exn
-  ;;
+module Make (Id36 : sig
+  include Id36_intf.S
 
-  let of_json json : t =
-    let map = string_map_of_assoc_exn json in
-    let kind =
-      Map.find_exn map "kind" |> Yojson.Safe.Util.to_string |> Thing_kind.of_string
-    in
-    let data = Map.find_exn map "data" |> string_map_of_assoc_exn in
-    { kind; data }
-  ;;
+  val to_fullname : t -> Fullname.t
+end) =
+struct
+  type t = Json_derivers.Yojson.t String.Map.t [@@deriving sexp]
 
-  let to_json { kind; data } : Yojson.Safe.t =
-    `Assoc
-      [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
-  ;;
-
-  let get_field { data; _ } field_name = Map.find data field_name
+  let of_json = string_map_of_assoc_exn
+  let to_json t = `Assoc (Map.to_alist t)
+  let get_field = Map.find
 
   let username_of_field t ~field_name =
     let open Option.Monad_infix in
@@ -55,12 +44,100 @@ module T = struct
     |> Option.map ~f:(Fn.compose Id36.of_string Yojson.Safe.Util.to_string)
   ;;
 
-  let fullname t : Fullname.t option =
-    id t |> Option.map ~f:(fun id -> ({ kind = t.kind; id } : Fullname.t))
-  ;;
+  let fullname t : Fullname.t option = id t |> Option.map ~f:Id36.to_fullname
 end
 
-include T
-module User = T
-module Comment = T
-module Link = T
+module Comment = Make (struct
+  include Id36.Comment
+
+  let to_fullname t : Fullname.t = Comment t
+end)
+
+module User = Make (struct
+  include Id36.User
+
+  let to_fullname t : Fullname.t = User t
+end)
+
+module Link = Make (struct
+  include Id36.Link
+
+  let to_fullname t : Fullname.t = Link t
+end)
+
+module Message = Make (struct
+  include Id36.Message
+
+  let to_fullname t : Fullname.t = Message t
+end)
+
+module Subreddit = Make (struct
+  include Id36.Subreddit
+
+  let to_fullname t : Fullname.t = Subreddit t
+end)
+
+module Award = Make (struct
+  include Id36.Award
+
+  let to_fullname t : Fullname.t = Award t
+end)
+
+type t =
+  | Comment of Comment.t
+  | User of User.t
+  | Link of Link.t
+  | Message of Message.t
+  | Subreddit of Subreddit.t
+  | Award of Award.t
+[@@deriving sexp]
+
+let of_json json =
+  let map = string_map_of_assoc_exn json in
+  let kind =
+    Map.find_exn map "kind" |> Yojson.Safe.Util.to_string |> Thing_kind.of_string
+  in
+  let data = Map.find_exn map "data" |> string_map_of_assoc_exn in
+  match kind with
+  | Comment -> Comment data
+  | User -> User data
+  | Link -> Link data
+  | Message -> Message data
+  | Subreddit -> Subreddit data
+  | Award -> Award data
+;;
+
+let kind t : Thing_kind.t =
+  match t with
+  | Comment _ -> Comment
+  | User _ -> User
+  | Link _ -> Link
+  | Message _ -> Message
+  | Subreddit _ -> Subreddit
+  | Award _ -> Award
+;;
+
+let data t : Json_derivers.Yojson.t String.Map.t =
+  match t with
+  | Comment data | User data | Link data | Message data | Subreddit data | Award data ->
+    data
+;;
+
+let get_field t = Map.find (data t)
+
+let to_json t : Yojson.Safe.t =
+  let kind = kind t in
+  let data = data t in
+  `Assoc
+    [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
+;;
+
+let fullname t =
+  match t with
+  | Comment comment -> Comment.fullname comment
+  | User user -> User.fullname user
+  | Link link -> Link.fullname link
+  | Message message -> Message.fullname message
+  | Subreddit subreddit -> Subreddit.fullname subreddit
+  | Award award -> Award.fullname award
+;;

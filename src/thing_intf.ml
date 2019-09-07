@@ -10,7 +10,14 @@ module type Common = sig
 end
 
 module type Thing = sig
-  module rec User : sig
+  module rec Comment : sig
+    include Common
+
+    val author : t -> Username.t option
+    val moderation_info : t -> Moderation_info.t option
+  end
+
+  and User : sig
     include Common
   end
 
@@ -21,12 +28,17 @@ module type Thing = sig
     val moderation_info : t -> Moderation_info.t option
   end
 
-  and Comment : sig
-    include Common
+  and Message : Common
+  and Subreddit : Common
+  and Award : Common
 
-    val author : t -> Username.t option
-    val moderation_info : t -> Moderation_info.t option
-  end
+  type t =
+    | Comment of Comment.t
+    | User of User.t
+    | Link of Link.t
+    | Message of Message.t
+    | Subreddit of Subreddit.t
+    | Award of Award.t
 
-  include Common
+  include Common with type t := t
 end

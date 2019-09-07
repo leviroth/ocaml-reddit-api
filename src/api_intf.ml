@@ -25,7 +25,7 @@ module type S = sig
 
     module Report_target : sig
       type t =
-        | Modmail_conversation of Id36.t
+        | Modmail_conversation of Id36.Modmail_conversation.t
         | Fullname of Fullname.t
       [@@deriving sexp]
     end
@@ -319,10 +319,10 @@ module type S = sig
   val unmark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val more_children
-    :  ?id:Id36.t
+    :  ?id:Id36.More_children.t
     -> ?limit_children:bool
-    -> link:Fullname.t
-    -> children:Id36.t list
+    -> link:Id36.Link.t
+    -> children:Id36.Comment.t list
     -> sort:Comment_sort.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -417,7 +417,7 @@ module type S = sig
 
   val comments
     :  ?subreddit:Subreddit_name.t
-    -> ?comment:Id36.t
+    -> ?comment:Id36.Comment.t
     -> ?context:int
     -> ?depth:int
     -> ?limit:int
@@ -427,14 +427,14 @@ module type S = sig
     -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
-    -> link:Id36.t
+    -> link:Id36.Link.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val duplicates
     : (?crossposts_only:bool
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
-       -> link_id:Id36.t
+       -> link:Id36.Link.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 

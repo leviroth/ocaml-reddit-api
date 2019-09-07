@@ -43,13 +43,14 @@ module Parameters = struct
 
   module Report_target = struct
     type t =
-      | Modmail_conversation of Id36.t
+      | Modmail_conversation of Id36.Modmail_conversation.t
       | Fullname of Fullname.t
     [@@deriving sexp]
 
     let params_of_t t =
       match t with
-      | Modmail_conversation id -> [ "modmail_conv_id", [ Id36.to_string id ] ]
+      | Modmail_conversation id ->
+        [ "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ] ]
       | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
     ;;
   end
@@ -660,15 +661,16 @@ module With_continuations = struct
   let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
 
   (* TODO: mutex *)
-  let more_children k ?id ?limit_children ~link ~children ~sort =
+  let more_children k ?id ?limit_children ~link:link_id ~children ~sort =
     let endpoint = "/api/morechildren" in
+    let link_fullname : Fullname.t = Link link_id in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required Id36.to_string "children" children
-        ; required' fullname_ "link_id" link
-        ; optional' Id36.to_string "id" id
+        ; required Id36.Comment.to_string "children" children
+        ; required' fullname_ "link_id" link_fullname
+        ; optional' Id36.More_children.to_string "id" id
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
         ]
@@ -888,11 +890,11 @@ module With_continuations = struct
       ?truncate
       ~link
     =
-    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.to_string link) in
+    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.Link.to_string link) in
     let params =
       let open Param_dsl in
       combine
-        [ optional' Id36.to_string "comment" comment
+        [ optional' Id36.Comment.to_string "comment" comment
         ; optional' int "context" context
         ; optional' int "depth" depth
         ; optional' int "limit" limit
@@ -907,8 +909,8 @@ module With_continuations = struct
     get k ~endpoint ~params
   ;;
 
-  let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link_id =
-    let endpoint = sprintf !"/duplicates/%{Id36}" link_id in
+  let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
+    let endpoint = sprintf !"/duplicates/%{Id36.Link}" link in
     let params =
       let open Param_dsl in
       combine
