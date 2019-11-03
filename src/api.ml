@@ -120,7 +120,7 @@ module Parameters = struct
 
   module Info_query = struct
     type t =
-      | Id of Fullname.t list
+      | Id of Thing.Fullname.Link_or_comment_or_subreddit.t list
       | Url of Uri_sexp.t
     [@@deriving sexp]
 
