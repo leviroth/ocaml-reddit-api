@@ -42,16 +42,12 @@ module Parameters = struct
   end
 
   module Report_target = struct
-    type t =
-      | Modmail_conversation of Id36.Modmail_conversation.t
-      | Fullname of Fullname.t
-    [@@deriving sexp]
-
     let params_of_t t =
-      match t with
-      | Modmail_conversation id ->
-        [ "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ] ]
-      | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
+      match Fullname.kind t with
+      | Modmail_conversation ->
+        let id36 = Fullname.id36 t in
+        [ "modmail_conv_id", [ Id36.to_string id36 ] ]
+      | _ -> [ "thing_id", [ Fullname.to_string t ] ]
     ;;
   end
 
@@ -527,6 +523,7 @@ module Param_dsl = struct
   let string = Fn.id
   let int = Int.to_string
   let fullname_ = Fullname.to_string
+  let id36_ = Fn.compose Id36.to_string Fullname.id36
   let username_ = Username.to_string
   let json = Yojson.Safe.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
@@ -661,16 +658,15 @@ module With_continuations = struct
   let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
 
   (* TODO: mutex *)
-  let more_children k ?id ?limit_children ~link:link_id ~children ~sort =
+  let more_children k ?id ?limit_children ~link ~children ~sort =
     let endpoint = "/api/morechildren" in
-    let link_fullname : Fullname.t = Link link_id in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required Id36.Comment.to_string "children" children
-        ; required' fullname_ "link_id" link_fullname
-        ; optional' Id36.More_children.to_string "id" id
+        ; required id36_ "children" children
+        ; required' fullname_ "link_id" link
+        ; optional' id36_ "id" id
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
         ]
@@ -890,11 +886,11 @@ module With_continuations = struct
       ?truncate
       ~link
     =
-    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.Link.to_string link) in
+    let endpoint = optional_subreddit_endpoint ?subreddit (Param_dsl.id36_ link) in
     let params =
       let open Param_dsl in
       combine
-        [ optional' Id36.Comment.to_string "comment" comment
+        [ optional' id36_ "comment" comment
         ; optional' int "context" context
         ; optional' int "depth" depth
         ; optional' int "limit" limit
@@ -910,7 +906,7 @@ module With_continuations = struct
   ;;
 
   let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
-    let endpoint = sprintf !"/duplicates/%{Id36.Link}" link in
+    let endpoint = sprintf !"/duplicates/%{Id36}" (Fullname.id36 link) in
     let params =
       let open Param_dsl in
       combine
@@ -1305,10 +1301,7 @@ module With_continuations = struct
         ; required' string "submit_link_label" submit_link_label
         ; required' string "submit_text" submit_text
         ; required' string "submit_text_label" submit_text_label
-        ; required'
-            Comment_sort.to_string
-            "suggested_comment_sort"
-            suggested_comment_sort
+        ; required' Comment_sort.to_string "suggested_comment_sort" suggested_comment_sort
         ; required' string "title" title
         ; required' Subreddit_type.to_string "type_" type_
         ; required' Wiki_mode.to_string "wikimode" wiki_mode
@@ -1508,8 +1501,7 @@ module With_continuations = struct
 
   let list_subreddits k = with_listing_params (list_subreddits' k)
 
-  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort
-    =
+  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
     let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
     let params =
       let open Param_dsl in
@@ -1605,8 +1597,7 @@ module With_continuations = struct
     post k ~endpoint ~params
   ;;
 
-  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision
-    =
+  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
     let params =
       let open Param_dsl in

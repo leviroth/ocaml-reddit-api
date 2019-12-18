@@ -258,7 +258,7 @@ end
 type t =
   { auth : Auth.t
   ; rate_limiter : Rate_limiter.t
-  ; cohttp_client_wrapper : (module Cohttp_client_wrapper) sexp_opaque
+  ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
   ; time_source : Time_source.t
   }
 [@@deriving sexp_of]

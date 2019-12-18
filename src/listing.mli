@@ -1,7 +1,7 @@
 open! Core
 
-type 'a t [@@deriving sexp]
+type t [@@deriving sexp]
 
-val of_json : (Yojson.Safe.t -> 'a) -> Yojson.Safe.t -> 'a t
-val after : 'a t -> Fullname.t option
-val children : 'a t -> 'a list
+val of_json : Yojson.Safe.t -> t
+val after : t -> Fullname.t option
+val children : t -> Thing.t list
