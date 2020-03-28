@@ -1,23 +1,19 @@
 open! Core
 
-module type Id36 = sig
-  type t [@@deriving sexp]
-
-  include Stringable.S with type t := t
-
-  val of_int : int -> t
-  val to_int : t -> int
-end
-
 module type Common = sig
   type t [@@deriving sexp]
 
-  module Id36 : Id36
+  module Id36 : Id36.S
 
   val of_json : Yojson.Safe.t -> t
   val to_json : t -> Yojson.Safe.t
   val get_field : t -> string -> Json_derivers.Yojson.t option
   val id36 : t -> Id36.t option
+end
+
+module Projectors = struct
+  module Ident (M : Common) = M
+  module Id36 (M : Common) = M.Id36
 end
 
 module type Thing = sig
@@ -42,69 +38,46 @@ module type Thing = sig
   and Message : Common
   and Subreddit : Common
   and Award : Common
+  and More_comments : Common
+  and Modmail_conversation : Common
 
   module type Per_kind = sig
-    module Comment : Common
-    module User : Common
-    module Link : Common
-    module Message : Common
-    module Subreddit : Common
-    module Award : Common
-  end
+    module F (M : Common) : T
 
-  module type By_kind = sig
-    module Get_kind_module (M : Common) : Sexpable
-    module Comment : Sexpable with type t = Get_kind_module(Comment).t
-    module User : Sexpable with type t = Get_kind_module(User).t
-    module Link : Sexpable with type t = Get_kind_module(Link).t
-    module Message : Sexpable with type t = Get_kind_module(Message).t
-    module Subreddit : Sexpable with type t = Get_kind_module(Subreddit).t
-    module Award : Sexpable with type t = Get_kind_module(Award).t
-  end
+    type comment = [ `Comment of F(Comment).t ] [@@deriving sexp]
+    type user = [ `User of F(User).t ] [@@deriving sexp]
+    type link = [ `Link of F(Link).t ] [@@deriving sexp]
+    type message = [ `Message of F(Message).t ] [@@deriving sexp]
+    type subreddit = [ `Subreddit of F(Subreddit).t ] [@@deriving sexp]
+    type award = [ `Award of F(Award).t ] [@@deriving sexp]
+    type more_comments = [ `More_comments of F(More_comments).t ] [@@deriving sexp]
 
-  (* module Data : sig
-   *   module Get_kind_module = functor (M : Common) -> M
-   *   include By_kind with module Get_kind_module := Get_kind_module
-   *     end *)
+    type modmail_conversation = [ `Modmail_conversation of F(Modmail_conversation).t ]
+    [@@deriving sexp]
 
-  module Any : sig
     type t =
-      | Comment of Comment.t
-      | User of User.t
-      | Link of Link.t
-      | Message of Message.t
-      | Subreddit of Subreddit.t
-      | Award of Award.t
+      [ comment
+      | user
+      | link
+      | message
+      | subreddit
+      | award
+      | more_comments
+      | modmail_conversation
+      ]
+    [@@deriving sexp]
   end
 
-  (* module Fullname : module type of By_kind ((functor (M : Common) -> M.Id36)) *)
-
-  (*   type t =
-   *     | Comment of Get_kind_module(Comment).t
-   *     | User of Get_kind_module(User).t
-   *     | Link of Get_kind_module(Link).t
-   *     | Message of Get_kind_module(Message).t
-   *     | Subreddit of Get_kind_module(Subreddit).t
-   *     | Award of Get_kind_module(Award).t
-   *   [@@deriving sexp]
-   * 
-   *   module Link_or_comment : sig
-   *     type t =
-   *       | Link of Get_kind_module(Link).t
-   *       | Comment of Get_kind_module(Comment).t
-   *     [@@deriving sexp]
-   *   end
-   * 
-   *   module Link_or_comment_or_subreddit : sig
-   *     type t =
-   *       | Link of Get_kind_module(Link).t
-   *       | Comment of Get_kind_module(Comment).t
-   *       | Subreddit of Get_kind_module(Subreddit).t
-   *     [@@deriving sexp]
-   *   end
-   * end *)
+  include Per_kind with module F := Projectors.Ident
 
   val of_json : Yojson.Safe.t -> t
   val to_json : t -> Yojson.Safe.t
   val get_field : t -> string -> Json_derivers.Yojson.t option
+
+  module Fullname : sig
+    include Per_kind with module F := Projectors.Id36
+
+    val to_string : [< t ] -> string
+    val of_string : string -> [> t ]
+  end
 end

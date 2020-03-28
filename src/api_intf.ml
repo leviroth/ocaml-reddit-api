@@ -1,12 +1,13 @@
 open! Core
 open Async
+open Thing
 
 module type S = sig
   module Parameters : sig
     module Pagination : sig
       type t =
-        | Before of Fullname.t
-        | After of Fullname.t
+        | Before of Listing.Page_id.t
+        | After of Listing.Page_id.t
       [@@deriving sexp]
     end
 
@@ -20,13 +21,6 @@ module type S = sig
         | Random
         | Q_and_a
         | Live
-      [@@deriving sexp]
-    end
-
-    module Report_target : sig
-      type t =
-        | Modmail_conversation of Id36.Modmail_conversation.t
-        | Fullname of Fullname.t
       [@@deriving sexp]
     end
 
@@ -64,8 +58,8 @@ module type S = sig
 
     module Info_query : sig
       type t =
-        | Id of Fullname.t list
-        | Url of Uri.t
+        | Id of [ Fullname.link | Fullname.comment | Fullname.subreddit ] list
+        | Url of Uri_sexp.t
       [@@deriving sexp]
     end
 
@@ -319,10 +313,10 @@ module type S = sig
   val unmark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val more_children
-    :  ?id:Id36.More_children.t
+    :  ?id:More_comments.Id36.t
     -> ?limit_children:bool
-    -> link:Id36.Link.t
-    -> children:Id36.Comment.t list
+    -> link:Link.Id36.t
+    -> children:Comment.Id36.t list
     -> sort:Comment_sort.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -335,7 +329,7 @@ module type S = sig
     -> ?rule_reason:string
     -> ?site_reason:string
     -> ?sr_name:string
-    -> target:Report_target.t
+    -> target:Fullname.t
     -> reason:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -417,7 +411,7 @@ module type S = sig
 
   val comments
     :  ?subreddit:Subreddit_name.t
-    -> ?comment:Id36.Comment.t
+    -> ?comment:Comment.Id36.t
     -> ?context:int
     -> ?depth:int
     -> ?limit:int
@@ -427,14 +421,14 @@ module type S = sig
     -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
-    -> link:Id36.Link.t
+    -> link:Link.Id36.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val duplicates
     : (?crossposts_only:bool
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
-       -> link:Id36.Link.t
+       -> link:Link.Id36.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
@@ -818,9 +812,7 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
-  val about
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val about : subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val subreddit_settings
     :  ?created:bool
@@ -961,8 +953,8 @@ module type Api = sig
   include
     S
       with type 'a call :=
-            ?param_list_override:((string * string list) list
-                                  -> (string * string list) list)
+            ?param_list_override:
+              ((string * string list) list -> (string * string list) list)
             -> Connection.t
             -> 'a Deferred.t
 
@@ -971,8 +963,8 @@ module type Api = sig
       with module Parameters := Parameters
       with type 'a listing := 'a listing
       with type _ call :=
-            ?param_list_override:((string * string list) list
-                                  -> (string * string list) list)
+            ?param_list_override:
+              ((string * string list) list -> (string * string list) list)
             -> Connection.t
             -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 end

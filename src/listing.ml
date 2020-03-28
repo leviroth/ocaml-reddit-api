@@ -1,8 +1,15 @@
 open! Core
 
+module Page_id = struct
+  include String
+
+  let of_fullname = Thing.Fullname.to_string
+  let to_fullname t = Option.try_with (fun () -> Thing.Fullname.of_string t)
+end
+
 type 'a t =
   { children : 'a list
-  ; after : Fullname.t option
+  ; after : Page_id.t option
   }
 [@@deriving sexp, fields]
 
@@ -25,7 +32,7 @@ let of_json convert_element json =
   in
   let after =
     let open Option.Let_syntax in
-    Map.find data "after" >>= Yojson.Safe.Util.to_string_option >>| Fullname.of_string
+    Map.find data "after" >>= Yojson.Safe.Util.to_string_option >>| Page_id.of_string
   in
   { children; after }
 ;;

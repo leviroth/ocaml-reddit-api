@@ -10,12 +10,7 @@ module type S = sig
 end
 
 module type Id36 = sig
-  module Comment : S
-  module User : S
-  module Link : S
-  module Message : S
-  module Subreddit : S
-  module Award : S
-  module Modmail_conversation : S
-  module More_children : S
+  module type S = S
+
+  include S
 end

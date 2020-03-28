@@ -1,11 +1,12 @@
 open! Core
 open! Async
+open Thing
 
 module Parameters = struct
   module Pagination = struct
     type t =
-      | Before of Fullname.t
-      | After of Fullname.t
+      | Before of Listing.Page_id.t
+      | After of Listing.Page_id.t
     [@@deriving sexp]
 
     let params_of_t t =
@@ -16,7 +17,7 @@ module Parameters = struct
       in
       let value =
         match t with
-        | Before fullname | After fullname -> Fullname.to_string fullname
+        | Before page_id | After page_id -> Listing.Page_id.to_string page_id
       in
       [ key, [ value ] ]
     ;;
@@ -42,16 +43,13 @@ module Parameters = struct
   end
 
   module Report_target = struct
-    type t =
-      | Modmail_conversation of Id36.Modmail_conversation.t
-      | Fullname of Fullname.t
-    [@@deriving sexp]
+    type t = Fullname.t [@@deriving sexp]
 
     let params_of_t t =
       match t with
-      | Modmail_conversation id ->
-        [ "modmail_conv_id", [ Id36.Modmail_conversation.to_string id ] ]
-      | Fullname fullname -> [ "thing_id", [ Fullname.to_string fullname ] ]
+      | `Modmail_conversation id ->
+        [ "modmail_conv_id", [ Modmail_conversation.Id36.to_string id ] ]
+      | _ -> [ "thing_id", [ Fullname.to_string t ] ]
     ;;
   end
 
@@ -120,7 +118,7 @@ module Parameters = struct
 
   module Info_query = struct
     type t =
-      | Id of Thing.Fullname.Link_or_comment_or_subreddit.t list
+      | Id of [ Fullname.link | Fullname.comment | Fullname.subreddit ] list
       | Url of Uri_sexp.t
     [@@deriving sexp]
 
@@ -663,14 +661,14 @@ module With_continuations = struct
   (* TODO: mutex *)
   let more_children k ?id ?limit_children ~link:link_id ~children ~sort =
     let endpoint = "/api/morechildren" in
-    let link_fullname : Fullname.t = Link link_id in
+    let link_fullname : Fullname.t = `Link link_id in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required Id36.Comment.to_string "children" children
+        ; required Comment.Id36.to_string "children" children
         ; required' fullname_ "link_id" link_fullname
-        ; optional' Id36.More_children.to_string "id" id
+        ; optional' More_comments.Id36.to_string "id" id
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
         ]
@@ -890,11 +888,11 @@ module With_continuations = struct
       ?truncate
       ~link
     =
-    let endpoint = optional_subreddit_endpoint ?subreddit (Id36.Link.to_string link) in
+    let endpoint = optional_subreddit_endpoint ?subreddit (Link.Id36.to_string link) in
     let params =
       let open Param_dsl in
       combine
-        [ optional' Id36.Comment.to_string "comment" comment
+        [ optional' Comment.Id36.to_string "comment" comment
         ; optional' int "context" context
         ; optional' int "depth" depth
         ; optional' int "limit" limit
@@ -910,7 +908,7 @@ module With_continuations = struct
   ;;
 
   let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
-    let endpoint = sprintf !"/duplicates/%{Id36.Link}" link in
+    let endpoint = sprintf !"/duplicates/%{Link.Id36}" link in
     let params =
       let open Param_dsl in
       combine
@@ -1305,10 +1303,7 @@ module With_continuations = struct
         ; required' string "submit_link_label" submit_link_label
         ; required' string "submit_text" submit_text
         ; required' string "submit_text_label" submit_text_label
-        ; required'
-            Comment_sort.to_string
-            "suggested_comment_sort"
-            suggested_comment_sort
+        ; required' Comment_sort.to_string "suggested_comment_sort" suggested_comment_sort
         ; required' string "title" title
         ; required' Subreddit_type.to_string "type_" type_
         ; required' Wiki_mode.to_string "wikimode" wiki_mode
@@ -1508,8 +1503,7 @@ module With_continuations = struct
 
   let list_subreddits k = with_listing_params (list_subreddits' k)
 
-  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort
-    =
+  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
     let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
     let params =
       let open Param_dsl in
@@ -1605,8 +1599,7 @@ module With_continuations = struct
     post k ~endpoint ~params
   ;;
 
-  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision
-    =
+  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
     let params =
       let open Param_dsl in

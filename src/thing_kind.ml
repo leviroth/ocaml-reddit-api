@@ -7,6 +7,8 @@ type t =
   | Message
   | Subreddit
   | Award
+  | More_comments
+  | Modmail_conversation
 [@@deriving sexp]
 
 let of_string s =
@@ -17,6 +19,8 @@ let of_string s =
   | "t4" -> Message
   | "t5" -> Subreddit
   | "t6" -> Award
+  | "more" -> More_comments
+  | "modmail" -> Modmail_conversation
   | _ -> raise_s [%message "Unknown thing kind" s]
 ;;
 
@@ -28,4 +32,6 @@ let to_string t =
   | Message -> "t4"
   | Subreddit -> "t5"
   | Award -> "t6"
+  | More_comments -> "more"
+  | Modmail_conversation -> "modmail"
 ;;

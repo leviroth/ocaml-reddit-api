@@ -17,9 +17,7 @@ module Id36 = struct
       | _ ->
         let current_place = i mod base in
         let character =
-          let char_from_base base offset =
-            Char.to_int base + offset |> Char.of_int_exn
-          in
+          let char_from_base base offset = Char.to_int base + offset |> Char.of_int_exn in
           match current_place < 10 with
           | true -> char_from_base '0' current_place
           | false -> char_from_base 'a' (current_place - 10)
@@ -91,44 +89,74 @@ module Link = M
 module Message = M
 module Subreddit = M
 module Award = M
+module More_comments = M
+module Modmail_conversation = M
 
 module type Get_kind_module = functor (M : Thing_intf.Common) -> Sexpable
 
-module By_kind (Get_kind_module : Get_kind_module) = struct
-  module Comment' = Get_kind_module (Comment)
-  module User' = Get_kind_module (User)
-  module Link' = Get_kind_module (Link)
-  module Message' = Get_kind_module (Message)
-  module Subreddit' = Get_kind_module (Subreddit)
-  module Award' = Get_kind_module (Award)
+module type Per_kind = sig
+  module F (M : Thing_intf.Common) : T
 
-  type t =
-    | Comment of Comment'.t
-    | User of User'.t
-    | Link of Link'.t
-    | Message of Message'.t
-    | Subreddit of Subreddit'.t
-    | Award of Award'.t
+  type comment = [ `Comment of F(Comment).t ] [@@deriving sexp]
+  type user = [ `User of F(User).t ] [@@deriving sexp]
+  type link = [ `Link of F(Link).t ] [@@deriving sexp]
+  type message = [ `Message of F(Message).t ] [@@deriving sexp]
+  type subreddit = [ `Subreddit of F(Subreddit).t ] [@@deriving sexp]
+  type award = [ `Award of F(Award).t ] [@@deriving sexp]
+  type more_comments = [ `More_comments of F(More_comments).t ] [@@deriving sexp]
+
+  type modmail_conversation = [ `Modmail_conversation of F(Modmail_conversation).t ]
   [@@deriving sexp]
 
-  module Link_or_comment = struct
-    type t =
-      | Link of Link'.t
-      | Comment of Comment'.t
-    [@@deriving sexp]
-  end
-
-  module Link_or_comment_or_subreddit = struct
-    type t =
-      | Link of Link'.t
-      | Comment of Comment'.t
-      | Subreddit of Subreddit'.t
-    [@@deriving sexp]
-  end
+  type t =
+    [ comment
+    | user
+    | link
+    | message
+    | subreddit
+    | award
+    | more_comments
+    | modmail_conversation
+    ]
+  [@@deriving sexp]
 end
 
-include By_kind ((functor (M : Thing_intf.Common) -> M))
-module Fullname = By_kind ((functor (M : Thing_intf.Common) -> M.Id36))
+module Per_kind (F : functor (M : Thing_intf.Common) -> Sexpable.S) :
+  Per_kind with module F := F = struct
+  module Comment = F (Comment)
+  module User = F (User)
+  module Link = F (Link)
+  module Message = F (Message)
+  module Subreddit = F (Subreddit)
+  module Award = F (Award)
+  module More_comments = F (More_comments)
+  module Modmail_conversation = F (Modmail_conversation)
+
+  type comment = [ `Comment of Comment.t ] [@@deriving sexp]
+  type user = [ `User of User.t ] [@@deriving sexp]
+  type link = [ `Link of Link.t ] [@@deriving sexp]
+  type message = [ `Message of Message.t ] [@@deriving sexp]
+  type subreddit = [ `Subreddit of Subreddit.t ] [@@deriving sexp]
+  type award = [ `Award of Award.t ] [@@deriving sexp]
+  type more_comments = [ `More_comments of More_comments.t ] [@@deriving sexp]
+
+  type modmail_conversation = [ `Modmail_conversation of Modmail_conversation.t ]
+  [@@deriving sexp]
+
+  type t =
+    [ comment
+    | user
+    | link
+    | message
+    | subreddit
+    | award
+    | more_comments
+    | modmail_conversation
+    ]
+  [@@deriving sexp]
+end
+
+include Per_kind (Thing_intf.Projectors.Ident)
 
 let of_json json =
   let map = string_map_of_assoc_exn json in
@@ -137,28 +165,38 @@ let of_json json =
   in
   let data = Map.find_exn map "data" |> string_map_of_assoc_exn in
   match kind with
-  | Comment -> Comment data
-  | User -> User data
-  | Link -> Link data
-  | Message -> Message data
-  | Subreddit -> Subreddit data
-  | Award -> Award data
+  | Comment -> `Comment data
+  | User -> `User data
+  | Link -> `Link data
+  | Message -> `Message data
+  | Subreddit -> `Subreddit data
+  | Award -> `Award data
+  | More_comments -> `More_comments data
+  | Modmail_conversation -> `Modmail_conversation data
 ;;
 
 let kind t : Thing_kind.t =
   match t with
-  | Comment _ -> Comment
-  | User _ -> User
-  | Link _ -> Link
-  | Message _ -> Message
-  | Subreddit _ -> Subreddit
-  | Award _ -> Award
+  | `Comment _ -> Comment
+  | `User _ -> User
+  | `Link _ -> Link
+  | `Message _ -> Message
+  | `Subreddit _ -> Subreddit
+  | `Award _ -> Award
+  | `More_comments _ -> More_comments
+  | `Modmail_conversation _ -> Modmail_conversation
 ;;
 
 let data t : Json_derivers.Yojson.t String.Map.t =
   match t with
-  | Comment data | User data | Link data | Message data | Subreddit data | Award data ->
-    data
+  | `Comment data
+  | `User data
+  | `Link data
+  | `Message data
+  | `Subreddit data
+  | `Award data
+  | `More_comments data
+  | `Modmail_conversation data -> data
 ;;
 
 let get_field t = Map.find (data t)
@@ -169,3 +207,41 @@ let to_json t : Yojson.Safe.t =
   `Assoc
     [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
 ;;
+
+module Fullname = struct
+  module T = struct
+    include Per_kind (Thing_intf.Projectors.Id36)
+
+    let of_string s =
+      let kind, id = String.lsplit2_exn s ~on:'_' in
+      let id = Id36.of_string id in
+      match Thing_kind.of_string kind with
+      | Comment -> `Comment id
+      | User -> `User id
+      | Link -> `Link id
+      | Message -> `Message id
+      | Subreddit -> `Subreddit id
+      | Award -> `Award id
+      | More_comments -> `More_comments id
+      | Modmail_conversation -> `Modmail_conversation id
+    ;;
+
+    let to_string t =
+      let (thing_kind, id36_string) : Thing_kind.t * string =
+        match t with
+        | `Comment id36 -> Comment, Id36.to_string id36
+        | `User id36 -> User, Id36.to_string id36
+        | `Link id36 -> Link, Id36.to_string id36
+        | `Message id36 -> Message, Id36.to_string id36
+        | `Subreddit id36 -> Subreddit, Id36.to_string id36
+        | `Award id36 -> Award, Id36.to_string id36
+        | `More_comments id36 -> More_comments, Id36.to_string id36
+        | `Modmail_conversation id36 -> Modmail_conversation, Id36.to_string id36
+      in
+      sprintf !"%{Thing_kind}_%s" thing_kind id36_string
+    ;;
+  end
+
+  include T
+  include Sexpable.Of_stringable (T)
+end

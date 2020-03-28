@@ -162,7 +162,7 @@ let%expect_test "friends" =
      (params ((raw_json (1))))) |}]
   in
   let%bind _response =
-    Api.Raw.friends ~pagination:(After (Fullname.of_string "t3_1jklj")) connection
+    Api.Raw.friends ~pagination:(After (Listing.Page_id.of_string "t3_1jklj")) connection
   in
   [%expect
     {|
