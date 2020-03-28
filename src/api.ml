@@ -1870,6 +1870,21 @@ module Typed = struct
 
   let get_listing child_of_json = compose (Listing.of_json child_of_json) get_json
 
+  let link_of_json json =
+    let thing = Thing.of_json json in
+    match thing with
+    | `Link _ as thing -> thing
+    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
+  ;;
+
+  let get_link_listing = get_listing link_of_json
+  let duplicates = duplicates get_link_listing
+  let hot = hot get_link_listing
+  let new_ = new_ get_link_listing
+  let rising = rising get_link_listing
+  let top = top get_link_listing
+  let controversial = controversial get_link_listing
+
   let info =
     info
       (get_listing (fun json ->

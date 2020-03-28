@@ -429,7 +429,7 @@ module type S = sig
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
        -> link:Link.Id36.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val hot
@@ -437,21 +437,21 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val new_
     : (?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val rising
     : (?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val top
@@ -459,7 +459,7 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val controversial
@@ -467,7 +467,7 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.link Listing.t call)
       listing
 
   val random
