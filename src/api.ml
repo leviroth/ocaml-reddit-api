@@ -1893,13 +1893,6 @@ module Typed = struct
            | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
            | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
-
-  type 'a listing =
-    ?pagination:Parameters.Pagination.t
-    -> ?count:int
-    -> ?limit:int
-    -> ?show_all:unit
-    -> 'a
 end
 
 module Raw = Make (struct

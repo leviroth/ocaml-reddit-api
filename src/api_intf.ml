@@ -243,10 +243,15 @@ module type S = sig
 
   open Parameters
 
-  type 'a listing =
+  type 'a listing :=
     ?pagination:Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
-  type 'a call
+  type 'a response
+
+  type 'a call :=
+    ?param_list_override:((string * string list) list -> (string * string list) list)
+    -> Connection.t
+    -> 'a response Deferred.t
 
   (** Account *)
 
@@ -951,20 +956,10 @@ end
 
 module type Api = sig
   include
-    S
-      with type 'a call :=
-            ?param_list_override:
-              ((string * string list) list -> (string * string list) list)
-            -> Connection.t
-            -> ('a, Cohttp.Response.t * Cohttp_async.Body.t) Deferred.Result.t
+    S with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
 
   module Raw :
     S
       with module Parameters := Parameters
-      with type 'a listing := 'a listing
-      with type _ call :=
-            ?param_list_override:
-              ((string * string list) list -> (string * string list) list)
-            -> Connection.t
-            -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+      with type _ response := Cohttp.Response.t * Cohttp_async.Body.t
 end
