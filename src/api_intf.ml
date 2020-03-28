@@ -397,7 +397,7 @@ module type S = sig
   val info
     :  ?subreddit:Subreddit_name.t
     -> Info_query.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [ Thing.comment | Thing.link | Thing.subreddit ] Listing.t call
 
   (** Listings *)
 
@@ -488,7 +488,7 @@ module type S = sig
     :  fullnames:Fullname.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val compose
+  val compose_message
     :  ?g_recaptcha_response:string
     -> ?from_subreddit:Subreddit_name.t
     -> to_:Username.t
@@ -956,7 +956,7 @@ module type Api = sig
             ?param_list_override:
               ((string * string list) list -> (string * string list) list)
             -> Connection.t
-            -> 'a Deferred.t
+            -> ('a, Cohttp.Response.t * Cohttp_async.Body.t) Deferred.Result.t
 
   module Raw :
     S

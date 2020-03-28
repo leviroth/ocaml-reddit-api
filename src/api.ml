@@ -591,10 +591,10 @@ module With_continuations = struct
   ;;
 
   let prefs endpoint k = with_listing_params (prefs' endpoint k)
-  let friends = prefs "friends"
-  let blocked = prefs "blocked"
-  let messaging = prefs "messaging"
-  let trusted = prefs "trusted"
+  let friends k = prefs "friends" k
+  let blocked k = prefs "blocked" k
+  let messaging k = prefs "messaging" k
+  let trusted k = prefs "trusted" k
 
   let add_comment k ?return_rtjson ?richtext_json ~parent ~text =
     let endpoint = "/api/comment" in
@@ -985,7 +985,7 @@ module With_continuations = struct
   let block = simple_post_fullname_as_id "block"
   let collapse_and_uncollapse_message k = simple_toggle "collapse_message" k
 
-  let compose k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+  let compose_message k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
     let endpoint = "/api/compose" in
     let params =
       let open Param_dsl in
@@ -1173,12 +1173,12 @@ module With_continuations = struct
   ;;
 
   let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
-  let banned = about_endpoint "banned"
-  let muted = about_endpoint "muted"
-  let wiki_banned = about_endpoint "wikibanned"
-  let contributors = about_endpoint "contributors"
-  let wiki_contributors = about_endpoint "wikicontributors"
-  let moderators = about_endpoint "moderators"
+  let banned k = about_endpoint "banned" k
+  let muted k = about_endpoint "muted" k
+  let wiki_banned k = about_endpoint "wikibanned" k
+  let contributors k = about_endpoint "contributors" k
+  let wiki_contributors k = about_endpoint "wikicontributors" k
+  let moderators k = about_endpoint "moderators" k
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
     let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
@@ -1704,121 +1704,193 @@ module With_continuations = struct
   ;;
 end
 
-module Raw = struct
+module Make (M : sig
+  type default_output
+
+  val default_transformation
+    :  (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> default_output Deferred.t
+end) =
+struct
   open With_continuations
 
-  let me = me Fn.id
-  let karma = karma Fn.id
-  let trophies = trophies Fn.id
-  let needs_captcha = needs_captcha Fn.id
-  let friends = friends Fn.id
-  let blocked = blocked Fn.id
-  let messaging = messaging Fn.id
-  let trusted = trusted Fn.id
-  let add_comment = add_comment Fn.id
-  let delete = delete Fn.id
-  let edit = edit Fn.id
-  let follow = follow Fn.id
-  let hide, unhide = hide_and_unhide Fn.id
-  let lock, unlock = lock_and_unlock Fn.id
-  let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw Fn.id
-  let info = info Fn.id
-  let more_children = more_children Fn.id
-  let report = report Fn.id
-  let report_award = report_award Fn.id
-  let save = save Fn.id
-  let unsave = unsave Fn.id
-  let saved_categories = saved_categories Fn.id
-  let send_replies = send_replies Fn.id
-  let set_contest_mode = set_contest_mode Fn.id
-  let set_subreddit_sticky = set_subreddit_sticky Fn.id
-  let set_suggested_sort = set_suggested_sort Fn.id
-  let spoiler, unspoiler = spoiler_and_unspoiler Fn.id
-  let store_visits = store_visits Fn.id
-  let submit = submit Fn.id
-  let vote = vote Fn.id
-  let best = best Fn.id
-  let by_id = by_id Fn.id
-  let comments = comments Fn.id
-  let duplicates = duplicates Fn.id
-  let hot = hot Fn.id
-  let new_ = new_ Fn.id
-  let rising = rising Fn.id
-  let top = top Fn.id
-  let controversial = controversial Fn.id
-  let random = random Fn.id
-  let trending_subreddits = trending_subreddits Fn.id
-  let block = block Fn.id
-  let collapse_message, uncollapse_message = collapse_and_uncollapse_message Fn.id
-  let compose = compose Fn.id
-  let delete_message = delete_message Fn.id
-  let read_message, unread_message = read_and_unread_message Fn.id
-  let unblock_subreddit = unblock_subreddit Fn.id
-  let inbox = inbox Fn.id
-  let unread = unread Fn.id
-  let sent = sent Fn.id
-  let log = log Fn.id
-  let reports = reports Fn.id
-  let spam = spam Fn.id
-  let modqueue = modqueue Fn.id
-  let unmoderated = unmoderated Fn.id
-  let edited = edited Fn.id
-  let accept_moderator_invite = accept_moderator_invite Fn.id
-  let approve = approve Fn.id
-  let remove = remove Fn.id
-  let distinguish = distinguish Fn.id
-  let ignore_reports, unignore_reports = ignore_and_unignore_reports Fn.id
-  let leavecontributor = leavecontributor Fn.id
-  let leavemoderator = leavemoderator Fn.id
-  let mute_message_author, unmute_message_author = mute_and_unmute_message_author Fn.id
-  let stylesheet = stylesheet Fn.id
-  let search = search Fn.id
-  let banned = banned Fn.id
-  let muted = muted Fn.id
-  let wiki_banned = wiki_banned Fn.id
-  let contributors = contributors Fn.id
-  let wiki_contributors = wiki_contributors Fn.id
-  let moderators = moderators Fn.id
-  let delete_subreddit_banner = delete_subreddit_banner Fn.id
-  let delete_subreddit_header = delete_subreddit_header Fn.id
-  let delete_subreddit_icon = delete_subreddit_icon Fn.id
-  let delete_subreddit_image = delete_subreddit_image Fn.id
-  let recommended = recommended Fn.id
-  let search_subreddit_names = search_subreddit_names Fn.id
-  let create_or_edit_subreddit = create_or_edit_subreddit Fn.id
-  let submit_text = submit_text Fn.id
-  let subreddit_autocomplete = subreddit_autocomplete Fn.id
-  let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 Fn.id
-  let subreddit_stylesheet = subreddit_stylesheet Fn.id
-  let subscribe = subscribe Fn.id
-  let upload_sr_img = upload_sr_img Fn.id
-  let search_profiles = search_profiles Fn.id
-  let about = about Fn.id
-  let subreddit_settings = subreddit_settings Fn.id
-  let subreddit_rules = subreddit_rules Fn.id
-  let subreddit_traffic = subreddit_traffic Fn.id
-  let subreddit_sidebar = subreddit_sidebar Fn.id
-  let sticky = sticky Fn.id
-  let get_subreddits = get_subreddits Fn.id
-  let search_subreddits = search_subreddits Fn.id
-  let list_subreddits = list_subreddits Fn.id
-  let list_user_subreddits = list_user_subreddits Fn.id
-  let add_relationship = add_relationship Fn.id
-  let remove_relationship = remove_relationship Fn.id
-  let add_or_remove_wiki_editor = add_or_remove_wiki_editor Fn.id
-  let edit_wiki_page = edit_wiki_page Fn.id
-  let toggle_wiki_revision_visibility = toggle_wiki_revision_visibility Fn.id
-  let revert_wiki_page = revert_wiki_page Fn.id
-  let wiki_discussions = wiki_discussions Fn.id
-  let wiki_pages = wiki_pages Fn.id
-  let subreddit_wiki_revisions = subreddit_wiki_revisions Fn.id
-  let wiki_page_revisions = wiki_page_revisions Fn.id
-  let wiki_permissions = wiki_permissions Fn.id
-  let set_wiki_permissions = set_wiki_permissions Fn.id
-  let wiki_page = wiki_page Fn.id
+  let me = me M.default_transformation
+  let karma = karma M.default_transformation
+  let trophies = trophies M.default_transformation
+  let needs_captcha = needs_captcha M.default_transformation
+  let friends = friends M.default_transformation
+  let blocked = blocked M.default_transformation
+  let messaging = messaging M.default_transformation
+  let trusted = trusted M.default_transformation
+  let add_comment = add_comment M.default_transformation
+  let delete = delete M.default_transformation
+  let edit = edit M.default_transformation
+  let follow = follow M.default_transformation
+  let hide, unhide = hide_and_unhide M.default_transformation
+  let lock, unlock = lock_and_unlock M.default_transformation
+  let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw M.default_transformation
+  let info = info M.default_transformation
+  let more_children = more_children M.default_transformation
+  let report = report M.default_transformation
+  let report_award = report_award M.default_transformation
+  let save = save M.default_transformation
+  let unsave = unsave M.default_transformation
+  let saved_categories = saved_categories M.default_transformation
+  let send_replies = send_replies M.default_transformation
+  let set_contest_mode = set_contest_mode M.default_transformation
+  let set_subreddit_sticky = set_subreddit_sticky M.default_transformation
+  let set_suggested_sort = set_suggested_sort M.default_transformation
+  let spoiler, unspoiler = spoiler_and_unspoiler M.default_transformation
+  let store_visits = store_visits M.default_transformation
+  let submit = submit M.default_transformation
+  let vote = vote M.default_transformation
+  let best = best M.default_transformation
+  let by_id = by_id M.default_transformation
+  let comments = comments M.default_transformation
+  let duplicates = duplicates M.default_transformation
+  let hot = hot M.default_transformation
+  let new_ = new_ M.default_transformation
+  let rising = rising M.default_transformation
+  let top = top M.default_transformation
+  let controversial = controversial M.default_transformation
+  let random = random M.default_transformation
+  let trending_subreddits = trending_subreddits M.default_transformation
+  let block = block M.default_transformation
+
+  let collapse_message, uncollapse_message =
+    collapse_and_uncollapse_message M.default_transformation
+  ;;
+
+  let compose_message = compose_message M.default_transformation
+  let delete_message = delete_message M.default_transformation
+  let read_message, unread_message = read_and_unread_message M.default_transformation
+  let unblock_subreddit = unblock_subreddit M.default_transformation
+  let inbox = inbox M.default_transformation
+  let unread = unread M.default_transformation
+  let sent = sent M.default_transformation
+  let log = log M.default_transformation
+  let reports = reports M.default_transformation
+  let spam = spam M.default_transformation
+  let modqueue = modqueue M.default_transformation
+  let unmoderated = unmoderated M.default_transformation
+  let edited = edited M.default_transformation
+  let accept_moderator_invite = accept_moderator_invite M.default_transformation
+  let approve = approve M.default_transformation
+  let remove = remove M.default_transformation
+  let distinguish = distinguish M.default_transformation
+
+  let ignore_reports, unignore_reports =
+    ignore_and_unignore_reports M.default_transformation
+  ;;
+
+  let leavecontributor = leavecontributor M.default_transformation
+  let leavemoderator = leavemoderator M.default_transformation
+
+  let mute_message_author, unmute_message_author =
+    mute_and_unmute_message_author M.default_transformation
+  ;;
+
+  let stylesheet = stylesheet M.default_transformation
+  let search = search M.default_transformation
+  let banned = banned M.default_transformation
+  let muted = muted M.default_transformation
+  let wiki_banned = wiki_banned M.default_transformation
+  let contributors = contributors M.default_transformation
+  let wiki_contributors = wiki_contributors M.default_transformation
+  let moderators = moderators M.default_transformation
+  let delete_subreddit_banner = delete_subreddit_banner M.default_transformation
+  let delete_subreddit_header = delete_subreddit_header M.default_transformation
+  let delete_subreddit_icon = delete_subreddit_icon M.default_transformation
+  let delete_subreddit_image = delete_subreddit_image M.default_transformation
+  let recommended = recommended M.default_transformation
+  let search_subreddit_names = search_subreddit_names M.default_transformation
+  let create_or_edit_subreddit = create_or_edit_subreddit M.default_transformation
+  let submit_text = submit_text M.default_transformation
+  let subreddit_autocomplete = subreddit_autocomplete M.default_transformation
+  let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 M.default_transformation
+  let subreddit_stylesheet = subreddit_stylesheet M.default_transformation
+  let subscribe = subscribe M.default_transformation
+  let upload_sr_img = upload_sr_img M.default_transformation
+  let search_profiles = search_profiles M.default_transformation
+  let about = about M.default_transformation
+  let subreddit_settings = subreddit_settings M.default_transformation
+  let subreddit_rules = subreddit_rules M.default_transformation
+  let subreddit_traffic = subreddit_traffic M.default_transformation
+  let subreddit_sidebar = subreddit_sidebar M.default_transformation
+  let sticky = sticky M.default_transformation
+  let get_subreddits = get_subreddits M.default_transformation
+  let search_subreddits = search_subreddits M.default_transformation
+  let list_subreddits = list_subreddits M.default_transformation
+  let list_user_subreddits = list_user_subreddits M.default_transformation
+  let add_relationship = add_relationship M.default_transformation
+  let remove_relationship = remove_relationship M.default_transformation
+  let add_or_remove_wiki_editor = add_or_remove_wiki_editor M.default_transformation
+  let edit_wiki_page = edit_wiki_page M.default_transformation
+
+  let toggle_wiki_revision_visibility =
+    toggle_wiki_revision_visibility M.default_transformation
+  ;;
+
+  let revert_wiki_page = revert_wiki_page M.default_transformation
+  let wiki_discussions = wiki_discussions M.default_transformation
+  let wiki_pages = wiki_pages M.default_transformation
+  let subreddit_wiki_revisions = subreddit_wiki_revisions M.default_transformation
+  let wiki_page_revisions = wiki_page_revisions M.default_transformation
+  let wiki_permissions = wiki_permissions M.default_transformation
+  let set_wiki_permissions = set_wiki_permissions M.default_transformation
+  let wiki_page = wiki_page M.default_transformation
 end
 
-include Raw
+module Typed = struct
+  let result_of_response response =
+    let%bind response, body = response in
+    match Cohttp.Response.status response with
+    | #Cohttp.Code.success_status -> return (Ok (response, body))
+    | _ -> return (Error (response, body))
+  ;;
 
-type 'a listing =
-  ?pagination:Parameters.Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
+  include Make (struct
+    type response = Cohttp.Response.t * Cohttp_async.Body.t
+    type default_output = (response, response) Result.t
+
+    let default_transformation = result_of_response
+  end)
+
+  open With_continuations
+  open Deferred.Result.Let_syntax
+
+  let compose f g response = g response >>| f
+
+  let get_json response =
+    let%bind _response, body = result_of_response response in
+    let%bind.Deferred body_string = Cohttp_async.Body.to_string body in
+    let json = Yojson.Safe.from_string body_string in
+    return json
+  ;;
+
+  let get_listing child_of_json = compose (Listing.of_json child_of_json) get_json
+
+  let info =
+    info
+      (get_listing (fun json ->
+           let thing = Thing.of_json json in
+           match Thing.of_json json with
+           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
+           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
+  ;;
+
+  type 'a listing =
+    ?pagination:Parameters.Pagination.t
+    -> ?count:int
+    -> ?limit:int
+    -> ?show_all:unit
+    -> 'a
+end
+
+module Raw = Make (struct
+  type default_output = Cohttp.Response.t * Cohttp_async.Body.t
+
+  let default_transformation = ident
+end)
+
+include Typed
