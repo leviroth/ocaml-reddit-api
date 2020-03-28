@@ -294,7 +294,7 @@ module type S = sig
     -> ?richtext_json:Yojson.Safe.t
     -> parent:Fullname.t
     -> text:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [> Thing.comment ] call
 
   val delete : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 

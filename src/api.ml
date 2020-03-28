@@ -1893,6 +1893,23 @@ module Typed = struct
            | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
            | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
+
+  let add_comment =
+    let f response =
+      let%bind json = get_json response in
+      let thing =
+        Yojson.Safe.Util.member "json" json
+        |> Yojson.Safe.Util.member "data"
+        |> Yojson.Safe.Util.member "things"
+        |> Yojson.Safe.Util.index 0
+        |> Thing.of_json
+      in
+      match thing with
+      | `Comment _ as thing -> return thing
+      | _ -> assert false
+    in
+    add_comment f
+  ;;
 end
 
 module Raw = Make (struct
