@@ -888,7 +888,9 @@ module With_continuations = struct
       ?truncate
       ~link
     =
-    let endpoint = optional_subreddit_endpoint ?subreddit (Link.Id36.to_string link) in
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf !"/comments/%{Link.Id36}" link)
+    in
     let params =
       let open Param_dsl in
       combine
