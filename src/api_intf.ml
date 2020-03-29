@@ -955,8 +955,23 @@ module type S = sig
 end
 
 module type Api = sig
-  include
-    S with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+  module Error : sig
+    module Reason : sig
+      type t =
+        | Http_error
+        | Reddit_reported_errors of string list list
+        | Validation_failed of Sexp.t
+      [@@deriving sexp]
+    end
+
+    type t =
+      { reason : Reason.t
+      ; http_response : Cohttp.Response.t * Cohttp_async.Body.t
+      }
+    [@@deriving sexp_of]
+  end
+
+  include S with type 'a response := ('a, Error.t) Result.t
 
   module Raw :
     S

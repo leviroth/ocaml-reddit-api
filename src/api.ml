@@ -1842,16 +1842,31 @@ struct
 end
 
 module Typed = struct
+  module Error = struct
+    module Reason = struct
+      type t =
+        | Http_error
+        | Reddit_reported_errors of string list list
+        | Validation_failed of Sexp.t
+      [@@deriving sexp]
+    end
+
+    type t =
+      { reason : Reason.t
+      ; http_response : Cohttp.Response.t * Cohttp_async.Body.t
+      }
+    [@@deriving sexp_of]
+  end
+
   let result_of_response response =
     let%bind response, body = response in
     match Cohttp.Response.status response with
     | #Cohttp.Code.success_status -> return (Ok (response, body))
-    | _ -> return (Error (response, body))
+    | _ -> return (Error { Error.reason = Http_error; http_response = response, body })
   ;;
 
   include Make (struct
-    type response = Cohttp.Response.t * Cohttp_async.Body.t
-    type default_output = (response, response) Result.t
+    type default_output = (Cohttp.Response.t * Cohttp_async.Body.t, Error.t) Result.t
 
     let default_transformation = result_of_response
   end)
@@ -1940,9 +1955,9 @@ module Typed = struct
       in
       match errors with
       | [] -> return ()
-      | _ ->
-        let%bind.Deferred response = response in
-        Deferred.Result.fail response
+      | l ->
+        let%bind.Deferred http_response = response in
+        Deferred.Result.fail { Error.reason = Reddit_reported_errors l; http_response }
     in
     add_relationship f
   ;;
