@@ -600,9 +600,9 @@ module type S = sig
 
   val distinguish
     :  ?sticky:bool
-    -> fullname:Fullname.t
+    -> fullname:[< Fullname.link | Fullname.comment ]
     -> how:How_to_distinguish.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [> Thing.link | Thing.comment ] call
 
   val ignore_reports
     :  fullname:Fullname.t

@@ -1910,6 +1910,23 @@ module Typed = struct
     in
     add_comment f
   ;;
+
+  let distinguish =
+    let f response =
+      let%bind json = get_json response in
+      let thing =
+        Yojson.Safe.Util.member "json" json
+        |> Yojson.Safe.Util.member "data"
+        |> Yojson.Safe.Util.member "things"
+        |> Yojson.Safe.Util.index 0
+        |> Thing.of_json
+      in
+      match thing with
+      | (`Comment _ | `Link _) as thing -> return thing
+      | _ -> assert false
+    in
+    distinguish f
+  ;;
 end
 
 module Raw = Make (struct
