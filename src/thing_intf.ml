@@ -70,9 +70,9 @@ module type Thing = sig
 
   include Per_kind with module F := Projectors.Ident
 
-  val of_json : Yojson.Safe.t -> t
-  val to_json : t -> Yojson.Safe.t
-  val get_field : t -> string -> Json_derivers.Yojson.t option
+  val of_json : Yojson.Safe.t -> [> t ]
+  val to_json : [< t ] -> Yojson.Safe.t
+  val get_field : [< t ] -> string -> Json_derivers.Yojson.t option
 
   module Fullname : sig
     include Per_kind with module F := Projectors.Id36
