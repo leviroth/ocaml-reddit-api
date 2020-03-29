@@ -960,7 +960,7 @@ module type Api = sig
       type t =
         | Http_error
         | Reddit_reported_errors of string list list
-        | Validation_failed of Sexp.t
+        | Validation_failed of Error.t
       [@@deriving sexp]
     end
 

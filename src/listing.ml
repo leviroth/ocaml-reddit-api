@@ -13,26 +13,43 @@ type 'a t =
   }
 [@@deriving sexp, fields]
 
-let of_json convert_element json =
-  let data =
+let of_json convert_element (json : Yojson.Safe.t) =
+  let open Or_error.Let_syntax in
+  let fail s = error_s [%message s (json : Json_derivers.Yojson.t)] in
+  let%bind assoc =
     match json with
-    | `Assoc list ->
-      List.Assoc.find_exn list "data" ~equal:String.equal
-      |> Yojson.Safe.Util.to_assoc
-      |> String.Map.of_alist_exn
-    | _ ->
-      raise_s
-        [%message
-          "Expected JSON map when creating [Listing.t]" (json : Json_derivers.Yojson.t)]
+    | `Assoc list -> Ok list
+    | _ -> fail "Expected JSON map when creating [Listing.t]"
   in
-  let children =
-    Map.find_exn data "children"
-    |> Yojson.Safe.Util.to_list
-    |> List.map ~f:convert_element
+  let%bind data =
+    match List.Assoc.find assoc "data" ~equal:String.equal with
+    | Some data -> Ok data
+    | None -> fail "Missing field \"data\""
   in
-  let after =
-    let open Option.Let_syntax in
-    Map.find data "after" >>= Yojson.Safe.Util.to_string_option >>| Page_id.of_string
+  let%bind data =
+    match data with
+    | `Assoc list -> Ok list
+    | _ -> fail "Expected \"data\" to be an object"
   in
-  { children; after }
+  let%bind data =
+    match String.Map.of_alist data with
+    | `Ok map -> Ok map
+    | `Duplicate_key key -> fail (sprintf "Duplicate key: \"%s\"" key)
+  in
+  let%bind children =
+    match Map.find data "children" with
+    | Some (`List l) -> Ok l
+    | Some _ -> fail "Expected \"children\" to be a list"
+    | None -> fail "Missing key \"children\""
+  in
+  let%bind children = List.map children ~f:convert_element |> Or_error.all in
+  let%bind after =
+    match Map.find data "after" with
+    | None -> Ok None
+    | Some json ->
+      (match Yojson.Safe.Util.to_string_option json with
+      | Some s -> Ok (Some (Page_id.of_string s))
+      | None -> fail "Expected \"after\" to be a string")
+  in
+  return { children; after }
 ;;

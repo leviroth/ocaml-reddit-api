@@ -1847,7 +1847,7 @@ module Typed = struct
       type t =
         | Http_error
         | Reddit_reported_errors of string list list
-        | Validation_failed of Sexp.t
+        | Validation_failed of Error.t
       [@@deriving sexp]
     end
 
@@ -1874,8 +1874,6 @@ module Typed = struct
   open With_continuations
   open Deferred.Result.Let_syntax
 
-  let compose f g response = g response >>| f
-
   let get_json response =
     let%bind _response, body = result_of_response response in
     let%bind.Deferred body_string = Cohttp_async.Body.to_string body in
@@ -1883,13 +1881,20 @@ module Typed = struct
     return json
   ;;
 
-  let get_listing child_of_json = compose (Listing.of_json child_of_json) get_json
+  let get_listing child_of_json response =
+    let%bind json = get_json response in
+    match Listing.of_json child_of_json json with
+    | Ok listing -> return listing
+    | Error error ->
+      let%bind.Deferred http_response = response in
+      Deferred.Result.fail Error.{ reason = Validation_failed error; http_response }
+  ;;
 
   let link_of_json json =
     let thing = Thing.of_json json in
     match thing with
-    | `Link _ as thing -> thing
-    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
+    | `Link _ as thing -> Ok thing
+    | _ -> error_s [%message "Expected link" (thing : Thing.t)]
   ;;
 
   let get_link_listing = get_listing link_of_json
@@ -1905,8 +1910,8 @@ module Typed = struct
       (get_listing (fun json ->
            let thing = Thing.of_json json in
            match Thing.of_json json with
-           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
-           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
+           | (`Link _ | `Comment _ | `Subreddit _) as thing -> Ok thing
+           | _ -> error_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
 
   let add_comment =
