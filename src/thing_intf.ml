@@ -1,6 +1,6 @@
 open! Core
 
-module type Common = sig
+module type S = sig
   type t [@@deriving sexp]
 
   module Id36 : Id36.S
@@ -12,37 +12,24 @@ module type Common = sig
 end
 
 module Projectors = struct
-  module Ident (M : Common) = M
-  module Id36 (M : Common) = M.Id36
+  module Ident (M : S) = M
+  module Id36 (M : S) = M.Id36
 end
 
 module type Thing = sig
-  module rec Comment : sig
-    include Common
+  module type S = S
 
-    val author : t -> Username.t option
-    val moderation_info : t -> Moderation_info.t option
-  end
-
-  and User : sig
-    include Common
-  end
-
-  and Link : sig
-    include Common
-
-    val author : t -> Username.t option
-    val moderation_info : t -> Moderation_info.t option
-  end
-
-  and Message : Common
-  and Subreddit : Common
-  and Award : Common
-  and More_comments : Common
-  and Modmail_conversation : Common
+  module Comment : S
+  module User : S
+  module Link : S
+  module Message : S
+  module Subreddit : S
+  module Award : S
+  module More_comments : S
+  module Modmail_conversation : S
 
   module type Per_kind = sig
-    module F (M : Common) : T
+    module F (M : S) : T
 
     type comment = [ `Comment of F(Comment).t ] [@@deriving sexp]
     type user = [ `User of F(User).t ] [@@deriving sexp]
@@ -73,6 +60,8 @@ module type Thing = sig
   val of_json : Yojson.Safe.t -> [> t ]
   val to_json : [< t ] -> Yojson.Safe.t
   val get_field : [< t ] -> string -> Json_derivers.Yojson.t option
+  val author : [< link | comment ] -> Username.t option
+  val moderation_info : [< link | comment ] -> Moderation_info.t option
 
   module Fullname : sig
     include Per_kind with module F := Projectors.Id36

@@ -1,4 +1,5 @@
 open! Core
+include Thing_intf
 
 module Id36 = struct
   type t = int
@@ -54,29 +55,6 @@ module M = struct
   let to_json t = `Assoc (Map.to_alist t)
   let get_field = Map.find
 
-  let username_of_field t ~field_name =
-    let open Option.Monad_infix in
-    get_field t field_name >>| Yojson.Safe.Util.to_string >>| Username.of_string
-  ;;
-
-  let time_of_field t ~field_name =
-    let open Option.Monad_infix in
-    get_field t field_name
-    >>| Yojson.Safe.Util.to_float
-    >>| Time.Span.of_sec
-    >>| Time.of_span_since_epoch
-  ;;
-
-  let author t = username_of_field t ~field_name:"author"
-
-  let moderation_info t =
-    let approved_by = username_of_field t ~field_name:"approved_by" in
-    let approved_at = time_of_field t ~field_name:"approved_at_utc" in
-    let banned_by = username_of_field t ~field_name:"banned_by" in
-    let banned_at = time_of_field t ~field_name:"banned_at_utc" in
-    Moderation_info.of_listing_fields ~approved_by ~approved_at ~banned_by ~banned_at
-  ;;
-
   let id36 t =
     get_field t "id"
     |> Option.map ~f:(Fn.compose Id36.of_string Yojson.Safe.Util.to_string)
@@ -92,10 +70,10 @@ module Award = M
 module More_comments = M
 module Modmail_conversation = M
 
-module type Get_kind_module = functor (M : Thing_intf.Common) -> Sexpable
+module type Get_kind_module = functor (M : S) -> Sexpable
 
 module type Per_kind = sig
-  module F (M : Thing_intf.Common) : T
+  module F (M : S) : T
 
   type comment = [ `Comment of F(Comment).t ] [@@deriving sexp]
   type user = [ `User of F(User).t ] [@@deriving sexp]
@@ -121,8 +99,7 @@ module type Per_kind = sig
   [@@deriving sexp]
 end
 
-module Per_kind (F : functor (M : Thing_intf.Common) -> Sexpable.S) :
-  Per_kind with module F := F = struct
+module Per_kind (F : functor (M : S) -> Sexpable.S) : Per_kind with module F := F = struct
   module Comment = F (Comment)
   module User = F (User)
   module Link = F (Link)
@@ -156,7 +133,7 @@ module Per_kind (F : functor (M : Thing_intf.Common) -> Sexpable.S) :
   [@@deriving sexp]
 end
 
-include Per_kind (Thing_intf.Projectors.Ident)
+include Per_kind (Projectors.Ident)
 
 let of_json json =
   let map = string_map_of_assoc_exn json in
@@ -208,9 +185,32 @@ let to_json t : Yojson.Safe.t =
     [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
 ;;
 
+let username_of_field t ~field_name =
+  let open Option.Monad_infix in
+  get_field t field_name >>| Yojson.Safe.Util.to_string >>| Username.of_string
+;;
+
+let time_of_field t ~field_name =
+  let open Option.Monad_infix in
+  get_field t field_name
+  >>| Yojson.Safe.Util.to_float
+  >>| Time.Span.of_sec
+  >>| Time.of_span_since_epoch
+;;
+
+let author t = username_of_field t ~field_name:"author"
+
+let moderation_info t =
+  let approved_by = username_of_field t ~field_name:"approved_by" in
+  let approved_at = time_of_field t ~field_name:"approved_at_utc" in
+  let banned_by = username_of_field t ~field_name:"banned_by" in
+  let banned_at = time_of_field t ~field_name:"banned_at_utc" in
+  Moderation_info.of_listing_fields ~approved_by ~approved_at ~banned_by ~banned_at
+;;
+
 module Fullname = struct
   module T = struct
-    include Per_kind (Thing_intf.Projectors.Id36)
+    include Per_kind (Projectors.Id36)
 
     let of_string s =
       let kind, id = String.lsplit2_exn s ~on:'_' in
