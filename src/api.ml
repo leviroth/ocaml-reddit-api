@@ -1927,6 +1927,25 @@ module Typed = struct
     in
     distinguish f
   ;;
+
+  let add_relationship =
+    let f response =
+      let%bind json = get_json response in
+      let errors =
+        Yojson.Safe.Util.member "json" json
+        |> Yojson.Safe.Util.member "errors"
+        |> Yojson.Safe.Util.to_list
+        |> List.map ~f:(fun error ->
+               Yojson.Safe.Util.to_list error |> List.map ~f:Yojson.Safe.Util.to_string)
+      in
+      match errors with
+      | [] -> return ()
+      | _ ->
+        let%bind.Deferred response = response in
+        Deferred.Result.fail response
+    in
+    add_relationship f
+  ;;
 end
 
 module Raw = Make (struct

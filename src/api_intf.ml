@@ -883,7 +883,7 @@ module type S = sig
     -> ?ban_reason:string
     -> ?ban_message:string
     -> ?ban_context:Fullname.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val remove_relationship
     :  relationship:Relationship.t
