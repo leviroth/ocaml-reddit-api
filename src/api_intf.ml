@@ -226,14 +226,6 @@ module type S = sig
       [@@deriving sexp]
     end
 
-    module Wiki_page : sig
-      type t =
-        { subreddit : Subreddit_name.t
-        ; page : string
-        }
-      [@@deriving sexp]
-    end
-
     module Add_or_remove : sig
       type t =
         | Add
@@ -895,7 +887,7 @@ module type S = sig
 
   val add_or_remove_wiki_editor
     :  add_or_remove:Add_or_remove.t
-    -> page:Wiki_page.t
+    -> page:Wiki_page.Id.t
     -> user:Username.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -903,22 +895,22 @@ module type S = sig
     :  ?previous:string
     -> ?reason:string
     -> content:string
-    -> page:Wiki_page.t
+    -> page:Wiki_page.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val toggle_wiki_revision_visibility
-    :  page:Wiki_page.t
+    :  page:Wiki_page.Id.t
     -> revision:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val revert_wiki_page
-    :  page:Wiki_page.t
+    :  page:Wiki_page.Id.t
     -> revision:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val wiki_discussions
     : (?subreddit_detail:string
-       -> page:Wiki_page.t
+       -> page:Wiki_page.Id.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
@@ -934,24 +926,24 @@ module type S = sig
 
   val wiki_page_revisions
     : (?subreddit_detail:string
-       -> page:Wiki_page.t
+       -> page:Wiki_page.Id.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
   val wiki_permissions
-    :  page:Wiki_page.t
+    :  page:Wiki_page.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val set_wiki_permissions
     :  listed:bool
-    -> page:Wiki_page.t
+    -> page:Wiki_page.Id.t
     -> permission_level:int
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val wiki_page
     :  ?compare_revisions:string option * string option
-    -> page:Wiki_page.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> page:Wiki_page.Id.t
+    -> Wiki_page.t call
 end
 
 module type Api = sig

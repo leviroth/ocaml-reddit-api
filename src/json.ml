@@ -13,14 +13,16 @@ type t =
 
 include (Jsonaf : module type of Jsonaf with type t := t)
 
+let of_string string = of_string string |> Result.map_error ~f:Error.of_string
+let of_string_exn string = of_string string |> Or_error.ok_exn
+
 let to_map_exn t =
   match t with
   | `Object l -> String.Map.of_alist_exn l
   | _ -> raise_s [%message "Json is not an object" (t : t)]
 ;;
 
-let of_string string = of_string string |> Result.map_error ~f:Error.of_string
-let of_string_exn string = of_string string |> Or_error.ok_exn
+let to_map t = Or_error.try_with (fun () -> to_map_exn t)
 
 let get_string_exn t =
   match t with
@@ -35,6 +37,8 @@ let get_int_exn t =
   | `Number s -> Int.of_string s
   | _ -> raise_s [%message "Json is not a number" (t : t)]
 ;;
+
+let get_int t = Or_error.try_with (fun () -> get_int_exn t)
 
 let find_exn t ~key =
   match t with
@@ -58,3 +62,12 @@ let index_exn t ~index =
 ;;
 
 let index t ~index = Or_error.try_with (fun () -> index_exn t ~index)
+
+let get_bool_exn t =
+  match t with
+  | `True -> true
+  | `False -> false
+  | _ -> raise_s [%message "Json is not a bool" (t : t)]
+;;
+
+let get_bool t = Or_error.try_with (fun () -> get_bool_exn t)

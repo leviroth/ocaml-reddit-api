@@ -469,14 +469,6 @@ module Parameters = struct
     let params_of_t t = [ "type", [ to_string t ] ]
   end
 
-  module Wiki_page = struct
-    type t =
-      { subreddit : Subreddit_name.t
-      ; page : string
-      }
-    [@@deriving sexp]
-  end
-
   module Add_or_remove = struct
     type t =
       | Add
@@ -1566,7 +1558,7 @@ module With_continuations = struct
 
   let add_or_remove_wiki_editor
       ~add_or_remove
-      ~page:({ subreddit; page } : Wiki_page.t)
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
       ~user
     =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
@@ -1586,7 +1578,7 @@ module With_continuations = struct
       ?previous
       ?reason
       ~content
-      ~page:({ subreddit; page } : Wiki_page.t)
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
     let params =
@@ -1601,7 +1593,10 @@ module With_continuations = struct
     post k ~endpoint ~params
   ;;
 
-  let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.t) ~revision =
+  let toggle_wiki_revision_visibility
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
+      ~revision
+    =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
     let params =
       let open Param_dsl in
@@ -1610,7 +1605,7 @@ module With_continuations = struct
     post ~endpoint ~params
   ;;
 
-  let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.t) ~revision =
+  let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
     let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
     let params =
       let open Param_dsl in
@@ -1623,7 +1618,7 @@ module With_continuations = struct
       k
       ~listing_params
       ?subreddit_detail
-      ~page:({ subreddit; page } : Wiki_page.t)
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
     let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
     let params =
@@ -1655,7 +1650,7 @@ module With_continuations = struct
       k
       ~listing_params
       ?subreddit_detail
-      ~page:({ subreddit; page } : Wiki_page.t)
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
     let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions/%s" subreddit page in
     let params =
@@ -1667,14 +1662,14 @@ module With_continuations = struct
 
   let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
 
-  let wiki_permissions ~page:({ subreddit; page } : Wiki_page.t) =
+  let wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
     get ~endpoint ~params:[]
   ;;
 
   let set_wiki_permissions
       ~listed
-      ~page:({ subreddit; page } : Wiki_page.t)
+      ~page:({ subreddit; page } : Wiki_page.Id.t)
       ~permission_level
     =
     let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
@@ -1689,7 +1684,7 @@ module With_continuations = struct
     post ~endpoint ~params
   ;;
 
-  let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.t) =
+  let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
     let v1, v2 = Option.value compare_revisions ~default:(None, None) in
     let params =
@@ -1992,6 +1987,8 @@ module Typed = struct
     in
     add_relationship f
   ;;
+
+  let wiki_page = wiki_page (handle_json_response Wiki_page.of_json)
 end
 
 module Raw = Make (struct
