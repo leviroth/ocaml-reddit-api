@@ -71,7 +71,7 @@ module Parameters = struct
     module Self_post_body = struct
       type t =
         | Markdown of string
-        | Richtext_json of Json_derivers.Yojson.t
+        | Richtext_json of Json.t
       [@@deriving sexp]
     end
 
@@ -91,7 +91,7 @@ module Parameters = struct
         ; ( "text"
           , [ (match body with
               | Markdown markdown -> markdown
-              | Richtext_json json -> Yojson.Safe.to_string json)
+              | Richtext_json json -> Json.to_string json)
             ] )
         ]
       (* TODO Should we disallow these? *)
@@ -526,7 +526,7 @@ module Param_dsl = struct
   let int = Int.to_string
   let fullname_ = Fullname.to_string
   let username_ = Username.to_string
-  let json = Yojson.Safe.to_string
+  let json = Json.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
@@ -1874,20 +1874,33 @@ module Typed = struct
   open With_continuations
   open Deferred.Result.Let_syntax
 
-  let get_json response =
-    let%bind _response, body = result_of_response response in
-    let%bind.Deferred body_string = Cohttp_async.Body.to_string body in
-    let json = Yojson.Safe.from_string body_string in
-    return json
+  let handle_json_response' f response =
+    let%bind response, body = result_of_response response in
+    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
+    let%bind json =
+      match Json.of_string body_string with
+      | Ok json -> return json
+      | Error error ->
+        Deferred.Result.fail
+          { Error.reason = Validation_failed error; http_response = response, body }
+    in
+    f json
   ;;
 
-  let get_listing child_of_json response =
-    let%bind json = get_json response in
-    match Listing.of_json child_of_json json with
-    | Ok listing -> return listing
-    | Error error ->
-      let%bind.Deferred http_response = response in
-      Deferred.Result.fail Error.{ reason = Validation_failed error; http_response }
+  let handle_json_response f response =
+    let get_json body_string =
+      match
+        let%bind.Result json = Json.of_string body_string in
+        f json
+      with
+      | Ok x -> return x
+      | Error error ->
+        let%bind.Deferred http_response = response in
+        Deferred.Result.fail Error.{ reason = Validation_failed error; http_response }
+    in
+    let%bind _response, body = result_of_response response in
+    let%bind.Deferred body_string = Cohttp_async.Body.to_string body in
+    get_json body_string
   ;;
 
   let link_of_json json =
@@ -1897,6 +1910,7 @@ module Typed = struct
     | _ -> error_s [%message "Expected link" (thing : Thing.t)]
   ;;
 
+  let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
   let get_link_listing = get_listing link_of_json
   let duplicates = duplicates get_link_listing
   let hot = hot get_link_listing
@@ -1915,54 +1929,66 @@ module Typed = struct
   ;;
 
   let add_comment =
-    let f response =
-      let%bind json = get_json response in
-      let thing =
-        Yojson.Safe.Util.member "json" json
-        |> Yojson.Safe.Util.member "data"
-        |> Yojson.Safe.Util.member "things"
-        |> Yojson.Safe.Util.index 0
-        |> Thing.of_json
-      in
-      match thing with
-      | `Comment _ as thing -> return thing
-      | _ -> assert false
-    in
-    add_comment f
+    add_comment
+      (handle_json_response (fun json ->
+           let%bind.Or_error thing =
+             let open Or_error.Monad_infix in
+             Json.find json ~key:"json"
+             >>= Json.find ~key:"data"
+             >>= Json.find ~key:"things"
+             >>= Json.index ~index:0
+             >>| Thing.of_json
+           in
+           match thing with
+           | `Comment _ as thing -> Ok thing
+           | _ -> Or_error.error_s [%message "Expected comment" (thing : Thing.t)]))
   ;;
 
   let distinguish =
-    let f response =
-      let%bind json = get_json response in
-      let thing =
-        Yojson.Safe.Util.member "json" json
-        |> Yojson.Safe.Util.member "data"
-        |> Yojson.Safe.Util.member "things"
-        |> Yojson.Safe.Util.index 0
-        |> Thing.of_json
-      in
-      match thing with
-      | (`Comment _ | `Link _) as thing -> return thing
-      | _ -> assert false
-    in
-    distinguish f
+    distinguish
+      (handle_json_response (fun json ->
+           let%bind.Or_error thing =
+             let open Or_error.Monad_infix in
+             Json.find json ~key:"json"
+             >>= Json.find ~key:"data"
+             >>= Json.find ~key:"things"
+             >>= Json.index ~index:0
+             >>| Thing.of_json
+           in
+           match thing with
+           | (`Comment _ | `Link _) as thing -> Ok thing
+           | _ -> Or_error.error_s [%message "Expected comment or link" (thing : Thing.t)]))
+  ;;
+
+  let extract_errors json =
+    let open Or_error.Let_syntax in
+    Json.find json ~key:"json"
+    >>= Json.find ~key:"errors"
+    >>= Json.get_array
+    >>| List.map ~f:(fun l ->
+            Json.get_array l
+            >>| List.map ~f:Json.get_string
+            >>| Or_error.all
+            |> Or_error.join)
+    >>| Or_error.all
+    |> Or_error.join
   ;;
 
   let add_relationship =
     let f response =
-      let%bind json = get_json response in
-      let errors =
-        Yojson.Safe.Util.member "json" json
-        |> Yojson.Safe.Util.member "errors"
-        |> Yojson.Safe.Util.to_list
-        |> List.map ~f:(fun error ->
-               Yojson.Safe.Util.to_list error |> List.map ~f:Yojson.Safe.Util.to_string)
+      let extract_from_json json =
+        let%bind http_response = response |> Deferred.ok in
+        let fail reason = Deferred.Result.fail { Error.reason; http_response } in
+        let%bind errors =
+          match extract_errors json with
+          | Ok errors -> return errors
+          | Error validation_failure -> fail (Validation_failed validation_failure)
+        in
+        match errors with
+        | [] -> return ()
+        | l -> fail (Reddit_reported_errors l)
       in
-      match errors with
-      | [] -> return ()
-      | l ->
-        let%bind.Deferred http_response = response in
-        Deferred.Result.fail { Error.reason = Reddit_reported_errors l; http_response }
+      handle_json_response' extract_from_json response
     in
     add_relationship f
   ;;

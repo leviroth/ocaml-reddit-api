@@ -13,12 +13,12 @@ type 'a t =
   }
 [@@deriving sexp, fields]
 
-let of_json convert_element (json : Yojson.Safe.t) =
+let of_json convert_element json =
   let open Or_error.Let_syntax in
-  let fail s = error_s [%message s (json : Json_derivers.Yojson.t)] in
+  let fail s = error_s [%message s (json : Json.t)] in
   let%bind assoc =
     match json with
-    | `Assoc list -> Ok list
+    | `Object list -> Ok list
     | _ -> fail "Expected JSON map when creating [Listing.t]"
   in
   let%bind data =
@@ -28,7 +28,7 @@ let of_json convert_element (json : Yojson.Safe.t) =
   in
   let%bind data =
     match data with
-    | `Assoc list -> Ok list
+    | `Object list -> Ok list
     | _ -> fail "Expected \"data\" to be an object"
   in
   let%bind data =
@@ -38,7 +38,7 @@ let of_json convert_element (json : Yojson.Safe.t) =
   in
   let%bind children =
     match Map.find data "children" with
-    | Some (`List l) -> Ok l
+    | Some (`Array l) -> Ok l
     | Some _ -> fail "Expected \"children\" to be a list"
     | None -> fail "Missing key \"children\""
   in
@@ -46,10 +46,8 @@ let of_json convert_element (json : Yojson.Safe.t) =
   let%bind after =
     match Map.find data "after" with
     | None -> Ok None
-    | Some json ->
-      (match Yojson.Safe.Util.to_string_option json with
-      | Some s -> Ok (Some (Page_id.of_string s))
-      | None -> fail "Expected \"after\" to be a string")
+    | Some (`String s) -> Ok (Some (Page_id.of_string s))
+    | Some _ -> fail "Expected \"after\" to be a string"
   in
   return { children; after }
 ;;

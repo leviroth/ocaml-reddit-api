@@ -5,9 +5,9 @@ module type S = sig
 
   module Id36 : Id36.S
 
-  val of_json : Yojson.Safe.t -> t
-  val to_json : t -> Yojson.Safe.t
-  val get_field : t -> string -> Json_derivers.Yojson.t option
+  val of_json : Json.t -> t
+  val to_json : t -> Json.t
+  val get_field : t -> string -> Json.t option
   val id36 : t -> Id36.t option
 end
 
@@ -57,9 +57,9 @@ module type Thing = sig
 
   include Per_kind with module F := Projectors.Ident
 
-  val of_json : Yojson.Safe.t -> [> t ]
-  val to_json : [< t ] -> Yojson.Safe.t
-  val get_field : [< t ] -> string -> Json_derivers.Yojson.t option
+  val of_json : Json.t -> [> t ]
+  val to_json : [< t ] -> Json.t
+  val get_field : [< t ] -> string -> Json.t option
   val author : [< link | comment ] -> Username.t option
   val moderation_info : [< link | comment ] -> Moderation_info.t option
 

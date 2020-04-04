@@ -35,7 +35,7 @@ module type S = sig
       module Self_post_body : sig
         type t =
           | Markdown of string
-          | Richtext_json of Json_derivers.Yojson.t
+          | Richtext_json of Json.t
         [@@deriving sexp]
       end
 
@@ -291,7 +291,7 @@ module type S = sig
 
   val add_comment
     :  ?return_rtjson:bool
-    -> ?richtext_json:Yojson.Safe.t
+    -> ?richtext_json:Json.t
     -> parent:Fullname.t
     -> text:string
     -> [> Thing.comment ] call
@@ -300,7 +300,7 @@ module type S = sig
 
   val edit
     :  ?return_rtjson:bool
-    -> ?richtext_json:Yojson.Safe.t
+    -> ?richtext_json:Json.t
     -> fullname:Fullname.t
     -> text:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call

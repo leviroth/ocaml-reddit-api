@@ -42,22 +42,17 @@ module Id36 = struct
   let t_of_sexp sexp = String.t_of_sexp sexp |> of_string
 end
 
-let string_map_of_assoc_exn json =
-  Yojson.Safe.Util.to_assoc json |> String.Map.of_alist_exn
-;;
-
 module M = struct
-  type t = Json_derivers.Yojson.t String.Map.t [@@deriving sexp]
+  type t = Json.t String.Map.t [@@deriving sexp]
 
   module Id36 = Id36
 
-  let of_json = string_map_of_assoc_exn
-  let to_json t = `Assoc (Map.to_alist t)
+  let of_json = Json.to_map_exn
+  let to_json t = `Object (Map.to_alist t)
   let get_field = Map.find
 
   let id36 t =
-    get_field t "id"
-    |> Option.map ~f:(Fn.compose Id36.of_string Yojson.Safe.Util.to_string)
+    get_field t "id" |> Option.map ~f:(Fn.compose Id36.of_string Json.get_string_exn)
   ;;
 end
 
@@ -136,11 +131,9 @@ end
 include Per_kind (Projectors.Ident)
 
 let of_json json =
-  let map = string_map_of_assoc_exn json in
-  let kind =
-    Map.find_exn map "kind" |> Yojson.Safe.Util.to_string |> Thing_kind.of_string
-  in
-  let data = Map.find_exn map "data" |> string_map_of_assoc_exn in
+  let map = Json.to_map_exn json in
+  let kind = Map.find_exn map "kind" |> Json.get_string_exn |> Thing_kind.of_string in
+  let data = Map.find_exn map "data" |> Json.to_map_exn in
   match kind with
   | Comment -> `Comment data
   | User -> `User data
@@ -164,7 +157,7 @@ let kind t : Thing_kind.t =
   | `Modmail_conversation _ -> Modmail_conversation
 ;;
 
-let data t : Json_derivers.Yojson.t String.Map.t =
+let data t =
   match t with
   | `Comment data
   | `User data
@@ -178,22 +171,23 @@ let data t : Json_derivers.Yojson.t String.Map.t =
 
 let get_field t = Map.find (data t)
 
-let to_json t : Yojson.Safe.t =
+let to_json t =
   let kind = kind t in
   let data = data t in
-  `Assoc
-    [ "kind", `String (Thing_kind.to_string kind); "data", `Assoc (Map.to_alist data) ]
+  `Object
+    [ "kind", `String (Thing_kind.to_string kind); "data", `Object (Map.to_alist data) ]
 ;;
 
 let username_of_field t ~field_name =
   let open Option.Monad_infix in
-  get_field t field_name >>| Yojson.Safe.Util.to_string >>| Username.of_string
+  get_field t field_name >>| Json.get_string_exn >>| Username.of_string
 ;;
 
 let time_of_field t ~field_name =
   let open Option.Monad_infix in
   get_field t field_name
-  >>| Yojson.Safe.Util.to_float
+  >>| Json.get_string_exn
+  >>| Float.of_string
   >>| Time.Span.of_sec
   >>| Time.of_span_since_epoch
 ;;

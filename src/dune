@@ -1,4 +1,4 @@
 (library
  (name ocaml_reddit)
- (libraries async core cohttp-async yojson json-derivers)
+ (libraries async core cohttp-async jsonaf)
  (preprocess (pps ppx_jane)))

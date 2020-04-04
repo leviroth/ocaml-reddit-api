@@ -80,13 +80,16 @@ module Auth = struct
           ]
     in
     let%bind response_string = Cohttp_async.Body.to_string body in
-    let response_json = Yojson.Safe.from_string response_string in
+    let response_json = Json.of_string_exn response_string in
     let access_token : Access_token.t =
-      let open Yojson.Safe.Util in
-      let token = response_json |> member "access_token" |> to_string in
+      let token =
+        Json.find_exn response_json ~key:"access_token" |> Json.get_string_exn
+      in
       let expiration =
         let additional_seconds =
-          response_json |> member "expires_in" |> to_int |> Time_ns.Span.of_int_sec
+          Json.find_exn response_json ~key:"expires_in"
+          |> Json.get_int_exn
+          |> Time_ns.Span.of_int_sec
         in
         Time_ns.add (Time_source.now time_source) additional_seconds
       in
