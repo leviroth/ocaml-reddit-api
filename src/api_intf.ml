@@ -947,23 +947,7 @@ module type S = sig
 end
 
 module type Api = sig
-  module Error : sig
-    module Reason : sig
-      type t =
-        | Http_error
-        | Reddit_reported_errors of string list list
-        | Validation_failed of Error.t
-      [@@deriving sexp]
-    end
-
-    type t =
-      { reason : Reason.t
-      ; http_response : Cohttp.Response.t * Cohttp_async.Body.t
-      }
-    [@@deriving sexp_of]
-  end
-
-  include S with type 'a response := ('a, Error.t) Result.t
+  include S with type 'a response := 'a Or_error.t
 
   module Raw :
     S

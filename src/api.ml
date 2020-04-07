@@ -1837,27 +1837,16 @@ struct
 end
 
 module Typed = struct
-  module Error = struct
-    module Reason = struct
-      type t =
-        | Http_error
-        | Reddit_reported_errors of string list list
-        | Validation_failed of Error.t
-      [@@deriving sexp]
-    end
-
-    type t =
-      { reason : Reason.t
-      ; http_response : Cohttp.Response.t * Cohttp_async.Body.t
-      }
-    [@@deriving sexp_of]
-  end
+  open Deferred.Or_error.Let_syntax
 
   let result_of_response response =
-    let%bind response, body = response in
+    let%bind response, body = Deferred.ok response in
     match Cohttp.Response.status response with
-    | #Cohttp.Code.success_status -> return (Ok (response, body))
-    | _ -> return (Error { Error.reason = Http_error; http_response = response, body })
+    | #Cohttp.Code.success_status -> return (response, body)
+    | _ ->
+      Deferred.Or_error.error_s
+        [%message
+          "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
   ;;
 
   include Make (struct
@@ -1867,34 +1856,32 @@ module Typed = struct
   end)
 
   open With_continuations
-  open Deferred.Result.Let_syntax
 
   let handle_json_response' f response =
-    let%bind response, body = result_of_response response in
+    let%bind _response, body = result_of_response response in
     let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
-    let%bind json =
-      match Json.of_string body_string with
-      | Ok json -> return json
-      | Error error ->
-        Deferred.Result.fail
-          { Error.reason = Validation_failed error; http_response = response, body }
-    in
+    let%bind json = Json.of_string body_string |> Deferred.return in
     f json
   ;;
 
   let handle_json_response f response =
     let get_json body_string =
-      match
-        let%bind.Result json = Json.of_string body_string in
-        f json
+      match%bind.Deferred
+        let%bind json = Json.of_string body_string |> Deferred.return in
+        f json |> Deferred.return
       with
       | Ok x -> return x
       | Error error ->
-        let%bind.Deferred http_response = response in
-        Deferred.Result.fail Error.{ reason = Validation_failed error; http_response }
+        let%bind response, body = Deferred.ok response in
+        Error.of_list
+          [ error
+          ; Error.create_s
+              [%message "" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
+          ]
+        |> Deferred.Or_error.fail
     in
     let%bind _response, body = result_of_response response in
-    let%bind.Deferred body_string = Cohttp_async.Body.to_string body in
+    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
     get_json body_string
   ;;
 
@@ -1972,16 +1959,24 @@ module Typed = struct
   let add_relationship =
     let f response =
       let extract_from_json json =
-        let%bind http_response = response |> Deferred.ok in
-        let fail reason = Deferred.Result.fail { Error.reason; http_response } in
         let%bind errors =
           match extract_errors json with
           | Ok errors -> return errors
-          | Error validation_failure -> fail (Validation_failed validation_failure)
+          | Error error ->
+            let%bind response, body = Deferred.ok response in
+            Error.of_list
+              [ error
+              ; Error.create_s
+                  [%message
+                    "" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
+              ]
+            |> Deferred.Or_error.fail
         in
         match errors with
         | [] -> return ()
-        | l -> fail (Reddit_reported_errors l)
+        | l ->
+          Deferred.Or_error.error_s
+            [%message "Reddit reported errors" (l : string list list)]
       in
       handle_json_response' extract_from_json response
     in
