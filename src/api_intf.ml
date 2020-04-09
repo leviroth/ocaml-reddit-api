@@ -23,6 +23,13 @@ module type S = sig
       [@@deriving sexp]
     end
 
+    module Report_target : sig
+      type t =
+        | Modmail_conversation of Id36.Modmail_conversation.t
+        | Fullname of Fullname.t
+      [@@deriving sexp]
+    end
+
     module Sticky_state : sig
       type t =
         | Sticky of { slot : int }
@@ -312,10 +319,10 @@ module type S = sig
   val unmark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val more_children
-    :  ?id:Fullname.t
+    :  ?id:Id36.More_children.t
     -> ?limit_children:bool
-    -> link:Fullname.t
-    -> children:Fullname.t list
+    -> link:Id36.Link.t
+    -> children:Id36.Comment.t list
     -> sort:Comment_sort.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -328,7 +335,7 @@ module type S = sig
     -> ?rule_reason:string
     -> ?site_reason:string
     -> ?sr_name:string
-    -> target:Fullname.t
+    -> target:Report_target.t
     -> reason:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -410,7 +417,7 @@ module type S = sig
 
   val comments
     :  ?subreddit:Subreddit_name.t
-    -> ?comment:Fullname.t
+    -> ?comment:Id36.Comment.t
     -> ?context:int
     -> ?depth:int
     -> ?limit:int
@@ -420,14 +427,14 @@ module type S = sig
     -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
-    -> link:Fullname.t
+    -> link:Id36.Link.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val duplicates
     : (?crossposts_only:bool
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
-       -> link:Fullname.t
+       -> link:Id36.Link.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
@@ -811,7 +818,9 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
-  val about : subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val about
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val subreddit_settings
     :  ?created:bool
@@ -952,8 +961,8 @@ module type Api = sig
   include
     S
       with type 'a call :=
-            ?param_list_override:
-              ((string * string list) list -> (string * string list) list)
+            ?param_list_override:((string * string list) list
+                                  -> (string * string list) list)
             -> Connection.t
             -> 'a Deferred.t
 
@@ -962,8 +971,8 @@ module type Api = sig
       with module Parameters := Parameters
       with type 'a listing := 'a listing
       with type _ call :=
-            ?param_list_override:
-              ((string * string list) list -> (string * string list) list)
+            ?param_list_override:((string * string list) list
+                                  -> (string * string list) list)
             -> Connection.t
             -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 end

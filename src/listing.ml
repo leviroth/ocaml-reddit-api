@@ -1,12 +1,12 @@
 open! Core
 
-type t =
-  { children : Thing.t list
+type 'a t =
+  { children : 'a list
   ; after : Fullname.t option
   }
 [@@deriving sexp, fields]
 
-let of_json json =
+let of_json convert_element json =
   let data =
     match json with
     | `Assoc list ->
@@ -19,7 +19,9 @@ let of_json json =
           "Expected JSON map when creating [Listing.t]" (json : Json_derivers.Yojson.t)]
   in
   let children =
-    Map.find_exn data "children" |> Yojson.Safe.Util.to_list |> List.map ~f:Thing.of_json
+    Map.find_exn data "children"
+    |> Yojson.Safe.Util.to_list
+    |> List.map ~f:convert_element
   in
   let after =
     let open Option.Let_syntax in
