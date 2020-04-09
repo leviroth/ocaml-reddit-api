@@ -78,9 +78,6 @@ module Parameters = struct
     type t =
       | Link of { url : string }
       | Self of Self_post_body.t
-      | Image
-      | Video
-      | Videogif
     [@@deriving sexp]
 
     let params_of_t t =
@@ -94,8 +91,6 @@ module Parameters = struct
               | Richtext_json json -> Json.to_string json)
             ] )
         ]
-      (* TODO Should we disallow these? *)
-      | Image | Video | Videogif -> assert false
     ;;
   end
 

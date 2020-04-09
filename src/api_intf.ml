@@ -42,9 +42,6 @@ module type S = sig
       type t =
         | Link of { url : string }
         | Self of Self_post_body.t
-        | Image
-        | Video
-        | Videogif
       [@@deriving sexp]
     end
 
