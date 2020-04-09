@@ -645,8 +645,16 @@ module With_continuations = struct
   let lock_and_unlock k = simple_toggle' "lock" k
   let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
 
-  (* TODO: mutex *)
-  let more_children k ?id ?limit_children ~link:link_id ~children ~sort =
+  let more_children
+      k
+      ?id
+      ?limit_children
+      ~link:link_id
+      ~children
+      ~sort
+      ?param_list_override
+      connection
+    =
     let endpoint = "/api/morechildren" in
     let link_fullname : Fullname.t = `Link link_id in
     let params =
@@ -660,7 +668,9 @@ module With_continuations = struct
         ; required' Comment_sort.to_string "sort" sort
         ]
     in
-    get k ~endpoint ~params
+    let sequencer = Connection.more_children_sequencer connection in
+    Throttle.enqueue sequencer (fun () ->
+        get k ~endpoint ~params ?param_list_override connection)
   ;;
 
   let report

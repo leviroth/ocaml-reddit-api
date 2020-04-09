@@ -263,6 +263,7 @@ type t =
   ; rate_limiter : Rate_limiter.t
   ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
   ; time_source : Time_source.t
+  ; more_children_sequencer : unit Sequencer.t
   }
 [@@deriving sexp_of]
 
@@ -271,6 +272,7 @@ let create_internal cohttp_client_wrapper config ~time_source =
   ; rate_limiter = Rate_limiter.create ()
   ; cohttp_client_wrapper
   ; time_source
+  ; more_children_sequencer = Sequencer.create ()
   }
 ;;
 
@@ -280,6 +282,8 @@ let create config =
     config
     ~time_source:(Time_source.wall_clock ())
 ;;
+
+let more_children_sequencer t = t.more_children_sequencer
 
 let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
   Auth.with_t t.auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
