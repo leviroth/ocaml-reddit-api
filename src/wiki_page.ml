@@ -2,7 +2,7 @@ open! Core
 
 module Id = struct
   type t =
-    { subreddit : Subreddit_name.t
+    { subreddit : Subreddit_name.t option
     ; page : string
     }
   [@@deriving sexp]

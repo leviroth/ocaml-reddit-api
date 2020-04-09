@@ -1516,14 +1516,14 @@ module With_continuations = struct
       k
       ~relationship
       ~username
-      ~subreddit
       ~duration
+      ?subreddit
       ?note
       ?ban_reason
       ?ban_message
       ?ban_context
     =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/friend" in
     let params =
       Relationship.Duration.params_of_t duration
       @ Relationship.params_of_t relationship
@@ -1543,8 +1543,8 @@ module With_continuations = struct
     post k ~endpoint ~params
   ;;
 
-  let remove_relationship ~relationship ~username ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/unfriend" subreddit in
+  let remove_relationship k ~relationship ~username ?subreddit =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/unfriend" in
     let params =
       let open Param_dsl in
       combine
@@ -1553,7 +1553,7 @@ module With_continuations = struct
         ; required' username_ "name" username
         ]
     in
-    post ~endpoint ~params
+    post k ~endpoint ~params
   ;;
 
   let add_or_remove_wiki_editor
@@ -1561,7 +1561,7 @@ module With_continuations = struct
       ~page:({ subreddit; page } : Wiki_page.Id.t)
       ~user
     =
-    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/alloweditor/act" subreddit in
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/alloweditor/act" in
     let params =
       let open Param_dsl in
       combine
@@ -1580,7 +1580,7 @@ module With_continuations = struct
       ~content
       ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
-    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/edit" subreddit in
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/edit" in
     let params =
       let open Param_dsl in
       combine
@@ -1597,7 +1597,7 @@ module With_continuations = struct
       ~page:({ subreddit; page } : Wiki_page.Id.t)
       ~revision
     =
-    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/hide" subreddit in
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/hide" in
     let params =
       let open Param_dsl in
       combine [ required' string "page" page; required' string "revision" revision ]
@@ -1606,7 +1606,7 @@ module With_continuations = struct
   ;;
 
   let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
-    let endpoint = sprintf !"%{Subreddit_name}/api/wiki/revert" subreddit in
+    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/revert" in
     let params =
       let open Param_dsl in
       combine [ required' string "page" page; required' string "revision" revision ]
@@ -1620,7 +1620,9 @@ module With_continuations = struct
       ?subreddit_detail
       ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/discussions/%s" subreddit page in
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/wiki/discussions/%s" page)
+    in
     let params =
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
@@ -1630,13 +1632,13 @@ module With_continuations = struct
 
   let wiki_discussions k = with_listing_params (wiki_discussions' k)
 
-  let wiki_pages ~subreddit =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/pages" subreddit in
-    get ~endpoint ~params:[]
+  let wiki_pages k ?subreddit =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/pages" in
+    get k ~endpoint ~params:[]
   ;;
 
-  let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ~subreddit =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions" subreddit in
+  let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ?subreddit =
+    let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
     let params =
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
@@ -1652,7 +1654,9 @@ module With_continuations = struct
       ?subreddit_detail
       ~page:({ subreddit; page } : Wiki_page.Id.t)
     =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/revisions/%s" subreddit page in
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/wiki/revisions/%s" page)
+    in
     let params =
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
@@ -1663,7 +1667,9 @@ module With_continuations = struct
   let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
 
   let wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
+    in
     get ~endpoint ~params:[]
   ;;
 
@@ -1672,7 +1678,9 @@ module With_continuations = struct
       ~page:({ subreddit; page } : Wiki_page.Id.t)
       ~permission_level
     =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/settings/%s" subreddit page in
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
+    in
     let params =
       let open Param_dsl in
       combine
@@ -1685,7 +1693,7 @@ module With_continuations = struct
   ;;
 
   let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
-    let endpoint = sprintf !"%{Subreddit_name}/wiki/%s" subreddit page in
+    let endpoint = optional_subreddit_endpoint ?subreddit (sprintf "/wiki/%s" page) in
     let v1, v2 = Option.value compare_revisions ~default:(None, None) in
     let params =
       let open Param_dsl in

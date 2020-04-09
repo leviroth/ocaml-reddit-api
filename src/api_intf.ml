@@ -869,8 +869,8 @@ module type S = sig
   val add_relationship
     :  relationship:Relationship.t
     -> username:Username.t
-    -> subreddit:Subreddit_name.t
     -> duration:Relationship.Duration.t
+    -> ?subreddit:Subreddit_name.t
     -> ?note:string
     -> ?ban_reason:string
     -> ?ban_message:string
@@ -880,7 +880,7 @@ module type S = sig
   val remove_relationship
     :  relationship:Relationship.t
     -> username:Username.t
-    -> subreddit:Subreddit_name.t
+    -> ?subreddit:Subreddit_name.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   (** Wiki *)
@@ -915,12 +915,12 @@ module type S = sig
       listing
 
   val wiki_pages
-    :  subreddit:Subreddit_name.t
+    :  ?subreddit:Subreddit_name.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val subreddit_wiki_revisions
     : (?subreddit_detail:string
-       -> subreddit:Subreddit_name.t
+       -> ?subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
