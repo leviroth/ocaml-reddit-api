@@ -872,7 +872,7 @@ module type S = sig
     -> ?ban_reason:string
     -> ?ban_message:string
     -> ?ban_context:Fullname.t
-    -> unit call
+    -> (unit, string list list) Result.t call
 
   val remove_relationship
     :  relationship:Relationship.t
@@ -944,7 +944,7 @@ module type S = sig
 end
 
 module type Api = sig
-  include S with type 'a response := 'a Or_error.t
+  include S with type 'a response := 'a
 
   module Raw :
     S

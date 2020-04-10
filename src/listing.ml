@@ -14,40 +14,39 @@ type 'a t =
 [@@deriving sexp, fields]
 
 let of_json convert_element json =
-  let open Or_error.Let_syntax in
-  let fail s = error_s [%message s (json : Json.t)] in
-  let%bind assoc =
+  let fail s = raise_s [%message s (json : Json.t)] in
+  let assoc =
     match json with
-    | `Object list -> Ok list
+    | `Object list -> list
     | _ -> fail "Expected JSON map when creating [Listing.t]"
   in
-  let%bind data =
+  let data =
     match List.Assoc.find assoc "data" ~equal:String.equal with
-    | Some data -> Ok data
+    | Some data -> data
     | None -> fail "Missing field \"data\""
   in
-  let%bind data =
+  let data =
     match data with
-    | `Object list -> Ok list
+    | `Object list -> list
     | _ -> fail "Expected \"data\" to be an object"
   in
-  let%bind data =
+  let data =
     match String.Map.of_alist data with
-    | `Ok map -> Ok map
+    | `Ok map -> map
     | `Duplicate_key key -> fail (sprintf "Duplicate key: \"%s\"" key)
   in
-  let%bind children =
+  let children =
     match Map.find data "children" with
-    | Some (`Array l) -> Ok l
+    | Some (`Array l) -> l
     | Some _ -> fail "Expected \"children\" to be a list"
     | None -> fail "Missing key \"children\""
   in
-  let%bind children = List.map children ~f:convert_element |> Or_error.all in
-  let%bind after =
+  let children = List.map children ~f:convert_element in
+  let after =
     match Map.find data "after" with
-    | None -> Ok None
-    | Some (`String s) -> Ok (Some (Page_id.of_string s))
+    | None -> None
+    | Some (`String s) -> Some (Page_id.of_string s)
     | Some _ -> fail "Expected \"after\" to be a string"
   in
-  return { children; after }
+  { children; after }
 ;;

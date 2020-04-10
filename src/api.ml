@@ -1850,59 +1850,35 @@ struct
 end
 
 module Typed = struct
-  open Deferred.Or_error.Let_syntax
-
   let result_of_response response =
-    let%bind response, body = Deferred.ok response in
+    let%bind response, body = response in
     match Cohttp.Response.status response with
     | #Cohttp.Code.success_status -> return (response, body)
     | _ ->
-      Deferred.Or_error.error_s
+      raise_s
         [%message
           "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
   ;;
 
   include Make (struct
-    type default_output = (Cohttp.Response.t * Cohttp_async.Body.t, Error.t) Result.t
+    type default_output = Cohttp.Response.t * Cohttp_async.Body.t
 
     let default_transformation = result_of_response
   end)
 
   open With_continuations
 
-  let handle_json_response' f response =
-    let%bind _response, body = result_of_response response in
-    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
-    let%bind json = Json.of_string body_string |> Deferred.return in
-    f json
-  ;;
-
   let handle_json_response f response =
-    let get_json body_string =
-      match%bind.Deferred
-        let%bind json = Json.of_string body_string |> Deferred.return in
-        f json |> Deferred.return
-      with
-      | Ok x -> return x
-      | Error error ->
-        let%bind response, body = Deferred.ok response in
-        Error.of_list
-          [ error
-          ; Error.create_s
-              [%message "" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
-          ]
-        |> Deferred.Or_error.fail
-    in
     let%bind _response, body = result_of_response response in
-    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
-    get_json body_string
+    let%bind body_string = Cohttp_async.Body.to_string body in
+    Json.of_string body_string |> f |> return
   ;;
 
   let link_of_json json =
     let thing = Thing.of_json json in
     match thing with
-    | `Link _ as thing -> Ok thing
-    | _ -> error_s [%message "Expected link" (thing : Thing.t)]
+    | `Link _ as thing -> thing
+    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
   ;;
 
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
@@ -1919,81 +1895,53 @@ module Typed = struct
       (get_listing (fun json ->
            let thing = Thing.of_json json in
            match Thing.of_json json with
-           | (`Link _ | `Comment _ | `Subreddit _) as thing -> Ok thing
-           | _ -> error_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
+           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
+           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
 
   let add_comment =
     add_comment
       (handle_json_response (fun json ->
-           let%bind.Or_error thing =
-             let open Or_error.Monad_infix in
+           let thing =
              Json.find json ~key:"json"
-             >>= Json.find ~key:"data"
-             >>= Json.find ~key:"things"
-             >>= Json.index ~index:0
-             >>| Thing.of_json
+             |> Json.find ~key:"data"
+             |> Json.find ~key:"things"
+             |> Json.index ~index:0
+             |> Thing.of_json
            in
            match thing with
-           | `Comment _ as thing -> Ok thing
-           | _ -> Or_error.error_s [%message "Expected comment" (thing : Thing.t)]))
+           | `Comment _ as thing -> thing
+           | _ -> raise_s [%message "Expected comment" (thing : Thing.t)]))
   ;;
 
   let distinguish =
     distinguish
       (handle_json_response (fun json ->
-           let%bind.Or_error thing =
-             let open Or_error.Monad_infix in
+           let thing =
              Json.find json ~key:"json"
-             >>= Json.find ~key:"data"
-             >>= Json.find ~key:"things"
-             >>= Json.index ~index:0
-             >>| Thing.of_json
+             |> Json.find ~key:"data"
+             |> Json.find ~key:"things"
+             |> Json.index ~index:0
+             |> Thing.of_json
            in
            match thing with
-           | (`Comment _ | `Link _) as thing -> Ok thing
-           | _ -> Or_error.error_s [%message "Expected comment or link" (thing : Thing.t)]))
+           | (`Comment _ | `Link _) as thing -> thing
+           | _ -> raise_s [%message "Expected comment or link" (thing : Thing.t)]))
   ;;
 
   let extract_errors json =
-    let open Or_error.Let_syntax in
     Json.find json ~key:"json"
-    >>= Json.find ~key:"errors"
-    >>= Json.get_array
-    >>| List.map ~f:(fun l ->
-            Json.get_array l
-            >>| List.map ~f:Json.get_string
-            >>| Or_error.all
-            |> Or_error.join)
-    >>| Or_error.all
-    |> Or_error.join
+    |> Json.find ~key:"errors"
+    |> Json.get_array
+    |> List.map ~f:(fun l -> Json.get_array l |> List.map ~f:Json.get_string)
   ;;
 
   let add_relationship =
-    let f response =
-      let extract_from_json json =
-        let%bind errors =
-          match extract_errors json with
-          | Ok errors -> return errors
-          | Error error ->
-            let%bind response, body = Deferred.ok response in
-            Error.of_list
-              [ error
-              ; Error.create_s
-                  [%message
-                    "" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
-              ]
-            |> Deferred.Or_error.fail
-        in
-        match errors with
-        | [] -> return ()
-        | l ->
-          Deferred.Or_error.error_s
-            [%message "Reddit reported errors" (l : string list list)]
-      in
-      handle_json_response' extract_from_json response
-    in
-    add_relationship f
+    add_relationship
+      (handle_json_response (fun json ->
+           match extract_errors json with
+           | [] -> Ok ()
+           | l -> Error l))
   ;;
 
   let wiki_page = wiki_page (handle_json_response Wiki_page.of_json)

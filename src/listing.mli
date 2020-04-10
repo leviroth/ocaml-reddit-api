@@ -11,6 +11,6 @@ end
 
 type 'child t [@@deriving sexp]
 
-val of_json : (Json.t -> 'child Or_error.t) -> Json.t -> 'child t Or_error.t
+val of_json : (Json.t -> 'child) -> Json.t -> 'child t
 val children : 'child t -> 'child list
 val after : _ t -> Page_id.t option

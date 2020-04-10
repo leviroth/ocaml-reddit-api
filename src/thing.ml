@@ -47,12 +47,12 @@ module M = struct
 
   module Id36 = Id36
 
-  let of_json = Json.to_map_exn
+  let of_json = Json.to_map
   let to_json t = `Object (Map.to_alist t)
   let get_field = Map.find
 
   let id36 t =
-    get_field t "id" |> Option.map ~f:(Fn.compose Id36.of_string Json.get_string_exn)
+    get_field t "id" |> Option.map ~f:(Fn.compose Id36.of_string Json.get_string)
   ;;
 end
 
@@ -131,9 +131,9 @@ end
 include Per_kind (Projectors.Ident)
 
 let of_json json =
-  let map = Json.to_map_exn json in
-  let kind = Map.find_exn map "kind" |> Json.get_string_exn |> Thing_kind.of_string in
-  let data = Map.find_exn map "data" |> Json.to_map_exn in
+  let map = Json.to_map json in
+  let kind = Map.find_exn map "kind" |> Json.get_string |> Thing_kind.of_string in
+  let data = Map.find_exn map "data" |> Json.to_map in
   match kind with
   | Comment -> `Comment data
   | User -> `User data
@@ -180,13 +180,13 @@ let to_json t =
 
 let username_of_field t ~field_name =
   let open Option.Monad_infix in
-  get_field t field_name >>| Json.get_string_exn >>| Username.of_string
+  get_field t field_name >>| Json.get_string >>| Username.of_string
 ;;
 
 let time_of_field t ~field_name =
   let open Option.Monad_infix in
   get_field t field_name
-  >>| Json.get_string_exn
+  >>| Json.get_string
   >>| Float.of_string
   >>| Time.Span.of_sec
   >>| Time.of_span_since_epoch

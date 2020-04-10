@@ -80,15 +80,13 @@ module Auth = struct
           ]
     in
     let%bind response_string = Cohttp_async.Body.to_string body in
-    let response_json = Json.of_string_exn response_string in
+    let response_json = Json.of_string response_string in
     let access_token : Access_token.t =
-      let token =
-        Json.find_exn response_json ~key:"access_token" |> Json.get_string_exn
-      in
+      let token = Json.find response_json ~key:"access_token" |> Json.get_string in
       let expiration =
         let additional_seconds =
-          Json.find_exn response_json ~key:"expires_in"
-          |> Json.get_int_exn
+          Json.find response_json ~key:"expires_in"
+          |> Json.get_int
           |> Time_ns.Span.of_int_sec
         in
         Time_ns.add (Time_source.now time_source) additional_seconds
