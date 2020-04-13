@@ -889,11 +889,11 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val edit_wiki_page
-    :  ?previous:string
+    :  ?previous:Uuid.t
     -> ?reason:string
     -> content:string
     -> page:Wiki_page.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> (unit, Wiki_page.Edit_conflict.t) Result.t call
 
   val toggle_wiki_revision_visibility
     :  page:Wiki_page.Id.t

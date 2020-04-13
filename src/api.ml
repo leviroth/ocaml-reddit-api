@@ -1591,7 +1591,7 @@ module With_continuations = struct
       combine
         [ required' string "content" content
         ; required' string "page" page
-        ; optional' string "previous" previous
+        ; optional' Uuid.to_string "previous" previous
         ; optional' string "reason" reason
         ]
     in
@@ -1945,6 +1945,19 @@ module Typed = struct
   ;;
 
   let wiki_page = wiki_page (handle_json_response Wiki_page.of_json)
+
+  let edit_wiki_page =
+    edit_wiki_page (fun response ->
+        let%bind response, body = response in
+        let%bind json = Cohttp_async.Body.to_string body >>| Json.of_string in
+        match Cohttp.Response.status response, json with
+        | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
+        | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
+        | _, _ ->
+          raise_s
+            [%message
+              "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)])
+  ;;
 end
 
 module Raw = Make (struct

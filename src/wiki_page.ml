@@ -50,3 +50,15 @@ let revision_reason t =
   | `String s -> Some s
   | json -> raise_s [%message "Expected nullable JSON string" (json : Json.t)]
 ;;
+
+module Edit_conflict = struct
+  type t = Json.t String.Map.t [@@deriving sexp]
+
+  let of_json = Json.to_map
+  let get_string_field t ~field = Map.find_exn t field |> Json.get_string
+  let diff = get_string_field ~field:"diffcontent"
+  let message = get_string_field ~field:"message"
+  let new_content = get_string_field ~field:"newcontent"
+  let new_revision t = get_string_field t ~field:"newrevision" |> Uuid.of_string
+  let reason = get_string_field ~field:"reason"
+end
