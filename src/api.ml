@@ -477,20 +477,6 @@ module Parameters = struct
   end
 end
 
-let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
-  let params = ("raw_json", [ "1" ]) :: params in
-  let params = param_list_override params in
-  let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
-  match http_verb with
-  | `GET ->
-    let uri = Uri.add_query_params uri params in
-    Connection.get connection uri |> k
-  | `POST -> Connection.post_form connection uri ~params |> k
-;;
-
-let get = call_api ~http_verb:`GET
-let post = call_api ~http_verb:`POST
-
 module Param_dsl = struct
   type t = (string * string list) list
 
@@ -516,6 +502,20 @@ module Param_dsl = struct
   let json = Json.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
+
+let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+  let params = ("raw_json", [ "1" ]) :: params in
+  let params = param_list_override params in
+  let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
+  match http_verb with
+  | `GET ->
+    let uri = Uri.add_query_params uri params in
+    Connection.get connection uri |> k
+  | `POST -> Connection.post_form connection uri ~params |> k
+;;
+
+let get = call_api ~http_verb:`GET
+let post = call_api ~http_verb:`POST
 
 let optional_subreddit_endpoint ?subreddit suffix =
   let subreddit_part =
