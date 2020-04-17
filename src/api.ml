@@ -503,53 +503,87 @@ module Param_dsl = struct
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
-let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
-  let params = ("raw_json", [ "1" ]) :: params in
-  let params = param_list_override params in
-  let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
-  match http_verb with
-  | `GET ->
-    let uri = Uri.add_query_params uri params in
-    Connection.get connection uri |> k
-  | `POST -> Connection.post_form connection uri ~params |> k
-;;
+module Make (Output : sig
+  type 'a t
 
-let get = call_api ~http_verb:`GET
-let post = call_api ~http_verb:`POST
+  val finalize
+    :  (Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Or_error.t)
+    -> Cohttp.Response.t * Cohttp_async.Body.t
+    -> 'a t Deferred.t
+end) =
+struct
+  let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+    let k = Output.finalize k in
+    let params = ("raw_json", [ "1" ]) :: params in
+    let params = param_list_override params in
+    let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
+    match http_verb with
+    | `GET ->
+      let uri = Uri.add_query_params uri params in
+      Connection.get connection uri >>= k
+    | `POST -> Connection.post_form connection uri ~params >>= k
+  ;;
 
-let optional_subreddit_endpoint ?subreddit suffix =
-  let subreddit_part =
-    Option.value_map subreddit ~default:"" ~f:(sprintf !"/r/%{Subreddit_name}")
-  in
-  sprintf !"%s%s" subreddit_part suffix
-;;
+  let get = call_api ~http_verb:`GET
+  let post = call_api ~http_verb:`POST
 
-let simple_post_fullnames_as_id endpoint ~fullnames =
-  let endpoint = sprintf "/api/%s" endpoint in
-  post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames)
-;;
+  let optional_subreddit_endpoint ?subreddit suffix =
+    let subreddit_part =
+      Option.value_map subreddit ~default:"" ~f:(sprintf !"/r/%{Subreddit_name}")
+    in
+    sprintf !"%s%s" subreddit_part suffix
+  ;;
 
-let simple_post_fullname_as_id ~fullname =
-  simple_post_fullnames_as_id ~fullnames:[ fullname ]
-;;
+  let simple_post_fullnames_as_id endpoint ~fullnames =
+    let endpoint = sprintf "/api/%s" endpoint in
+    post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames)
+  ;;
 
-let simple_toggle verb k =
-  simple_post_fullnames_as_id verb k, simple_post_fullnames_as_id ("un" ^ verb) k
-;;
+  let simple_post_fullname_as_id ~fullname =
+    simple_post_fullnames_as_id ~fullnames:[ fullname ]
+  ;;
 
-let simple_toggle' verb k =
-  simple_post_fullname_as_id verb k, simple_post_fullname_as_id ("un" ^ verb) k
-;;
+  let simple_toggle verb k =
+    simple_post_fullnames_as_id verb k, simple_post_fullnames_as_id ("un" ^ verb) k
+  ;;
 
-let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
+  let simple_toggle' verb k =
+    simple_post_fullname_as_id verb k, simple_post_fullname_as_id ("un" ^ verb) k
+  ;;
 
-module With_continuations = struct
+  let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
+
   open Parameters
+  open Deferred.Or_error.Let_syntax
 
-  let me = get ~endpoint:"/api/v1/me" ~params:[]
-  let karma = get ~endpoint:"/api/v1/me/karma" ~params:[]
-  let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[]
-  let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[]
+  let result_of_response (response, body) =
+    match Cohttp.Response.status response with
+    | #Cohttp.Code.success_status -> return (response, body)
+    | _ ->
+      raise_s
+        [%message
+          "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
+  ;;
+
+  let handle_json_response f response =
+    let%bind _response, body = result_of_response response in
+    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
+    Json.of_string body_string |> f |> return
+  ;;
+
+  let link_of_json json =
+    let thing = Thing.of_json json in
+    match thing with
+    | `Link _ as thing -> thing
+    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
+  ;;
+
+  let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
+  let get_link_listing = get_listing link_of_json
+  let me = get ~endpoint:"/api/v1/me" ~params:[] return
+  let karma = get ~endpoint:"/api/v1/me/karma" ~params:[] return
+  let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] return
+  let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[] return
 
   let with_listing_params k ?pagination ?count ?limit ?show_all =
     let listing_params =
@@ -578,12 +612,12 @@ module With_continuations = struct
   ;;
 
   let prefs endpoint k = with_listing_params (prefs' endpoint k)
-  let friends k = prefs "friends" k
-  let blocked k = prefs "blocked" k
-  let messaging k = prefs "messaging" k
-  let trusted k = prefs "trusted" k
+  let friends = prefs "friends" return
+  let blocked = prefs "blocked" return
+  let messaging = prefs "messaging" return
+  let trusted = prefs "trusted" return
 
-  let add_comment k ?return_rtjson ?richtext_json ~parent ~text =
+  let add_comment ?return_rtjson ?richtext_json ~parent ~text =
     let endpoint = "/api/comment" in
     let params =
       let open Param_dsl in
@@ -595,7 +629,20 @@ module With_continuations = struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post k ~endpoint ~params
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           let thing =
+             Json.find json ~key:"json"
+             |> Json.find ~key:"data"
+             |> Json.find ~key:"things"
+             |> Json.index ~index:0
+             |> Thing.of_json
+           in
+           match thing with
+           | `Comment _ as thing -> thing
+           | _ -> raise_s [%message "Expected comment" (thing : Thing.t)]))
   ;;
 
   let delete ~fullname =
@@ -604,10 +651,10 @@ module With_continuations = struct
       let open Param_dsl in
       Param_dsl.combine [ required' fullname_ "id" fullname ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let edit k ?return_rtjson ?richtext_json ~fullname ~text =
+  let edit ?return_rtjson ?richtext_json ~fullname ~text =
     let endpoint = "/api/editusertext" in
     let params =
       let open Param_dsl in
@@ -619,7 +666,7 @@ module With_continuations = struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let follow ~link ~follow =
@@ -628,25 +675,31 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ required' fullname_ "fullname" link; required' bool "follow" follow ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let hide_and_unhide k =
-    let hide', unhide' = simple_toggle "hide" k in
+  let hide, unhide =
+    let hide', unhide' = simple_toggle "hide" return in
     (fun ~links -> hide' ~fullnames:links), fun ~links -> unhide' ~fullnames:links
   ;;
 
-  let info k ?subreddit query =
+  let info ?subreddit query =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
     let params = Info_query.params_of_t query in
-    get k ~endpoint ~params
+    get
+      ~endpoint
+      ~params
+      (get_listing (fun json ->
+           let thing = Thing.of_json json in
+           match Thing.of_json json with
+           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
+           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
 
-  let lock_and_unlock k = simple_toggle' "lock" k
-  let mark_and_unmark_nsfw k = simple_toggle' "marknsfw" k
+  let lock, unlock = simple_toggle' "lock" return
+  let mark_nsfw, unmark_nsfw = simple_toggle' "marknsfw" return
 
   let more_children
-      k
       ?id
       ?limit_children
       ~link:link_id
@@ -670,11 +723,10 @@ module With_continuations = struct
     in
     let sequencer = Connection.more_children_sequencer connection in
     Throttle.enqueue sequencer (fun () ->
-        get k ~endpoint ~params ?param_list_override connection)
+        get return ~endpoint ~params ?param_list_override connection)
   ;;
 
   let report
-      k
       ?from_modmail
       ?from_help_desk
       ?additional_info
@@ -703,31 +755,31 @@ module With_continuations = struct
         ; optional' bool "from_help_desk" from_help_desk
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let report_award ~award_id =
     let endpoint = "/api/report_award" in
     let params = [ "award_id", [ award_id ] ] in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let save k ?category ~fullname =
+  let save ?category ~fullname =
     let endpoint = "/api/save" in
     let params =
       let open Param_dsl in
       combine [ required' fullname_ "id" fullname; optional' string "category" category ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let unsave ~fullname =
     let endpoint = "/api/save" in
     let params = [ "id", [ Fullname.to_string fullname ] ] in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[]
+  let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[] return
 
   let send_replies ~fullname ~enabled =
     let endpoint = "/api/sendreplies" in
@@ -735,7 +787,7 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ required' fullname_ "id" fullname; required' bool "state" enabled ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let set_contest_mode ~fullname ~enabled =
@@ -745,10 +797,10 @@ module With_continuations = struct
       combine
         [ api_type; required' fullname_ "id" fullname; required' bool "state" enabled ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let set_subreddit_sticky k ?to_profile ~fullname ~sticky_state =
+  let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
     let endpoint = "/api/set_subreddit_sticky" in
     let params =
       let open Param_dsl in
@@ -759,7 +811,7 @@ module With_continuations = struct
         ; optional' bool "to_profile" to_profile
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let set_suggested_sort ~fullname ~sort =
@@ -775,10 +827,10 @@ module With_continuations = struct
             (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank")
         ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let spoiler_and_unspoiler k = simple_toggle' "spoiler" k
+  let spoiler, unspoiler = simple_toggle' "spoiler" return
 
   let store_visits ~links =
     let endpoint = "/api/store_visits" in
@@ -786,11 +838,10 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ required Fullname.to_string "links" links ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let submit
-      k
       ?ad
       ?nsfw
       ?resubmit
@@ -828,10 +879,10 @@ module With_continuations = struct
         ; optional' string "event_tz" event_tz
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let vote k ?rank ~direction ~fullname =
+  let vote ?rank ~direction ~fullname =
     let endpoint = "/api/vote" in
     let params =
       let open Param_dsl in
@@ -841,12 +892,12 @@ module With_continuations = struct
         ; optional' int "rank" rank
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[]
+  let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
 
-  let best' k ~listing_params ?include_categories ?subreddit_detail =
+  let best' ~listing_params ?include_categories ?subreddit_detail =
     let endpoint = "/best" in
     let params =
       let open Param_dsl in
@@ -856,10 +907,10 @@ module With_continuations = struct
         ; optional' bool "sr_detail" subreddit_detail
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let best k = with_listing_params (best' k)
+  let best = with_listing_params best'
 
   let by_id ~fullnames =
     let endpoint =
@@ -867,11 +918,10 @@ module With_continuations = struct
       |> String.concat ~sep:","
       |> sprintf "/by_id/%s"
     in
-    get ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
   let comments
-      k
       ?subreddit
       ?comment
       ?context
@@ -903,10 +953,10 @@ module With_continuations = struct
         ; optional' int "truncate" truncate
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let duplicates' k ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
+  let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
     let endpoint = sprintf !"/duplicates/%{Link.Id36}" link in
     let params =
       let open Param_dsl in
@@ -917,14 +967,13 @@ module With_continuations = struct
         ; include_optional Duplicate_sort.params_of_t sort
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params get_link_listing
   ;;
 
-  let duplicates k = with_listing_params (duplicates' k)
+  let duplicates = with_listing_params duplicates'
 
   let basic_post_listing'
       endpoint_part
-      k
       ~listing_params
       ?include_categories
       ?subreddit_detail
@@ -941,48 +990,48 @@ module With_continuations = struct
         ; extra_params
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params get_link_listing
   ;;
 
-  let basic_post_listing endpoint k =
-    with_listing_params (basic_post_listing' endpoint k ~extra_params:[])
+  let basic_post_listing endpoint =
+    with_listing_params (basic_post_listing' endpoint ~extra_params:[])
   ;;
 
-  let hot' k ~listing_params ?location =
+  let hot' ~listing_params ?location =
     let extra_params =
       let open Param_dsl in
       optional' string "location" location
     in
-    basic_post_listing' "/hot" k ~extra_params ~listing_params
+    basic_post_listing' "/hot" ~extra_params ~listing_params
   ;;
 
-  let hot k = with_listing_params (hot' k)
-  let new_ k = basic_post_listing "/new" k
-  let rising k = basic_post_listing "/rising" k
+  let hot = with_listing_params hot'
+  let new_ = basic_post_listing "/new"
+  let rising = basic_post_listing "/rising"
 
-  let top' k ~listing_params ?since =
+  let top' ~listing_params ?since =
     let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-    basic_post_listing' "/top" k ~extra_params ~listing_params
+    basic_post_listing' "/top" ~extra_params ~listing_params
   ;;
 
-  let top k = with_listing_params (top' k)
+  let top = with_listing_params top'
 
-  let controversial' k ~listing_params ?since =
+  let controversial' ~listing_params ?since =
     let extra_params = Param_dsl.include_optional Historical_span.params_of_t since in
-    basic_post_listing' "/controversial" k ~extra_params ~listing_params
+    basic_post_listing' "/controversial" ~extra_params ~listing_params
   ;;
 
-  let controversial k = with_listing_params (controversial' k)
+  let controversial = with_listing_params controversial'
 
-  let random k ?subreddit =
+  let random ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-    get k ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
-  let block = simple_post_fullname_as_id "block"
-  let collapse_and_uncollapse_message k = simple_toggle "collapse_message" k
+  let block = simple_post_fullname_as_id "block" return
+  let collapse_message, uncollapse_message = simple_toggle "collapse_message" return
 
-  let compose_message k ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+  let compose_message ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
     let endpoint = "/api/compose" in
     let params =
       let open Param_dsl in
@@ -995,16 +1044,15 @@ module With_continuations = struct
         ; required' string "text" text
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let delete_message = simple_post_fullname_as_id "del_msg"
-  let read_and_unread_message k = simple_toggle "read_message" k
-  let unblock_subreddit k = simple_post_fullnames_as_id "unblock_subreddit" k
+  let delete_message = simple_post_fullname_as_id "del_msg" return
+  let read_message, unread_message = simple_toggle "read_message" return
+  let unblock_subreddit = simple_post_fullnames_as_id "unblock_subreddit" return
 
   let message_listing'
       endpoint
-      k
       ~listing_params
       ?include_categories
       ?mid
@@ -1022,15 +1070,15 @@ module With_continuations = struct
         ; required bool "mark" mark_read
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let message_listing endpoint k = with_listing_params (message_listing' endpoint k)
-  let inbox k = message_listing "inbox" k
-  let unread k = message_listing "unread" k
-  let sent k = message_listing "sent" k
+  let message_listing endpoint = with_listing_params (message_listing' endpoint)
+  let inbox = message_listing "inbox"
+  let unread = message_listing "unread"
+  let sent = message_listing "sent"
 
-  let log' k ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
+  let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
     let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
     let params =
       let open Param_dsl in
@@ -1041,20 +1089,12 @@ module With_continuations = struct
         ; optional' string "type" type_
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let log k = with_listing_params (log' k)
+  let log = with_listing_params log'
 
-  let mod_listing'
-      k
-      ~listing_params
-      ?location
-      ?only
-      ?subreddit
-      ?subreddit_detail
-      ~endpoint
-    =
+  let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
     let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
     let params =
       let open Param_dsl in
@@ -1065,10 +1105,10 @@ module With_continuations = struct
         ; optional' string "location" location
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let mod_listing k = with_listing_params (mod_listing' k)
+  let mod_listing = with_listing_params mod_listing'
   let reports = mod_listing ~endpoint:"/reports"
   let spam = mod_listing ~endpoint:"/spam"
   let modqueue = mod_listing ~endpoint:"/modqueue"
@@ -1077,13 +1117,13 @@ module With_continuations = struct
 
   let accept_moderator_invite ~subreddit =
     let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in
-    post ~endpoint ~params:api_type
+    post ~endpoint ~params:api_type return
   ;;
 
-  let approve = simple_post_fullname_as_id "approve"
-  let remove = simple_post_fullname_as_id "remove"
+  let approve = simple_post_fullname_as_id "approve" return
+  let remove = simple_post_fullname_as_id "remove" return
 
-  let distinguish k ?sticky ~fullname ~how =
+  let distinguish ?sticky ~fullname ~how =
     let endpoint = "/api/distinguish" in
     let params =
       let open Param_dsl in
@@ -1093,21 +1133,36 @@ module With_continuations = struct
         ; optional' bool "sticky" sticky
         ]
     in
-    post k ~endpoint ~params
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           let thing =
+             Json.find json ~key:"json"
+             |> Json.find ~key:"data"
+             |> Json.find ~key:"things"
+             |> Json.index ~index:0
+             |> Thing.of_json
+           in
+           match thing with
+           | (`Comment _ | `Link _) as thing -> thing
+           | _ -> raise_s [%message "Expected comment or link" (thing : Thing.t)]))
   ;;
 
-  let ignore_and_unignore_reports k = simple_toggle' "ignore_reports" k
-  let leavecontributor = simple_post_fullname_as_id "leavecontributor"
-  let leavemoderator = simple_post_fullname_as_id "leavemoderator"
-  let mute_and_unmute_message_author k = simple_toggle' "mute_message_author" k
+  let ignore_reports, unignore_reports = simple_toggle' "ignore_reports" return
+  let leavecontributor = simple_post_fullname_as_id "leavecontributor" return
+  let leavemoderator = simple_post_fullname_as_id "leavemoderator" return
+
+  let mute_message_author, unmute_message_author =
+    simple_toggle' "mute_message_author" return
+  ;;
 
   let stylesheet ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
-    get ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
   let search'
-      k
       ~listing_params
       ?category
       ?include_facets
@@ -1142,14 +1197,13 @@ module With_continuations = struct
         ; restrict_param
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let search k = with_listing_params (search' k)
+  let search = with_listing_params search'
 
   let about_endpoint'
       endpoint
-      k
       ~listing_params
       ?include_categories
       ?subreddit_detail
@@ -1166,42 +1220,42 @@ module With_continuations = struct
         ; optional' username_ "user" user
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
-  let banned k = about_endpoint "banned" k
-  let muted k = about_endpoint "muted" k
-  let wiki_banned k = about_endpoint "wikibanned" k
-  let contributors k = about_endpoint "contributors" k
-  let wiki_contributors k = about_endpoint "wikicontributors" k
-  let moderators k = about_endpoint "moderators" k
+  let about_endpoint endpoint = with_listing_params (about_endpoint' endpoint)
+  let banned = about_endpoint "banned"
+  let muted = about_endpoint "muted"
+  let wiki_banned = about_endpoint "wikibanned"
+  let contributors = about_endpoint "contributors"
+  let wiki_contributors = about_endpoint "wikicontributors"
+  let moderators = about_endpoint "moderators"
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
     let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
     post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
   ;;
 
-  let delete_subreddit_banner k = removal_endpoints "delete_sr_banner" k
-  let delete_subreddit_header k = removal_endpoints "delete_sr_header" k
-  let delete_subreddit_icon k = removal_endpoints "delete_sr_icon" k
+  let delete_subreddit_banner = removal_endpoints "delete_sr_banner" return
+  let delete_subreddit_header = removal_endpoints "delete_sr_header" return
+  let delete_subreddit_icon = removal_endpoints "delete_sr_icon" return
 
   let delete_subreddit_image ~image_name =
     let extra_params = Param_dsl.(required' string "img_name" image_name) in
-    removal_endpoints "delete_sr_img" ~extra_params
+    removal_endpoints "delete_sr_img" ~extra_params return
   ;;
 
-  let recommended k ?over_18 ~subreddits =
+  let recommended ?over_18 ~subreddits =
     let endpoint =
       List.map subreddits ~f:Subreddit_name.to_string
       |> String.concat ~sep:","
       |> sprintf "/api/recommend/sr/%s"
     in
     let params = Param_dsl.(optional' bool "over_18" over_18) in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let search_subreddit_names k ?exact ?include_over_18 ?include_unadvertisable ~query =
+  let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
     let endpoint = "/api/search_reddit_names" in
     let params =
       let open Param_dsl in
@@ -1212,11 +1266,10 @@ module With_continuations = struct
         ; optional' bool "include_unadvertisable" include_unadvertisable
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
   let create_or_edit_subreddit
-      k
       ?comment_score_hide_mins
       ?wiki_edit_age
       ?wiki_edit_karma
@@ -1308,15 +1361,15 @@ module With_continuations = struct
         ; required' Wiki_mode.to_string "wikimode" wiki_mode
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let submit_text ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
-    get ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
-  let subreddit_autocomplete k ?include_over_18 ?include_profiles ~query =
+  let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
     let endpoint = "/api/subreddit_autocomplete" in
     let params =
       let open Param_dsl in
@@ -1326,11 +1379,10 @@ module With_continuations = struct
         ; required' string "query" query
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
   let subreddit_autocomplete_v2
-      k
       ?limit
       ?include_categories
       ?include_over_18
@@ -1348,10 +1400,10 @@ module With_continuations = struct
         ; required' string "query" query
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let subreddit_stylesheet k ?reason ~operation ~stylesheet_contents ~subreddit =
+  let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
     let params =
       let open Param_dsl in
@@ -1362,10 +1414,10 @@ module With_continuations = struct
         ; required' string "stylesheet_contents" stylesheet_contents
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let subscribe k ?skip_initial_defaults ~action =
+  let subscribe ?skip_initial_defaults ~action =
     let endpoint = "/api/subscribe" in
     let params =
       let open Param_dsl in
@@ -1374,10 +1426,10 @@ module With_continuations = struct
         ; optional' bool "skip_initial_defaults" skip_initial_defaults
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let upload_sr_img k ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
+  let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
     let params =
       let header = Bool.to_int header in
@@ -1391,10 +1443,10 @@ module With_continuations = struct
         ; required' Upload_type.to_string "upload_type" upload_type
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let search_profiles' k ~listing_params ?subreddit_detail ?sort ~query =
+  let search_profiles' ~listing_params ?subreddit_detail ?sort ~query =
     let endpoint = "/profiles/search" in
     let params =
       let open Param_dsl in
@@ -1405,14 +1457,14 @@ module With_continuations = struct
         ; optional' Subreddit_search_sort.to_string "sort" sort
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let search_profiles k = with_listing_params (search_profiles' k)
+  let search_profiles = with_listing_params search_profiles'
 
   let about ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
-    get ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
   let subreddit_about ?(params = []) ~subreddit endpoint =
@@ -1420,34 +1472,28 @@ module With_continuations = struct
     get ~endpoint ~params
   ;;
 
-  let subreddit_settings k ?created ?location =
+  let subreddit_settings ?created ?location =
     let params =
       let open Param_dsl in
       combine [ optional' bool "created" created; optional' string "location" location ]
     in
-    subreddit_about ~params "edit" k
+    subreddit_about ~params "edit" return
   ;;
 
-  let subreddit_rules k = subreddit_about "rules" k
-  let subreddit_traffic k = subreddit_about "traffic" k
-  let subreddit_sidebar k = subreddit_about "sidebar" k
+  let subreddit_rules = subreddit_about "rules" return
+  let subreddit_traffic = subreddit_about "traffic" return
+  let subreddit_sidebar = subreddit_about "sidebar" return
 
-  let sticky k ?number ~subreddit =
+  let sticky ?number ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
     let params =
       let open Param_dsl in
       combine [ optional' int "num" number ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let get_subreddits'
-      k
-      ~listing_params
-      ?include_categories
-      ?subreddit_detail
-      ~relationship
-    =
+  let get_subreddits' ~listing_params ?include_categories ?subreddit_detail ~relationship =
     let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
     let params =
       let open Param_dsl in
@@ -1457,12 +1503,12 @@ module With_continuations = struct
         ; optional' bool "include_categories" include_categories
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let get_subreddits k = with_listing_params (get_subreddits' k)
+  let get_subreddits = with_listing_params get_subreddits'
 
-  let search_subreddits' k ~listing_params ?show_users ?sort ?subreddit_detail ~query =
+  let search_subreddits' ~listing_params ?show_users ?sort ?subreddit_detail ~query =
     let endpoint = "/subreddits/search" in
     let params =
       let open Param_dsl in
@@ -1474,13 +1520,12 @@ module With_continuations = struct
         ; optional' Subreddit_search_sort.to_string "sort" sort
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let search_subreddits k = with_listing_params (search_subreddits' k)
+  let search_subreddits = with_listing_params search_subreddits'
 
   let list_subreddits'
-      k
       ~listing_params
       ?subreddit_detail
       ?include_categories
@@ -1497,12 +1542,12 @@ module With_continuations = struct
         ; optional' bool "show_users" show_users
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let list_subreddits k = with_listing_params (list_subreddits' k)
+  let list_subreddits = with_listing_params list_subreddits'
 
-  let list_user_subreddits' k ~listing_params ?subreddit_detail ?include_categories ~sort =
+  let list_user_subreddits' ~listing_params ?subreddit_detail ?include_categories ~sort =
     let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
     let params =
       let open Param_dsl in
@@ -1512,13 +1557,19 @@ module With_continuations = struct
         ; optional' bool "include_categories" include_categories
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let list_user_subreddits k = with_listing_params (list_user_subreddits' k)
+  let list_user_subreddits = with_listing_params list_user_subreddits'
+
+  let extract_errors json =
+    Json.find json ~key:"json"
+    |> Json.find ~key:"errors"
+    |> Json.get_array
+    |> List.map ~f:(fun l -> Json.get_array l |> List.map ~f:Json.get_string)
+  ;;
 
   let add_relationship
-      k
       ~relationship
       ~username
       ~duration
@@ -1545,10 +1596,16 @@ module With_continuations = struct
         ; optional' fullname_ "ban_context" ban_context
         ]
     in
-    post k ~endpoint ~params
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           match extract_errors json with
+           | [] -> Ok ()
+           | l -> Error l))
   ;;
 
-  let remove_relationship k ~relationship ~username ?subreddit =
+  let remove_relationship ~relationship ~username ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/unfriend" in
     let params =
       let open Param_dsl in
@@ -1558,7 +1615,7 @@ module With_continuations = struct
         ; required' username_ "name" username
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let add_or_remove_wiki_editor
@@ -1575,11 +1632,10 @@ module With_continuations = struct
         ; required' username_ "username" user
         ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let edit_wiki_page
-      k
       ?previous
       ?reason
       ~content
@@ -1595,7 +1651,17 @@ module With_continuations = struct
         ; optional' string "reason" reason
         ]
     in
-    post k ~endpoint ~params
+    post ~endpoint ~params (fun (response, body) ->
+        let%bind json =
+          Cohttp_async.Body.to_string body |> Deferred.ok >>| Json.of_string
+        in
+        match Cohttp.Response.status response, json with
+        | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
+        | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
+        | _, _ ->
+          raise_s
+            [%message
+              "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)])
   ;;
 
   let toggle_wiki_revision_visibility
@@ -1607,7 +1673,7 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ required' string "page" page; required' string "revision" revision ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
@@ -1616,11 +1682,10 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ required' string "page" page; required' string "revision" revision ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
   let wiki_discussions'
-      k
       ~listing_params
       ?subreddit_detail
       ~page:({ subreddit; page } : Wiki_page.Id.t)
@@ -1632,29 +1697,28 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let wiki_discussions k = with_listing_params (wiki_discussions' k)
+  let wiki_discussions = with_listing_params wiki_discussions'
 
-  let wiki_pages k ?subreddit =
+  let wiki_pages ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/pages" in
-    get k ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
-  let subreddit_wiki_revisions' k ~listing_params ?subreddit_detail ?subreddit =
+  let subreddit_wiki_revisions' ~listing_params ?subreddit_detail ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
     let params =
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let subreddit_wiki_revisions k = with_listing_params (subreddit_wiki_revisions' k)
+  let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'
 
   let wiki_page_revisions'
-      k
       ~listing_params
       ?subreddit_detail
       ~page:({ subreddit; page } : Wiki_page.Id.t)
@@ -1666,16 +1730,16 @@ module With_continuations = struct
       let open Param_dsl in
       combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params return
   ;;
 
-  let wiki_page_revisions k = with_listing_params (wiki_page_revisions' k)
+  let wiki_page_revisions = with_listing_params wiki_page_revisions'
 
   let wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
     in
-    get ~endpoint ~params:[]
+    get ~endpoint ~params:[] return
   ;;
 
   let set_wiki_permissions
@@ -1694,10 +1758,10 @@ module With_continuations = struct
         ; required' int "permlevel" permission_level
         ]
     in
-    post ~endpoint ~params
+    post ~endpoint ~params return
   ;;
 
-  let wiki_page k ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
+  let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint = optional_subreddit_endpoint ?subreddit (sprintf "/wiki/%s" page) in
     let v1, v2 = Option.value compare_revisions ~default:(None, None) in
     let params =
@@ -1708,262 +1772,27 @@ module With_continuations = struct
         ; optional' string "v2" v2
         ]
     in
-    get k ~endpoint ~params
+    get ~endpoint ~params (handle_json_response Wiki_page.of_json)
   ;;
 end
 
-module Make (M : sig
-  type default_output
+module Raw_param = struct
+  type _ t = Cohttp.Response.t * Cohttp_async.Body.t
 
-  val default_transformation
-    :  (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-    -> default_output Deferred.t
-end) =
-struct
-  open With_continuations
-
-  let me = me M.default_transformation
-  let karma = karma M.default_transformation
-  let trophies = trophies M.default_transformation
-  let needs_captcha = needs_captcha M.default_transformation
-  let friends = friends M.default_transformation
-  let blocked = blocked M.default_transformation
-  let messaging = messaging M.default_transformation
-  let trusted = trusted M.default_transformation
-  let add_comment = add_comment M.default_transformation
-  let delete = delete M.default_transformation
-  let edit = edit M.default_transformation
-  let follow = follow M.default_transformation
-  let hide, unhide = hide_and_unhide M.default_transformation
-  let lock, unlock = lock_and_unlock M.default_transformation
-  let mark_nsfw, unmark_nsfw = mark_and_unmark_nsfw M.default_transformation
-  let info = info M.default_transformation
-  let more_children = more_children M.default_transformation
-  let report = report M.default_transformation
-  let report_award = report_award M.default_transformation
-  let save = save M.default_transformation
-  let unsave = unsave M.default_transformation
-  let saved_categories = saved_categories M.default_transformation
-  let send_replies = send_replies M.default_transformation
-  let set_contest_mode = set_contest_mode M.default_transformation
-  let set_subreddit_sticky = set_subreddit_sticky M.default_transformation
-  let set_suggested_sort = set_suggested_sort M.default_transformation
-  let spoiler, unspoiler = spoiler_and_unspoiler M.default_transformation
-  let store_visits = store_visits M.default_transformation
-  let submit = submit M.default_transformation
-  let vote = vote M.default_transformation
-  let best = best M.default_transformation
-  let by_id = by_id M.default_transformation
-  let comments = comments M.default_transformation
-  let duplicates = duplicates M.default_transformation
-  let hot = hot M.default_transformation
-  let new_ = new_ M.default_transformation
-  let rising = rising M.default_transformation
-  let top = top M.default_transformation
-  let controversial = controversial M.default_transformation
-  let random = random M.default_transformation
-  let trending_subreddits = trending_subreddits M.default_transformation
-  let block = block M.default_transformation
-
-  let collapse_message, uncollapse_message =
-    collapse_and_uncollapse_message M.default_transformation
-  ;;
-
-  let compose_message = compose_message M.default_transformation
-  let delete_message = delete_message M.default_transformation
-  let read_message, unread_message = read_and_unread_message M.default_transformation
-  let unblock_subreddit = unblock_subreddit M.default_transformation
-  let inbox = inbox M.default_transformation
-  let unread = unread M.default_transformation
-  let sent = sent M.default_transformation
-  let log = log M.default_transformation
-  let reports = reports M.default_transformation
-  let spam = spam M.default_transformation
-  let modqueue = modqueue M.default_transformation
-  let unmoderated = unmoderated M.default_transformation
-  let edited = edited M.default_transformation
-  let accept_moderator_invite = accept_moderator_invite M.default_transformation
-  let approve = approve M.default_transformation
-  let remove = remove M.default_transformation
-  let distinguish = distinguish M.default_transformation
-
-  let ignore_reports, unignore_reports =
-    ignore_and_unignore_reports M.default_transformation
-  ;;
-
-  let leavecontributor = leavecontributor M.default_transformation
-  let leavemoderator = leavemoderator M.default_transformation
-
-  let mute_message_author, unmute_message_author =
-    mute_and_unmute_message_author M.default_transformation
-  ;;
-
-  let stylesheet = stylesheet M.default_transformation
-  let search = search M.default_transformation
-  let banned = banned M.default_transformation
-  let muted = muted M.default_transformation
-  let wiki_banned = wiki_banned M.default_transformation
-  let contributors = contributors M.default_transformation
-  let wiki_contributors = wiki_contributors M.default_transformation
-  let moderators = moderators M.default_transformation
-  let delete_subreddit_banner = delete_subreddit_banner M.default_transformation
-  let delete_subreddit_header = delete_subreddit_header M.default_transformation
-  let delete_subreddit_icon = delete_subreddit_icon M.default_transformation
-  let delete_subreddit_image = delete_subreddit_image M.default_transformation
-  let recommended = recommended M.default_transformation
-  let search_subreddit_names = search_subreddit_names M.default_transformation
-  let create_or_edit_subreddit = create_or_edit_subreddit M.default_transformation
-  let submit_text = submit_text M.default_transformation
-  let subreddit_autocomplete = subreddit_autocomplete M.default_transformation
-  let subreddit_autocomplete_v2 = subreddit_autocomplete_v2 M.default_transformation
-  let subreddit_stylesheet = subreddit_stylesheet M.default_transformation
-  let subscribe = subscribe M.default_transformation
-  let upload_sr_img = upload_sr_img M.default_transformation
-  let search_profiles = search_profiles M.default_transformation
-  let about = about M.default_transformation
-  let subreddit_settings = subreddit_settings M.default_transformation
-  let subreddit_rules = subreddit_rules M.default_transformation
-  let subreddit_traffic = subreddit_traffic M.default_transformation
-  let subreddit_sidebar = subreddit_sidebar M.default_transformation
-  let sticky = sticky M.default_transformation
-  let get_subreddits = get_subreddits M.default_transformation
-  let search_subreddits = search_subreddits M.default_transformation
-  let list_subreddits = list_subreddits M.default_transformation
-  let list_user_subreddits = list_user_subreddits M.default_transformation
-  let add_relationship = add_relationship M.default_transformation
-  let remove_relationship = remove_relationship M.default_transformation
-  let add_or_remove_wiki_editor = add_or_remove_wiki_editor M.default_transformation
-  let edit_wiki_page = edit_wiki_page M.default_transformation
-
-  let toggle_wiki_revision_visibility =
-    toggle_wiki_revision_visibility M.default_transformation
-  ;;
-
-  let revert_wiki_page = revert_wiki_page M.default_transformation
-  let wiki_discussions = wiki_discussions M.default_transformation
-  let wiki_pages = wiki_pages M.default_transformation
-  let subreddit_wiki_revisions = subreddit_wiki_revisions M.default_transformation
-  let wiki_page_revisions = wiki_page_revisions M.default_transformation
-  let wiki_permissions = wiki_permissions M.default_transformation
-  let set_wiki_permissions = set_wiki_permissions M.default_transformation
-  let wiki_page = wiki_page M.default_transformation
-end
-
-module Typed = struct
-  let result_of_response response =
-    let%bind response, body = response in
-    match Cohttp.Response.status response with
-    | #Cohttp.Code.success_status -> return (response, body)
-    | _ ->
-      raise_s
-        [%message
-          "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
-  ;;
-
-  include Make (struct
-    type default_output = Cohttp.Response.t * Cohttp_async.Body.t
-
-    let default_transformation = result_of_response
-  end)
-
-  open With_continuations
-
-  let handle_json_response f response =
-    let%bind _response, body = result_of_response response in
-    let%bind body_string = Cohttp_async.Body.to_string body in
-    Json.of_string body_string |> f |> return
-  ;;
-
-  let link_of_json json =
-    let thing = Thing.of_json json in
-    match thing with
-    | `Link _ as thing -> thing
-    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
-  ;;
-
-  let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
-  let get_link_listing = get_listing link_of_json
-  let duplicates = duplicates get_link_listing
-  let hot = hot get_link_listing
-  let new_ = new_ get_link_listing
-  let rising = rising get_link_listing
-  let top = top get_link_listing
-  let controversial = controversial get_link_listing
-
-  let info =
-    info
-      (get_listing (fun json ->
-           let thing = Thing.of_json json in
-           match Thing.of_json json with
-           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
-           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
-  ;;
-
-  let add_comment =
-    add_comment
-      (handle_json_response (fun json ->
-           let thing =
-             Json.find json ~key:"json"
-             |> Json.find ~key:"data"
-             |> Json.find ~key:"things"
-             |> Json.index ~index:0
-             |> Thing.of_json
-           in
-           match thing with
-           | `Comment _ as thing -> thing
-           | _ -> raise_s [%message "Expected comment" (thing : Thing.t)]))
-  ;;
-
-  let distinguish =
-    distinguish
-      (handle_json_response (fun json ->
-           let thing =
-             Json.find json ~key:"json"
-             |> Json.find ~key:"data"
-             |> Json.find ~key:"things"
-             |> Json.index ~index:0
-             |> Thing.of_json
-           in
-           match thing with
-           | (`Comment _ | `Link _) as thing -> thing
-           | _ -> raise_s [%message "Expected comment or link" (thing : Thing.t)]))
-  ;;
-
-  let extract_errors json =
-    Json.find json ~key:"json"
-    |> Json.find ~key:"errors"
-    |> Json.get_array
-    |> List.map ~f:(fun l -> Json.get_array l |> List.map ~f:Json.get_string)
-  ;;
-
-  let add_relationship =
-    add_relationship
-      (handle_json_response (fun json ->
-           match extract_errors json with
-           | [] -> Ok ()
-           | l -> Error l))
-  ;;
-
-  let wiki_page = wiki_page (handle_json_response Wiki_page.of_json)
-
-  let edit_wiki_page =
-    edit_wiki_page (fun response ->
-        let%bind response, body = response in
-        let%bind json = Cohttp_async.Body.to_string body >>| Json.of_string in
-        match Cohttp.Response.status response, json with
-        | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
-        | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
-        | _, _ ->
-          raise_s
-            [%message
-              "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)])
+  let finalize
+      (_ : Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Or_error.t)
+      response
+    =
+    return response
   ;;
 end
 
-module Raw = Make (struct
-  type default_output = Cohttp.Response.t * Cohttp_async.Body.t
+module Raw = Make (Raw_param)
 
-  let default_transformation = ident
-end)
+module Typed_param = struct
+  type 'a t = 'a Or_error.t
 
-include Typed
+  let finalize f response = f response
+end
+
+include Make (Typed_param)

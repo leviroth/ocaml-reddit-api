@@ -944,7 +944,7 @@ module type S = sig
 end
 
 module type Api = sig
-  include S with type 'a response := 'a
+  include S with type 'a response := 'a Or_error.t
 
   module Raw :
     S
