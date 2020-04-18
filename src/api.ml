@@ -507,8 +507,7 @@ module Make (Output : sig
   type 'a t
 
   val finalize
-    :  (Cohttp.Response.t * Cohttp_async.Body.t
-        -> ('a, Cohttp.Response.t * Cohttp_async.Body.t) Deferred.Result.t)
+    :  (Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Option.t)
     -> Cohttp.Response.t * Cohttp_async.Body.t
     -> 'a t Deferred.t
 end) =
@@ -555,17 +554,20 @@ struct
   let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
 
   open Parameters
-  open Deferred.Result.Let_syntax
+  open Deferred.Option.Let_syntax
+
+  let some = Deferred.map ~f:Option.some
+  let none = Deferred.return None
 
   let result_of_response (response, body) =
     match Cohttp.Response.status response with
     | #Cohttp.Code.success_status -> return (response, body)
-    | _ -> Deferred.Result.fail (response, body)
+    | _ -> none
   ;;
 
   let handle_json_response f response =
     let%bind _response, body = result_of_response response in
-    let%bind body_string = Cohttp_async.Body.to_string body |> Deferred.ok in
+    let%bind body_string = Cohttp_async.Body.to_string body |> some in
     Json.of_string body_string |> f |> return
   ;;
 
@@ -1637,13 +1639,11 @@ struct
         ]
     in
     post ~endpoint ~params (fun (response, body) ->
-        let%bind json =
-          Cohttp_async.Body.to_string body |> Deferred.ok >>| Json.of_string
-        in
+        let%bind json = Cohttp_async.Body.to_string body |> some >>| Json.of_string in
         match Cohttp.Response.status response, json with
         | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
         | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
-        | _, _ -> Deferred.Result.fail (response, body))
+        | _, _ -> none)
   ;;
 
   let toggle_wiki_revision_visibility
@@ -1762,9 +1762,7 @@ module Raw_param = struct
   type _ t = Cohttp.Response.t * Cohttp_async.Body.t
 
   let finalize
-      (_ :
-        Cohttp.Response.t * Cohttp_async.Body.t
-        -> ('a, Cohttp.Response.t * Cohttp_async.Body.t) Deferred.Result.t)
+      (_ : Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Option.t)
       response
     =
     return response
@@ -1778,8 +1776,9 @@ module Exn_param = struct
 
   let finalize f response =
     match%bind f response with
-    | Ok x -> return x
-    | Error (response, body) ->
+    | Some x -> return x
+    | None ->
+      let response, body = response in
       raise_s
         [%message
           "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
@@ -1791,7 +1790,7 @@ module Exn = Make (Exn_param)
 module Typed_param = struct
   type 'a t = ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
 
-  let finalize f response = f response
+  let finalize f response = f response >>| Result.of_option ~error:response
 end
 
 include Make (Typed_param)
