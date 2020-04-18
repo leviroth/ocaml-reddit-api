@@ -872,7 +872,7 @@ module type S = sig
     -> ?ban_reason:string
     -> ?ban_message:string
     -> ?ban_context:Fullname.t
-    -> (unit, string list list) Result.t call
+    -> unit call
 
   val remove_relationship
     :  relationship:Relationship.t
@@ -945,9 +945,10 @@ end
 
 module type Api = sig
   include S with type 'a response := 'a Or_error.t
+  module Exn : S with type 'a response := 'a with module Parameters := Parameters
 
   module Raw :
     S
-      with module Parameters := Parameters
       with type _ response := Cohttp.Response.t * Cohttp_async.Body.t
+      with module Parameters := Parameters
 end

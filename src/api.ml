@@ -560,7 +560,7 @@ struct
     match Cohttp.Response.status response with
     | #Cohttp.Code.success_status -> return (response, body)
     | _ ->
-      raise_s
+      Deferred.Or_error.error_s
         [%message
           "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
   ;;
@@ -1596,13 +1596,7 @@ struct
         ; optional' fullname_ "ban_context" ban_context
         ]
     in
-    post
-      ~endpoint
-      ~params
-      (handle_json_response (fun json ->
-           match extract_errors json with
-           | [] -> Ok ()
-           | l -> Error l))
+    post ~endpoint ~params (const (return ()))
   ;;
 
   let remove_relationship ~relationship ~username ?subreddit =
@@ -1659,7 +1653,7 @@ struct
         | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
         | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
         | _, _ ->
-          raise_s
+          Deferred.Or_error.error_s
             [%message
               "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)])
   ;;
@@ -1788,6 +1782,14 @@ module Raw_param = struct
 end
 
 module Raw = Make (Raw_param)
+
+module Exn_param = struct
+  type 'a t = 'a
+
+  let finalize f response = f response >>| Or_error.ok_exn
+end
+
+module Exn = Make (Exn_param)
 
 module Typed_param = struct
   type 'a t = 'a Or_error.t
