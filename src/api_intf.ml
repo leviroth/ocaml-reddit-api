@@ -944,7 +944,9 @@ module type S = sig
 end
 
 module type Api = sig
-  include S with type 'a response := 'a Or_error.t
+  include
+    S with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+
   module Exn : S with type 'a response := 'a with module Parameters := Parameters
 
   module Raw :
