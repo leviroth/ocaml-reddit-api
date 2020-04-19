@@ -571,6 +571,13 @@ struct
     Json.of_string body_string |> f |> return
   ;;
 
+  let ignore_empty_object =
+    handle_json_response (fun json ->
+        match json with
+        | `Object [] -> ()
+        | _ -> raise_s [%message "Unexpected JSON response" (json : Json.t)])
+  ;;
+
   let link_of_json json =
     let thing = Thing.of_json json in
     match thing with
@@ -679,7 +686,7 @@ struct
   ;;
 
   let hide, unhide =
-    let hide', unhide' = simple_toggle "hide" return in
+    let hide', unhide' = simple_toggle "hide" ignore_empty_object in
     (fun ~links -> hide' ~fullnames:links), fun ~links -> unhide' ~fullnames:links
   ;;
 
@@ -696,8 +703,8 @@ struct
            | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
   ;;
 
-  let lock, unlock = simple_toggle' "lock" return
-  let mark_nsfw, unmark_nsfw = simple_toggle' "marknsfw" return
+  let lock, unlock = simple_toggle' "lock" ignore_empty_object
+  let mark_nsfw, unmark_nsfw = simple_toggle' "marknsfw" ignore_empty_object
 
   let more_children
       ?id

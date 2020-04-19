@@ -299,12 +299,12 @@ module type S = sig
     -> follow:bool
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val hide : links:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unhide : links:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val lock : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unlock : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val mark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unmark_nsfw : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val hide : links:Fullname.t list -> unit call
+  val unhide : links:Fullname.t list -> unit call
+  val lock : fullname:Fullname.t -> unit call
+  val unlock : fullname:Fullname.t -> unit call
+  val mark_nsfw : fullname:Fullname.t -> unit call
+  val unmark_nsfw : fullname:Fullname.t -> unit call
 
   val more_children
     :  ?id:More_comments.Id36.t
