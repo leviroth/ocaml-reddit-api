@@ -860,7 +860,7 @@ module type S = sig
     : (?subreddit_detail:bool
        -> ?include_categories:bool
        -> sort:User_subreddit_sort.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Thing.subreddit Listing.t call)
       listing
 
   val add_relationship
@@ -878,7 +878,7 @@ module type S = sig
     :  relationship:Relationship.t
     -> username:Username.t
     -> ?subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   (** Wiki *)
 

@@ -571,6 +571,13 @@ struct
     Json.of_string body_string |> f |> return
   ;;
 
+  let ignore_success_response response =
+    let%bind (_ : Cohttp.Response.t * Cohttp_async.Body.t) =
+      result_of_response response
+    in
+    return ()
+  ;;
+
   let ignore_empty_object =
     handle_json_response (fun json ->
         match json with
@@ -585,8 +592,16 @@ struct
     | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
   ;;
 
+  let subreddit_of_json json =
+    let thing = Thing.of_json json in
+    match thing with
+    | `Subreddit _ as thing -> thing
+    | _ -> raise_s [%message "Expected subreddit" (thing : Thing.t)]
+  ;;
+
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
   let get_link_listing = get_listing link_of_json
+  let get_subreddit_listing = get_listing subreddit_of_json
   let me = get ~endpoint:"/api/v1/me" ~params:[] return
   let karma = get ~endpoint:"/api/v1/me/karma" ~params:[] return
   let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] return
@@ -1564,7 +1579,7 @@ struct
         ; optional' bool "include_categories" include_categories
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let list_user_subreddits = with_listing_params list_user_subreddits'
@@ -1596,7 +1611,7 @@ struct
         ; optional' fullname_ "ban_context" ban_context
         ]
     in
-    post ~endpoint ~params (const (return ()))
+    post ~endpoint ~params ignore_success_response
   ;;
 
   let remove_relationship ~relationship ~username ?subreddit =
@@ -1609,7 +1624,7 @@ struct
         ; required' username_ "name" username
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_success_response
   ;;
 
   let add_or_remove_wiki_editor
