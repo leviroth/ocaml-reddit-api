@@ -3,6 +3,8 @@ open Async
 open Thing
 
 module type S = sig
+  module Connection : T
+
   module Parameters : sig
     module Pagination : sig
       type t =
@@ -943,14 +945,23 @@ module type S = sig
     -> Wiki_page.t call
 end
 
+module type Realtime = S with type Connection.t := Connection.t
+
 module type Api = sig
   include
-    S with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+    Realtime
+      with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
 
-  module Exn : S with type 'a response := 'a with module Parameters := Parameters
+  module Exn : Realtime with type 'a response := 'a with module Parameters := Parameters
 
   module Raw :
-    S
+    Realtime
       with type _ response := Cohttp.Response.t * Cohttp_async.Body.t
+      with module Parameters := Parameters
+
+  module For_testing :
+    S
+      with type Connection.t := Cohttp.Response.t * Cohttp_async.Body.t
+      with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
       with module Parameters := Parameters
 end
