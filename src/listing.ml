@@ -44,7 +44,7 @@ let of_json convert_element json =
   let children = List.map children ~f:convert_element in
   let after =
     match Map.find data "after" with
-    | None -> None
+    | None | Some `Null -> None
     | Some (`String s) -> Some (Page_id.of_string s)
     | Some _ -> fail "Expected \"after\" to be a string"
   in
