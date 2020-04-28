@@ -239,3 +239,17 @@ module Fullname = struct
   include T
   include Sexpable.Of_stringable (T)
 end
+
+let fullname t =
+  let data = data t in
+  let%map.Option id = M.id36 data in
+  match t with
+  | `Comment _ -> `Comment id
+  | `User _ -> `User id
+  | `Link _ -> `Link id
+  | `Message _ -> `Message id
+  | `Subreddit _ -> `Subreddit id
+  | `Award _ -> `Award id
+  | `More_comments _ -> `More_comments id
+  | `Modmail_conversation _ -> `Modmail_conversation id
+;;

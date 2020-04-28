@@ -69,4 +69,6 @@ module type Thing = sig
     val to_string : [< t ] -> string
     val of_string : string -> [> t ]
   end
+
+  val fullname : [< t ] -> [> Fullname.t ] option
 end
