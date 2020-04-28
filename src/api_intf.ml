@@ -418,7 +418,9 @@ module type S = sig
     -> ?threaded:bool
     -> ?truncate:int
     -> link:Link.Id36.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> ([> `Link of Link.t ]
+       * [> `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t)
+       call
 
   val duplicates
     : (?crossposts_only:bool

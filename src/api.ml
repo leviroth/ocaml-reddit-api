@@ -606,6 +606,13 @@ struct
     | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
   ;;
 
+  let comment_or_more_of_json json =
+    let thing = Thing.of_json json in
+    match thing with
+    | Thing.(#comment | #more_comments) as thing -> thing
+    | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.t)]
+  ;;
+
   let subreddit_of_json json =
     let thing = Thing.of_json json in
     match thing with
@@ -989,7 +996,18 @@ struct
         ; optional' int "truncate" truncate
         ]
     in
-    get ~endpoint ~params return
+    get
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           match Json.get_array json with
+           | [ link_json; comment_forest_json ] ->
+             let link =
+               Listing.of_json link_of_json link_json |> Listing.children |> List.hd_exn
+             in
+             let comments = Listing.of_json comment_or_more_of_json comment_forest_json in
+             link, comments
+           | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
   ;;
 
   let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
