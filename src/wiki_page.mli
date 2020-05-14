@@ -23,7 +23,6 @@ module Edit_conflict : sig
   type t [@@deriving sexp]
 
   val of_json : Json.t -> t
-
   val diff : t -> string
   val message : t -> string
   val new_content : t -> string
