@@ -21,12 +21,7 @@ let of_json json =
 
 let may_revise t = Map.find_exn t "may_revise" |> Json.get_bool
 let revision_id t = Map.find_exn t "revision_id" |> Json.get_string |> Uuid.of_string
-
-let revision_by t =
-  match Map.find_exn t "revision_by" |> Thing.of_json with
-  | `User _ as u -> u
-  | thing -> raise_s [%message "Unexpected kind" (thing : Thing.t)]
-;;
+let revision_by t = Map.find_exn t "revision_by" |> Thing.User.of_json_with_tag_exn
 
 let content t markup =
   let field =

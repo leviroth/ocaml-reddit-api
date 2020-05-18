@@ -2,6 +2,48 @@ open! Core
 open! Async
 open Thing
 
+module Param_dsl = struct
+  type t = (string * string list) list
+
+  let required f key values : t = [ key, List.map values ~f ]
+  let required' f key value : t = [ key, [ f value ] ]
+
+  let optional f key values_opt : t =
+    Option.to_list values_opt |> List.bind ~f:(required f key)
+  ;;
+
+  let optional' f key value_opt : t =
+    Option.to_list value_opt |> List.bind ~f:(required' f key)
+  ;;
+
+  let include_optional f value_opt : t = Option.to_list value_opt |> List.bind ~f
+  let _ = optional
+  let combine = List.join
+  let bool = Bool.to_string
+  let string = Fn.id
+  let int = Int.to_string
+
+  let fullname_ id =
+    let (kind : Thing_kind.t), id36_string =
+      match id with
+      | `Comment id -> Comment, Comment.Id.to_string id
+      | `User id -> User, User.Id.to_string id
+      | `Link id -> Link, Link.Id.to_string id
+      | `Message id -> Message, Message.Id.to_string id
+      | `Subreddit id -> Subreddit, Subreddit.Id.to_string id
+      | `Award id -> Award, Award.Id.to_string id
+      | `More_comments id -> More_comments, More_comments.Id.to_string id
+      | `Modmail_conversation id ->
+        Modmail_conversation, Modmail_conversation.Id.to_string id
+    in
+    sprintf !"%{Thing_kind}_%s" kind id36_string
+  ;;
+
+  let username_ = Username.to_string
+  let json = Json.to_string
+  let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
+end
+
 module Parameters = struct
   module Pagination = struct
     type t =
@@ -43,13 +85,11 @@ module Parameters = struct
   end
 
   module Report_target = struct
-    type t = Fullname.t [@@deriving sexp]
-
     let params_of_t t =
       match t with
       | `Modmail_conversation id ->
-        [ "modmail_conv_id", [ Modmail_conversation.Id36.to_string id ] ]
-      | _ -> [ "thing_id", [ Fullname.to_string t ] ]
+        [ "modmail_conv_id", [ Modmail_conversation.Id.to_string id ] ]
+      | `Link _ | `Comment _ | `Message _ -> [ "thing_id", [ Param_dsl.fullname_ t ] ]
     ;;
   end
 
@@ -113,13 +153,15 @@ module Parameters = struct
 
   module Info_query = struct
     type t =
-      | Id of [ Fullname.link | Fullname.comment | Fullname.subreddit ] list
+      | Id of
+          [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
+          list
       | Url of Uri_sexp.t
     [@@deriving sexp]
 
     let params_of_t t =
       match t with
-      | Id fullnames -> [ "id", List.map fullnames ~f:Fullname.to_string ]
+      | Id fullnames -> [ "id", List.map fullnames ~f:Param_dsl.fullname_ ]
       | Url uri -> [ "url", [ Uri.to_string uri ] ]
     ;;
   end
@@ -475,32 +517,14 @@ module Parameters = struct
       | Remove -> "del"
     ;;
   end
-end
 
-module Param_dsl = struct
-  type t = (string * string list) list
-
-  let required f key values : t = [ key, List.map values ~f ]
-  let required' f key value : t = [ key, [ f value ] ]
-
-  let optional f key values_opt : t =
-    Option.to_list values_opt |> List.bind ~f:(required f key)
-  ;;
-
-  let optional' f key value_opt : t =
-    Option.to_list value_opt |> List.bind ~f:(required' f key)
-  ;;
-
-  let include_optional f value_opt : t = Option.to_list value_opt |> List.bind ~f
-  let _ = optional
-  let combine = List.join
-  let bool = Bool.to_string
-  let string = Fn.id
-  let int = Int.to_string
-  let fullname_ = Fullname.to_string
-  let username_ = Username.to_string
-  let json = Json.to_string
-  let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
+  module Comment_response = struct
+    type t =
+      { link : Thing.Link.t
+      ; comment_forest :
+          [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
+      }
+  end
 end
 
 module Make (Connection : sig
@@ -548,21 +572,13 @@ struct
     sprintf !"%s%s" subreddit_part suffix
   ;;
 
-  let simple_post_fullnames_as_id endpoint ~fullnames =
+  let simple_post_fullnames_as_id endpoint fullnames k =
     let endpoint = sprintf "/api/%s" endpoint in
-    post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames)
+    post ~endpoint ~params:Param_dsl.(required fullname_ "id" fullnames) k
   ;;
 
-  let simple_post_fullname_as_id ~fullname =
-    simple_post_fullnames_as_id ~fullnames:[ fullname ]
-  ;;
-
-  let simple_toggle verb k =
-    simple_post_fullnames_as_id verb k, simple_post_fullnames_as_id ("un" ^ verb) k
-  ;;
-
-  let simple_toggle' verb k =
-    simple_post_fullname_as_id verb k, simple_post_fullname_as_id ("un" ^ verb) k
+  let simple_post_fullname_as_id endpoint fullname k =
+    simple_post_fullnames_as_id endpoint [ fullname ] k
   ;;
 
   let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
@@ -599,30 +615,16 @@ struct
         | _ -> raise_s [%message "Unexpected JSON response" (json : Json.t)])
   ;;
 
-  let link_of_json json =
-    let thing = Thing.of_json json in
-    match thing with
-    | `Link _ as thing -> thing
-    | _ -> raise_s [%message "Expected link" (thing : Thing.t)]
-  ;;
-
   let comment_or_more_of_json json =
-    let thing = Thing.of_json json in
+    let thing = Thing.Poly.of_json json in
     match thing with
-    | Thing.(#comment | #more_comments) as thing -> thing
-    | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.t)]
-  ;;
-
-  let subreddit_of_json json =
-    let thing = Thing.of_json json in
-    match thing with
-    | `Subreddit _ as thing -> thing
-    | _ -> raise_s [%message "Expected subreddit" (thing : Thing.t)]
+    | (`Comment _ | `More_comments _) as thing -> thing
+    | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.Poly.t)]
   ;;
 
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
-  let get_link_listing = get_listing link_of_json
-  let get_subreddit_listing = get_listing subreddit_of_json
+  let get_link_listing = get_listing Link.of_json_with_tag_exn
+  let get_subreddit_listing = get_listing Subreddit.of_json_with_tag_exn
   let me = get ~endpoint:"/api/v1/me" ~params:[] return
   let karma = get ~endpoint:"/api/v1/me/karma" ~params:[] return
   let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] return
@@ -676,34 +678,29 @@ struct
       ~endpoint
       ~params
       (handle_json_response (fun json ->
-           let thing =
-             Json.find json ~key:"json"
-             |> Json.find ~key:"data"
-             |> Json.find ~key:"things"
-             |> Json.index ~index:0
-             |> Thing.of_json
-           in
-           match thing with
-           | `Comment _ as thing -> thing
-           | _ -> raise_s [%message "Expected comment" (thing : Thing.t)]))
+           Json.find json ~key:"json"
+           |> Json.find ~key:"data"
+           |> Json.find ~key:"things"
+           |> Json.index ~index:0
+           |> Comment.of_json_with_tag_exn))
   ;;
 
-  let delete ~fullname =
+  let delete ~id =
     let endpoint = "/api/comment" in
     let params =
       let open Param_dsl in
-      Param_dsl.combine [ required' fullname_ "id" fullname ]
+      Param_dsl.combine [ required' fullname_ "id" id ]
     in
     post ~endpoint ~params return
   ;;
 
-  let edit ?return_rtjson ?richtext_json ~fullname ~text =
+  let edit ?return_rtjson ?richtext_json ~id ~text =
     let endpoint = "/api/editusertext" in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required' fullname_ "thing_id" fullname
+        ; required' fullname_ "thing_id" id
         ; required' string "text" text
         ; optional' bool "return_rtjson" return_rtjson
         ; optional' json "richtext_json" richtext_json
@@ -716,15 +713,31 @@ struct
     let endpoint = "/api/follow_post" in
     let params =
       let open Param_dsl in
-      combine [ required' fullname_ "fullname" link; required' bool "follow" follow ]
+      combine
+        [ required' fullname_ "fullname" (`Link link); required' bool "follow" follow ]
     in
     post ~endpoint ~params return
   ;;
 
-  let hide, unhide =
-    let hide', unhide' = simple_toggle "hide" ignore_empty_object in
-    (fun ~links -> hide' ~fullnames:links), fun ~links -> unhide' ~fullnames:links
+  let simple_toggle verb fullnames k direction =
+    let verb =
+      match direction with
+      | `Do -> verb
+      | `Undo -> "un" ^ verb
+    in
+    simple_post_fullnames_as_id verb fullnames k
   ;;
+
+  let simple_toggle' verb fullname k direction =
+    simple_toggle verb [ fullname ] k direction
+  ;;
+
+  let hide' ~links =
+    simple_toggle "hide" (List.map links ~f:(fun x -> `Link x)) ignore_empty_object
+  ;;
+
+  let hide = hide' `Do
+  let unhide = hide' `Undo
 
   let info ?subreddit query =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
@@ -733,14 +746,18 @@ struct
       ~endpoint
       ~params
       (get_listing (fun json ->
-           let thing = Thing.of_json json in
-           match Thing.of_json json with
+           let thing = Thing.Poly.of_json json in
+           match thing with
            | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
-           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.t)]))
+           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.Poly.t)]))
   ;;
 
-  let lock, unlock = simple_toggle' "lock" ignore_empty_object
-  let mark_nsfw, unmark_nsfw = simple_toggle' "marknsfw" ignore_empty_object
+  let lock' ~id = simple_toggle' "lock" id ignore_empty_object
+  let lock = lock' `Do
+  let unlock = lock' `Undo
+  let mark_nsfw' ~link = simple_toggle' "marknsfw" (`Link link) ignore_empty_object
+  let mark_nsfw = mark_nsfw' `Do
+  let unmark_nsfw = mark_nsfw' `Undo
 
   let more_children
       ?id
@@ -752,14 +769,14 @@ struct
       connection
     =
     let endpoint = "/api/morechildren" in
-    let link_fullname : Fullname.t = `Link link_id in
+    let link_fullname = `Link link_id in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required Comment.Id36.to_string "children" children
+        ; required Comment.Id.to_string "children" children
         ; required' fullname_ "link_id" link_fullname
-        ; optional' More_comments.Id36.to_string "id" id
+        ; optional' More_comments.Id.to_string "id" id
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
         ]
@@ -807,63 +824,66 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let save ?category ~fullname =
+  let save ?category ~id =
     let endpoint = "/api/save" in
     let params =
       let open Param_dsl in
-      combine [ required' fullname_ "id" fullname; optional' string "category" category ]
+      combine [ required' fullname_ "id" id; optional' string "category" category ]
     in
     post ~endpoint ~params return
   ;;
 
-  let unsave ~fullname =
+  let unsave ~id =
     let endpoint = "/api/save" in
-    let params = [ "id", [ Fullname.to_string fullname ] ] in
+    let params = [ "id", [ Param_dsl.fullname_ id ] ] in
     post ~endpoint ~params return
   ;;
 
   let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[] return
 
-  let send_replies ~fullname ~enabled =
+  let send_replies ~id ~enabled =
     let endpoint = "/api/sendreplies" in
     let params =
       let open Param_dsl in
-      combine [ required' fullname_ "id" fullname; required' bool "state" enabled ]
+      combine [ required' fullname_ "id" id; required' bool "state" enabled ]
     in
     post ~endpoint ~params return
   ;;
 
-  let set_contest_mode ~fullname ~enabled =
+  let set_contest_mode ~link ~enabled =
     let endpoint = "/api/set_contest_mode" in
     let params =
       let open Param_dsl in
       combine
-        [ api_type; required' fullname_ "id" fullname; required' bool "state" enabled ]
+        [ api_type
+        ; required' fullname_ "id" (`Link link)
+        ; required' bool "state" enabled
+        ]
     in
     post ~endpoint ~params return
   ;;
 
-  let set_subreddit_sticky ?to_profile ~fullname ~sticky_state =
+  let set_subreddit_sticky ?to_profile ~link ~sticky_state =
     let endpoint = "/api/set_subreddit_sticky" in
     let params =
       let open Param_dsl in
       combine
         [ Sticky_state.params_of_t sticky_state
         ; api_type
-        ; required' fullname_ "id" fullname
+        ; required' fullname_ "id" (`Link link)
         ; optional' bool "to_profile" to_profile
         ]
     in
     post ~endpoint ~params return
   ;;
 
-  let set_suggested_sort ~fullname ~sort =
+  let set_suggested_sort ~link ~sort =
     let endpoint = "/api/set_suggested_sort" in
     let params =
       let open Param_dsl in
       combine
         [ api_type
-        ; required' fullname_ "id" fullname
+        ; required' fullname_ "id" (`Link link)
         ; required'
             string
             "sort"
@@ -873,13 +893,15 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let spoiler, unspoiler = simple_toggle' "spoiler" return
+  let spoiler' ~link = simple_toggle' "spoiler" (`Link link) return
+  let spoiler = spoiler' `Do
+  let unspoiler = spoiler' `Undo
 
   let store_visits ~links =
     let endpoint = "/api/store_visits" in
     let params =
       let open Param_dsl in
-      combine [ required Fullname.to_string "links" links ]
+      combine [ required fullname_ "links" (List.map links ~f:(fun x -> `Link x)) ]
     in
     post ~endpoint ~params return
   ;;
@@ -925,13 +947,13 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let vote ?rank ~direction ~fullname =
+  let vote ?rank ~direction ~target =
     let endpoint = "/api/vote" in
     let params =
       let open Param_dsl in
       combine
         [ Vote_direction.params_of_t direction
-        ; required' fullname_ "fullname" fullname
+        ; required' fullname_ "fullname" target
         ; optional' int "rank" rank
         ]
     in
@@ -955,9 +977,9 @@ struct
 
   let best = with_listing_params best'
 
-  let by_id ~fullnames =
+  let links_by_id ~links =
     let endpoint =
-      List.map fullnames ~f:Fullname.to_string
+      List.map links ~f:(fun link -> Param_dsl.fullname_ (`Link link))
       |> String.concat ~sep:","
       |> sprintf "/by_id/%s"
     in
@@ -979,12 +1001,12 @@ struct
       ~link
     =
     let endpoint =
-      optional_subreddit_endpoint ?subreddit (sprintf !"/comments/%{Link.Id36}" link)
+      optional_subreddit_endpoint ?subreddit (sprintf !"/comments/%{Link.Id}" link)
     in
     let params =
       let open Param_dsl in
       combine
-        [ optional' Comment.Id36.to_string "comment" comment
+        [ optional' Comment.Id.to_string "comment" comment
         ; optional' int "context" context
         ; optional' int "depth" depth
         ; optional' int "limit" limit
@@ -1003,15 +1025,19 @@ struct
            match Json.get_array json with
            | [ link_json; comment_forest_json ] ->
              let link =
-               Listing.of_json link_of_json link_json |> Listing.children |> List.hd_exn
+               Listing.of_json Link.of_json_with_tag_exn link_json
+               |> Listing.children
+               |> List.hd_exn
              in
-             let comments = Listing.of_json comment_or_more_of_json comment_forest_json in
-             link, comments
+             let comment_forest =
+               Listing.of_json comment_or_more_of_json comment_forest_json
+             in
+             { Comment_response.link; comment_forest }
            | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
   ;;
 
   let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
-    let endpoint = sprintf !"/duplicates/%{Link.Id36}" link in
+    let endpoint = sprintf !"/duplicates/%{Link.Id}" link in
     let params =
       let open Param_dsl in
       combine
@@ -1082,8 +1108,14 @@ struct
     get ~endpoint ~params:[] return
   ;;
 
-  let block = simple_post_fullname_as_id "block" return
-  let collapse_message, uncollapse_message = simple_toggle "collapse_message" return
+  let block_author ~id = simple_post_fullname_as_id "block" id return
+
+  let collapse_message' ~messages =
+    simple_toggle "collapse_message" (List.map messages ~f:(fun x -> `Message x)) return
+  ;;
+
+  let collapse_message = collapse_message' `Do
+  let uncollapse_message = collapse_message' `Undo
 
   let compose_message ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
     let endpoint = "/api/compose" in
@@ -1101,9 +1133,16 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let delete_message = simple_post_fullname_as_id "del_msg" return
-  let read_message, unread_message = simple_toggle "read_message" return
-  let unblock_subreddit = simple_post_fullnames_as_id "unblock_subreddit" return
+  let delete_message ~message =
+    simple_post_fullname_as_id "del_msg" (`Message message) return
+  ;;
+
+  let read_message' ~messages =
+    simple_toggle "read_message" (List.map messages ~f:(fun x -> `Message x)) return
+  ;;
+
+  let read_message = read_message' `Do
+  let unread_message = read_message' `Undo
 
   let message_listing'
       endpoint
@@ -1174,16 +1213,16 @@ struct
     post ~endpoint ~params:api_type return
   ;;
 
-  let approve = simple_post_fullname_as_id "approve" return
-  let remove = simple_post_fullname_as_id "remove" return
+  let approve ~id = simple_post_fullname_as_id "approve" id return
+  let remove ~id = simple_post_fullname_as_id "remove" id return
 
-  let distinguish ?sticky ~fullname ~how =
+  let distinguish ?sticky ~id ~how =
     let endpoint = "/api/distinguish" in
     let params =
       let open Param_dsl in
       combine
         [ How_to_distinguish.params_of_t how
-        ; required' fullname_ "id" fullname
+        ; required' fullname_ "id" id
         ; optional' bool "sticky" sticky
         ]
     in
@@ -1196,20 +1235,31 @@ struct
              |> Json.find ~key:"data"
              |> Json.find ~key:"things"
              |> Json.index ~index:0
-             |> Thing.of_json
+             |> Thing.Poly.of_json
            in
            match thing with
            | (`Comment _ | `Link _) as thing -> thing
-           | _ -> raise_s [%message "Expected comment or link" (thing : Thing.t)]))
+           | _ -> raise_s [%message "Expected comment or link" (thing : Thing.Poly.t)]))
   ;;
 
-  let ignore_reports, unignore_reports = simple_toggle' "ignore_reports" return
-  let leavecontributor = simple_post_fullname_as_id "leavecontributor" return
-  let leavemoderator = simple_post_fullname_as_id "leavemoderator" return
+  let ignore_reports' ~id = simple_toggle' "ignore_reports" id return
+  let ignore_reports = ignore_reports' `Do
+  let unignore_reports = ignore_reports' `Undo
 
-  let mute_message_author, unmute_message_author =
-    simple_toggle' "mute_message_author" return
+  let leavecontributor ~subreddit =
+    simple_post_fullname_as_id "leavecontributor" (`Subreddit subreddit) return
   ;;
+
+  let leavemoderator ~subreddit =
+    simple_post_fullname_as_id "leavemoderator" (`Subreddit subreddit) return
+  ;;
+
+  let mute_message_author' ~message =
+    simple_toggle' "mute_message_author" (`Message message) return
+  ;;
+
+  let mute_message_author = mute_message_author' `Do
+  let unmute_message_author = mute_message_author' `Undo
 
   let stylesheet ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
@@ -1640,7 +1690,7 @@ struct
         ; optional' string "note" note
         ; optional' string "ban_reason" ban_reason
         ; optional' string "ban_message" ban_message
-        ; optional' fullname_ "ban_context" ban_context
+        ; optional' string "ban_context" ban_context
         ]
     in
     post ~endpoint ~params ignore_success_response

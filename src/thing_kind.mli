@@ -9,6 +9,6 @@ type t =
   | Award
   | More_comments
   | Modmail_conversation
-[@@deriving sexp]
+[@@deriving sexp, equal]
 
 include Stringable.S with type t := t

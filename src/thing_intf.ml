@@ -3,72 +3,72 @@ open! Core
 module type S = sig
   type t [@@deriving sexp]
 
-  module Id36 : Id36.S
+  module Id : Id36.S
 
   val of_json : Json.t -> t
+  val of_json_with_tag_exn : Json.t -> t
   val to_json : t -> Json.t
   val get_field : t -> string -> Json.t option
-  val id36 : t -> Id36.t option
-end
-
-module Projectors = struct
-  module Ident (M : S) = M
-  module Id36 (M : S) = M.Id36
+  val get_field_exn : t -> string -> Json.t
+  val id : t -> Id.t
 end
 
 module type Thing = sig
   module type S = S
 
-  module Comment : S
-  module User : S
-  module Link : S
-  module Message : S
-  module Subreddit : S
-  module Award : S
-  module More_comments : S
-  module Modmail_conversation : S
+  module rec Comment : sig
+    include S
 
-  module type Per_kind = sig
-    module F (M : S) : T
+    val author : t -> Username.t
+    val moderation_info : t -> Moderation_info.t option
+  end
 
-    type comment = [ `Comment of F(Comment).t ] [@@deriving sexp]
-    type user = [ `User of F(User).t ] [@@deriving sexp]
-    type link = [ `Link of F(Link).t ] [@@deriving sexp]
-    type message = [ `Message of F(Message).t ] [@@deriving sexp]
-    type subreddit = [ `Subreddit of F(Subreddit).t ] [@@deriving sexp]
-    type award = [ `Award of F(Award).t ] [@@deriving sexp]
-    type more_comments = [ `More_comments of F(More_comments).t ] [@@deriving sexp]
+  and User : sig
+    include S
+  end
 
-    type modmail_conversation = [ `Modmail_conversation of F(Modmail_conversation).t ]
-    [@@deriving sexp]
+  and Link : sig
+    include S
 
+    val author : t -> Username.t
+    val moderation_info : t -> Moderation_info.t option
+  end
+
+  and Message : sig
+    include S
+
+    val author : t -> Username.t
+  end
+
+  and Subreddit : sig
+    include S
+  end
+
+  and Award : sig
+    include S
+  end
+
+  and More_comments : sig
+    include S
+  end
+
+  and Modmail_conversation : sig
+    include S
+  end
+
+  module Poly : sig
     type t =
-      [ comment
-      | user
-      | link
-      | message
-      | subreddit
-      | award
-      | more_comments
-      | modmail_conversation
+      [ `Comment of Comment.t
+      | `User of User.t
+      | `Link of Link.t
+      | `Message of Message.t
+      | `Subreddit of Subreddit.t
+      | `Award of Award.t
+      | `More_comments of More_comments.t
+      | `Modmail_conversation of Modmail_conversation.t
       ]
     [@@deriving sexp]
+
+    val of_json : Json.t -> [> t ]
   end
-
-  include Per_kind with module F := Projectors.Ident
-
-  val of_json : Json.t -> [> t ]
-  val to_json : [< t ] -> Json.t
-  val get_field : [< t ] -> string -> Json.t option
-  val author : [< link | comment ] -> Username.t option
-  val moderation_info : [< link | comment ] -> Moderation_info.t option
-
-  module Fullname : sig
-    include Per_kind with module F := Projectors.Id36
-
-    val to_string : [< t ] -> string
-    val of_string : string -> [> t ]
-  end
-
-  val fullname : [< t ] -> [> Fullname.t ] option
 end

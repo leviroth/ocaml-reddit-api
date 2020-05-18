@@ -1,11 +1,5 @@
 open! Core
-
-module Page_id = struct
-  include String
-
-  let of_fullname = Thing.Fullname.to_string
-  let to_fullname t = Option.try_with (fun () -> Thing.Fullname.of_string t)
-end
+module Page_id = String
 
 type 'a t =
   { children : 'a list

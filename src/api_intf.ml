@@ -57,8 +57,13 @@ module type S = sig
 
     module Info_query : sig
       type t =
-        | Id of [ Fullname.link | Fullname.comment | Fullname.subreddit ] list
-        | Url of Uri_sexp.t
+        | Id of
+            [ `Link of Link.Id.t
+            | `Comment of Comment.Id.t
+            | `Subreddit of Subreddit.Id.t
+            ]
+            list
+        | Url of Uri.t
       [@@deriving sexp]
     end
 
@@ -230,6 +235,14 @@ module type S = sig
         | Add
         | Remove
     end
+
+    module Comment_response : sig
+      type t =
+        { link : Thing.Link.t
+        ; comment_forest :
+            [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
+        }
+    end
   end
 
   open Parameters
@@ -283,36 +296,39 @@ module type S = sig
   val add_comment
     :  ?return_rtjson:bool
     -> ?richtext_json:Json.t
-    -> parent:Fullname.t
+    -> parent:
+         [< `Link of Link.Id.t | `Comment of Comment.Id.t | `Message of Message.Id.t ]
     -> text:string
-    -> [> Thing.comment ] call
+    -> Thing.Comment.t call
 
-  val delete : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val delete
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val edit
     :  ?return_rtjson:bool
     -> ?richtext_json:Json.t
-    -> fullname:Fullname.t
+    -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> text:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val follow
-    :  link:Fullname.t
+    :  link:Link.Id.t
     -> follow:bool
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val hide : links:Fullname.t list -> unit call
-  val unhide : links:Fullname.t list -> unit call
-  val lock : fullname:Fullname.t -> unit call
-  val unlock : fullname:Fullname.t -> unit call
-  val mark_nsfw : fullname:Fullname.t -> unit call
-  val unmark_nsfw : fullname:Fullname.t -> unit call
+  val hide : links:Link.Id.t list -> unit call
+  val unhide : links:Link.Id.t list -> unit call
+  val lock : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+  val unlock : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+  val mark_nsfw : link:Link.Id.t -> unit call
+  val unmark_nsfw : link:Link.Id.t -> unit call
 
   val more_children
-    :  ?id:More_comments.Id36.t
+    :  ?id:More_comments.Id.t
     -> ?limit_children:bool
-    -> link:Link.Id36.t
-    -> children:Comment.Id36.t list
+    -> link:Link.Id.t
+    -> children:Comment.Id.t list
     -> sort:Comment_sort.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -325,7 +341,12 @@ module type S = sig
     -> ?rule_reason:string
     -> ?site_reason:string
     -> ?sr_name:string
-    -> target:Fullname.t
+    -> target:
+         [< `Link of Link.Id.t
+         | `Comment of Comment.Id.t
+         | `Message of Message.Id.t
+         | `Modmail_conversation of Modmail_conversation.Id.t
+         ]
     -> reason:string
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
@@ -333,38 +354,41 @@ module type S = sig
 
   val save
     :  ?category:string
-    -> fullname:Fullname.t
+    -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val unsave : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val unsave
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
   val saved_categories : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val send_replies
-    :  fullname:Fullname.t
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> enabled:bool
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val set_contest_mode
-    :  fullname:Fullname.t
+    :  link:Link.Id.t
     -> enabled:bool
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val set_subreddit_sticky
     :  ?to_profile:bool
-    -> fullname:Fullname.t
+    -> link:Link.Id.t
     -> sticky_state:Sticky_state.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val set_suggested_sort
-    :  fullname:Fullname.t
+    :  link:Link.Id.t
     -> sort:Comment_sort.t option
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val spoiler : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unspoiler : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val spoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val unspoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val store_visits
-    :  links:Fullname.t list
+    :  links:Link.Id.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val submit
@@ -387,13 +411,18 @@ module type S = sig
   val vote
     :  ?rank:int
     -> direction:Vote_direction.t
-    -> fullname:Fullname.t
+    -> target:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val info
     :  ?subreddit:Subreddit_name.t
     -> Info_query.t
-    -> [ Thing.comment | Thing.link | Thing.subreddit ] Listing.t call
+    -> [ `Comment of Thing.Comment.t
+       | `Link of Thing.Link.t
+       | `Subreddit of Thing.Subreddit.t
+       ]
+       Listing.t
+       call
 
   (** Listings *)
 
@@ -403,11 +432,11 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
-  val by_id : fullnames:Fullname.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val links_by_id : links:Link.Id.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val comments
     :  ?subreddit:Subreddit_name.t
-    -> ?comment:Comment.Id36.t
+    -> ?comment:Comment.Id.t
     -> ?context:int
     -> ?depth:int
     -> ?limit:int
@@ -417,17 +446,15 @@ module type S = sig
     -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
-    -> link:Link.Id36.t
-    -> ([> `Link of Link.t ]
-       * [> `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t)
-       call
+    -> link:Link.Id.t
+    -> Comment_response.t call
 
   val duplicates
     : (?crossposts_only:bool
        -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
-       -> link:Link.Id36.t
-       -> Thing.link Listing.t call)
+       -> link:Link.Id.t
+       -> Link.t Listing.t call)
       listing
 
   val hot
@@ -435,21 +462,21 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> Thing.link Listing.t call)
+       -> Link.t Listing.t call)
       listing
 
   val new_
     : (?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> Thing.link Listing.t call)
+       -> Link.t Listing.t call)
       listing
 
   val rising
     : (?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> Thing.link Listing.t call)
+       -> Link.t Listing.t call)
       listing
 
   val top
@@ -457,7 +484,7 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> Thing.link Listing.t call)
+       -> Link.t Listing.t call)
       listing
 
   val controversial
@@ -465,7 +492,7 @@ module type S = sig
        -> ?include_categories:bool
        -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
-       -> Thing.link Listing.t call)
+       -> Link.t Listing.t call)
       listing
 
   val random
@@ -476,14 +503,16 @@ module type S = sig
 
   (** Private messages *)
 
-  val block : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val block_author
+    :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val collapse_message
-    :  fullnames:Fullname.t list
+    :  messages:Message.Id.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val uncollapse_message
-    :  fullnames:Fullname.t list
+    :  messages:Message.Id.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val compose_message
@@ -495,19 +524,15 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val delete_message
-    :  fullname:Fullname.t
+    :  message:Message.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val read_message
-    :  fullnames:Fullname.t list
+    :  messages:Message.Id.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val unread_message
-    :  fullnames:Fullname.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unblock_subreddit
-    :  fullnames:Fullname.t list
+    :  messages:Message.Id.t list
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val inbox
@@ -588,37 +613,42 @@ module type S = sig
     :  subreddit:Subreddit_name.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val approve : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val remove : fullname:Fullname.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val approve
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  val remove
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val distinguish
     :  ?sticky:bool
-    -> fullname:[< Fullname.link | Fullname.comment ]
+    -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> how:How_to_distinguish.t
-    -> [> Thing.link | Thing.comment ] call
+    -> [> `Link of Link.t | `Comment of Comment.t ] call
 
   val ignore_reports
-    :  fullname:Fullname.t
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val unignore_reports
-    :  fullname:Fullname.t
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val leavecontributor
-    :  fullname:Fullname.t
+    :  subreddit:Subreddit.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val leavemoderator
-    :  fullname:Fullname.t
+    :  subreddit:Subreddit.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val mute_message_author
-    :  fullname:Fullname.t
+    :  message:Message.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val unmute_message_author
-    :  fullname:Fullname.t
+    :  message:Message.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val stylesheet
@@ -864,7 +894,7 @@ module type S = sig
     : (?subreddit_detail:bool
        -> ?include_categories:bool
        -> sort:User_subreddit_sort.t
-       -> Thing.subreddit Listing.t call)
+       -> Subreddit.t Listing.t call)
       listing
 
   val add_relationship
@@ -875,7 +905,7 @@ module type S = sig
     -> ?note:string
     -> ?ban_reason:string
     -> ?ban_message:string
-    -> ?ban_context:Fullname.t
+    -> ?ban_context:string
     -> unit call
 
   val remove_relationship

@@ -1,6 +1,5 @@
 open! Core
 open Ocaml_reddit
-module Id36 = Thing.Comment.Id36
 
 let%expect_test "roundtrip: int -> string -> int" =
   let test_cases =

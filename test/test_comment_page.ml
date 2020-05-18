@@ -3,24 +3,33 @@ open! Async
 open Ocaml_reddit
 
 let%expect_test _ =
-  let link = Thing.Link.Id36.of_int 0 in
+  let link = Thing.Link.Id.of_int 0 in
   let json = In_channel.read_all "data/comments.json" in
   let body = Test_api.make_response json in
   let%bind response = Api.For_testing.comments body ~link in
-  let comment_forest = Result.ok response |> Option.value_exn |> snd in
+  let ({ comment_forest; _ } : Api.Parameters.Comment_response.t) =
+    Result.ok response |> Option.value_exn
+  in
   let top_level = Listing.children comment_forest in
-  let ids = List.map top_level ~f:Thing.fullname in
-  print_s [%message "" (ids : Thing.Fullname.t option list)];
+  let ids =
+    List.map top_level ~f:(function
+        | `Comment comment -> `Comment (Thing.Comment.id comment)
+        | `More_comments more_comments ->
+          `More_comments (Thing.More_comments.id more_comments))
+  in
+  print_s [%message "" (ids : Fullname.t list)];
   [%expect
     {|
     (ids
-     ((t1_fojwyxf) (t1_fojwxw7) (t1_fojwnxi) (t1_fojwi8c) (t1_fojwjxq)
-      (t1_fojxm5x) (t1_fojwiws) (t1_fojx1ud) (t1_fojx7j8) (t1_fojwi6q)
-      (t1_fojx2hj) (t1_fojwkek) (t1_fojwjwy) (t1_fojx78o) (t1_fojwmji)
-      (t1_fojwq6k) (t1_fojwny9) (t1_fojwlfs) (t1_fojx8c2) (t1_fojwol7)
-      (t1_fojz23e) (t1_fok11dz) (t1_fojy5cq) (t1_fojwk3e) (t1_fojwqce)
-      (t1_fojx7rx) (t1_fok2q5c) (t1_fojwift) (t1_fojwue0) (t1_fojwktc)
-      (t1_fojwq7e) (t1_fojwiqa) (t1_fok1i42) (t1_fojxc5l) (t1_fok23wm)
-      (t1_fok2tyc) (t1_fok10en) (t1_fok01r0) (t1_fojxkwf) (t1_fojwij2)
-      (more_fokiubk))) |}]
+     ((Comment fojwyxf) (Comment fojwxw7) (Comment fojwnxi) (Comment fojwi8c)
+      (Comment fojwjxq) (Comment fojxm5x) (Comment fojwiws) (Comment fojx1ud)
+      (Comment fojx7j8) (Comment fojwi6q) (Comment fojx2hj) (Comment fojwkek)
+      (Comment fojwjwy) (Comment fojx78o) (Comment fojwmji) (Comment fojwq6k)
+      (Comment fojwny9) (Comment fojwlfs) (Comment fojx8c2) (Comment fojwol7)
+      (Comment fojz23e) (Comment fok11dz) (Comment fojy5cq) (Comment fojwk3e)
+      (Comment fojwqce) (Comment fojx7rx) (Comment fok2q5c) (Comment fojwift)
+      (Comment fojwue0) (Comment fojwktc) (Comment fojwq7e) (Comment fojwiqa)
+      (Comment fok1i42) (Comment fojxc5l) (Comment fok23wm) (Comment fok2tyc)
+      (Comment fok10en) (Comment fok01r0) (Comment fojxkwf) (Comment fojwij2)
+      (More_comments fokiubk))) |}]
 ;;

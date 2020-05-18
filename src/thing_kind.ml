@@ -9,7 +9,7 @@ type t =
   | Award
   | More_comments
   | Modmail_conversation
-[@@deriving sexp]
+[@@deriving sexp, equal]
 
 let of_string s =
   match s with
