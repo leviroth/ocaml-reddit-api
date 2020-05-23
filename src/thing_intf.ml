@@ -56,6 +56,23 @@ module type Thing = sig
     include S
   end
 
+  module Fullname : sig
+    type t =
+      [ `Comment of Comment.Id.t
+      | `User of User.Id.t
+      | `Link of Link.Id.t
+      | `Message of Message.Id.t
+      | `Subreddit of Subreddit.Id.t
+      | `Award of Award.Id.t
+      | `More_comments of More_comments.Id.t
+      | `Modmail_conversation of Modmail_conversation.Id.t
+      ]
+    [@@deriving sexp]
+
+    val to_string : [< t ] -> string
+    val of_string : string -> [> t ]
+  end
+
   module Poly : sig
     type t =
       [ `Comment of Comment.t
@@ -70,5 +87,6 @@ module type Thing = sig
     [@@deriving sexp]
 
     val of_json : Json.t -> [> t ]
+    val fullname : [< t ] -> [> Fullname.t ]
   end
 end

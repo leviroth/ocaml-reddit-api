@@ -11,13 +11,8 @@ let%expect_test _ =
     Result.ok response |> Option.value_exn
   in
   let top_level = Listing.children comment_forest in
-  let ids =
-    List.map top_level ~f:(function
-        | `Comment comment -> `Comment (Thing.Comment.id comment)
-        | `More_comments more_comments ->
-          `More_comments (Thing.More_comments.id more_comments))
-  in
-  print_s [%message "" (ids : Fullname.t list)];
+  let ids = List.map top_level ~f:Thing.Poly.fullname in
+  print_s [%message "" (ids : Thing.Fullname.t list)];
   [%expect
     {|
     (ids

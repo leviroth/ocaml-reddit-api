@@ -96,6 +96,32 @@ module Modmail_conversation = Make (struct
   let kind = Thing_kind.Modmail_conversation
 end)
 
+module Fullname = struct
+  type t =
+    [ `Comment of Comment.Id.t
+    | `User of User.Id.t
+    | `Link of Link.Id.t
+    | `Message of Message.Id.t
+    | `Subreddit of Subreddit.Id.t
+    | `Award of Award.Id.t
+    | `More_comments of More_comments.Id.t
+    | `Modmail_conversation of Modmail_conversation.Id.t
+    ]
+  [@@deriving sexp]
+
+  let of_string s =
+    let kind_string, id_string = String.lsplit2_exn s ~on:'_' in
+    let kind = Thing_kind.of_string kind_string in
+    let id = Id36.of_string id_string in
+    Thing_kind.to_polymorphic_tag_uniform kind ~data:id
+  ;;
+
+  let to_string t =
+    let kind, id = Thing_kind.of_polymorphic_tag_with_uniform_data t in
+    sprintf !"%{Thing_kind}_%{Id36}" kind id
+  ;;
+end
+
 module Poly = struct
   type t =
     [ `Comment of Comment.t
@@ -110,15 +136,15 @@ module Poly = struct
   [@@deriving sexp]
 
   let of_json json =
-    let data = Json.find json ~key:"data" in
-    match Json.find json ~key:"kind" |> Json.get_string |> Thing_kind.of_string with
-    | Comment -> `Comment (Comment.of_json data)
-    | User -> `User (User.of_json data)
-    | Link -> `Link (Link.of_json data)
-    | Message -> `Message (Message.of_json data)
-    | Subreddit -> `Subreddit (Subreddit.of_json data)
-    | Award -> `Award (Award.of_json data)
-    | More_comments -> `More_comments (More_comments.of_json data)
-    | Modmail_conversation -> `Modmail_conversation (Modmail_conversation.of_json data)
+    let kind = Json.find json ~key:"kind" |> Json.get_string |> Thing_kind.of_string in
+    let data = Json.find json ~key:"data" |> Comment.of_json in
+    Thing_kind.to_polymorphic_tag_uniform kind ~data
+  ;;
+
+  let fullname t =
+    let (T : (Comment.Id.t, Link.Id.t) Type_equal.t) = Type_equal.T in
+    let kind, data = Thing_kind.of_polymorphic_tag_with_uniform_data t in
+    let id = Comment.id data in
+    Thing_kind.to_polymorphic_tag_uniform kind ~data:id
   ;;
 end
