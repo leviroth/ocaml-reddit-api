@@ -69,6 +69,8 @@ module type Thing = sig
       ]
     [@@deriving sexp]
 
+    include Identifiable.S with type t := t
+
     val to_string : [< t ] -> string
     val of_string : string -> [> t ]
   end

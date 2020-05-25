@@ -97,29 +97,36 @@ module Modmail_conversation = Make (struct
 end)
 
 module Fullname = struct
-  type t =
-    [ `Comment of Comment.Id.t
-    | `User of User.Id.t
-    | `Link of Link.Id.t
-    | `Message of Message.Id.t
-    | `Subreddit of Subreddit.Id.t
-    | `Award of Award.Id.t
-    | `More_comments of More_comments.Id.t
-    | `Modmail_conversation of Modmail_conversation.Id.t
-    ]
-  [@@deriving sexp]
+  module M = struct
+    type t =
+      [ `Comment of Comment.Id.t
+      | `User of User.Id.t
+      | `Link of Link.Id.t
+      | `Message of Message.Id.t
+      | `Subreddit of Subreddit.Id.t
+      | `Award of Award.Id.t
+      | `More_comments of More_comments.Id.t
+      | `Modmail_conversation of Modmail_conversation.Id.t
+      ]
+    [@@deriving sexp, bin_io, compare, hash]
 
-  let of_string s =
-    let kind_string, id_string = String.lsplit2_exn s ~on:'_' in
-    let kind = Thing_kind.of_string kind_string in
-    let id = Id36.of_string id_string in
-    Thing_kind.to_polymorphic_tag_uniform kind ~data:id
-  ;;
+    let of_string s =
+      let kind_string, id_string = String.lsplit2_exn s ~on:'_' in
+      let kind = Thing_kind.of_string kind_string in
+      let id = Id36.of_string id_string in
+      Thing_kind.to_polymorphic_tag_uniform kind ~data:id
+    ;;
 
-  let to_string t =
-    let kind, id = Thing_kind.of_polymorphic_tag_with_uniform_data t in
-    sprintf !"%{Thing_kind}_%{Id36}" kind id
-  ;;
+    let to_string t =
+      let kind, id = Thing_kind.of_polymorphic_tag_with_uniform_data t in
+      sprintf !"%{Thing_kind}_%{Id36}" kind id
+    ;;
+
+    let module_name = "Thing.Fullname"
+  end
+
+  include Identifiable.Make (M)
+  include M
 end
 
 module Poly = struct
