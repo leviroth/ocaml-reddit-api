@@ -13,7 +13,7 @@ end
 
 type t [@@deriving sexp_of]
 
-val create : Config.t -> t
+val create : Config.t -> user_agent:string -> t
 val more_children_sequencer : t -> unit Sequencer.t
 
 val post_form

@@ -1,10 +1,6 @@
 open! Core
 open! Async
 
-let add_user_agent l =
-  ("User-Agent", "OCaml Api Wrapper/0.1 - developed by /u/L72_Elite_kraken") :: l
-;;
-
 module Config = struct
   type t =
     { client_id : string
@@ -32,10 +28,17 @@ module type Cohttp_client_wrapper = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
 end
 
-module Live_cohttp_client : Cohttp_client_wrapper = struct
-  let get uri ~headers = Cohttp_async.Client.get uri ~headers
-  let post_form uri ~headers ~params = Cohttp_async.Client.post_form uri ~headers ~params
-end
+let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper) =
+  (module struct
+    let user_agent = library_client_user_agent ^ " OCaml Api Wrapper/0.1"
+    let add_user_agent headers = Cohttp.Header.add headers "User-Agent" user_agent
+    let get uri ~headers = Cohttp_async.Client.get uri ~headers:(add_user_agent headers)
+
+    let post_form uri ~headers ~params =
+      Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params
+    ;;
+  end)
+;;
 
 module Auth = struct
   module Access_token = struct
@@ -66,9 +69,7 @@ module Auth = struct
     let%bind _response, body =
       let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
       let headers =
-        [ "Authorization", Config.basic_auth_string t.config ]
-        |> add_user_agent
-        |> Cohttp.Header.of_list
+        Cohttp.Header.init_with "Authorization" (Config.basic_auth_string t.config)
       in
       Cohttp_client_wrapper.post_form
         ~headers
@@ -108,11 +109,7 @@ module Auth = struct
       | true -> get_token cohttp_client_wrapper t ~time_source
       | false -> return access_token
     in
-    let headers =
-      [ "Authorization", sprintf "bearer %s" token ]
-      |> add_user_agent
-      |> Cohttp.Header.add_list headers
-    in
+    let headers = Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token) in
     f headers
   ;;
 end
@@ -274,9 +271,9 @@ let create_internal cohttp_client_wrapper config ~time_source =
   }
 ;;
 
-let create config =
+let create config ~user_agent =
   create_internal
-    (module Live_cohttp_client)
+    (live_cohttp_client user_agent)
     config
     ~time_source:(Time_source.wall_clock ())
 ;;
