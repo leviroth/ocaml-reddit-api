@@ -551,6 +551,14 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
+  val comment_replies
+    : (?include_categories:bool
+       -> ?mid:string
+       -> ?subreddit_detail:bool
+       -> mark_read:bool list
+       -> Comment.t Listing.t call)
+      listing
+
   (** Moderation *)
 
   val sent

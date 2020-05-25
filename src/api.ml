@@ -1145,6 +1145,7 @@ struct
   let unread_message = read_message' `Undo
 
   let message_listing'
+      k
       endpoint
       ~listing_params
       ?include_categories
@@ -1163,13 +1164,19 @@ struct
         ; required bool "mark" mark_read
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params k
   ;;
 
-  let message_listing endpoint = with_listing_params (message_listing' endpoint)
-  let inbox = message_listing "inbox"
-  let unread = message_listing "unread"
-  let sent = message_listing "sent"
+  let message_listing endpoint k = with_listing_params (message_listing' k endpoint)
+  let inbox = message_listing "inbox" return
+  let unread = message_listing "unread" return
+  let sent = message_listing "sent" return
+
+  let comment_replies =
+    message_listing
+      "comments"
+      (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
+  ;;
 
   let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
     let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
