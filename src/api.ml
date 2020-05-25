@@ -1161,7 +1161,7 @@ struct
         ; optional' bool "include_categories" include_categories
         ; optional' string "mid" mid
         ; optional' bool "sr_detail" subreddit_detail
-        ; required bool "mark" mark_read
+        ; required' bool "mark" mark_read
         ]
     in
     get ~endpoint ~params k

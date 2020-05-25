@@ -539,7 +539,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?mid:string
        -> ?subreddit_detail:bool
-       -> mark_read:bool list
+       -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
@@ -547,7 +547,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?mid:string
        -> ?subreddit_detail:bool
-       -> mark_read:bool list
+       -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
@@ -555,7 +555,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?mid:string
        -> ?subreddit_detail:bool
-       -> mark_read:bool list
+       -> mark_read:bool
        -> Comment.t Listing.t call)
       listing
 
@@ -565,7 +565,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?mid:string
        -> ?subreddit_detail:bool
-       -> mark_read:bool list
+       -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       listing
 
