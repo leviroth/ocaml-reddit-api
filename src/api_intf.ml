@@ -559,6 +559,9 @@ module type S = sig
        -> Comment.t Listing.t call)
       listing
 
+  val subreddit_comments
+    : (subreddit:Subreddit_name.t -> Comment.t Listing.t call) listing
+
   (** Moderation *)
 
   val sent

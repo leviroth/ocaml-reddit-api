@@ -1178,6 +1178,15 @@ struct
       (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
   ;;
 
+  let subreddit_comments' ~listing_params ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/comments" subreddit in
+    let params = listing_params in
+    get
+      ~endpoint
+      ~params
+      (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
+  ;;
+
   let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
     let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
     let params =
@@ -1192,6 +1201,7 @@ struct
     get ~endpoint ~params return
   ;;
 
+  let subreddit_comments = with_listing_params subreddit_comments'
   let log = with_listing_params log'
 
   let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
