@@ -55,6 +55,10 @@ struct
     | None -> raise_s [%message "Missing author" (t : t)]
   ;;
 
+  let subreddit t =
+    get_field_exn t "subreddit" |> Json.get_string |> Subreddit_name.of_string
+  ;;
+
   let moderation_info t =
     let approved_by = username_of_field t ~field_name:"approved_by" in
     let approved_at = time_of_field t ~field_name:"approved_at_utc" in

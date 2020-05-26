@@ -21,6 +21,7 @@ module type Thing = sig
 
     val author : t -> Username.t
     val moderation_info : t -> Moderation_info.t option
+    val subreddit : t -> Subreddit_name.t
   end
 
   and User : sig
@@ -32,6 +33,7 @@ module type Thing = sig
 
     val author : t -> Username.t
     val moderation_info : t -> Moderation_info.t option
+    val subreddit : t -> Subreddit_name.t
   end
 
   and Message : sig
