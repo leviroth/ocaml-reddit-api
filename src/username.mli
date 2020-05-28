@@ -1,2 +1,4 @@
+(** [Username] disregards "u/" and "/u/" prefixes and uses caseless hashes and comparisons. *)
+
 open! Core
-include String_id.S
+include Identifiable.S
