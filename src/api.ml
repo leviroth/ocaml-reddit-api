@@ -1230,8 +1230,8 @@ struct
     post ~endpoint ~params:api_type return
   ;;
 
-  let approve ~id = simple_post_fullname_as_id "approve" id return
-  let remove ~id = simple_post_fullname_as_id "remove" id return
+  let approve ~id = simple_post_fullname_as_id "approve" id ignore_empty_object
+  let remove ~id = simple_post_fullname_as_id "remove" id ignore_empty_object
 
   let distinguish ?sticky ~id ~how =
     let endpoint = "/api/distinguish" in

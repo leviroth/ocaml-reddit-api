@@ -624,13 +624,8 @@ module type S = sig
     :  subreddit:Subreddit_name.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val approve
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val remove
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val approve : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+  val remove : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
 
   val distinguish
     :  ?sticky:bool
