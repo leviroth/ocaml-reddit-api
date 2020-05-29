@@ -1,6 +1,13 @@
 open! Core
 module Page_id = String
 
+module Pagination = struct
+  type t =
+    | Before of Page_id.t
+    | After of Page_id.t
+  [@@deriving sexp]
+end
+
 type 'a t =
   { children : 'a list
   ; after : Page_id.t option

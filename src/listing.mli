@@ -6,6 +6,13 @@ module Page_id : sig
   include Stringable with type t := t
 end
 
+module Pagination : sig
+  type t =
+    | Before of Page_id.t
+    | After of Page_id.t
+  [@@deriving sexp]
+end
+
 type 'child t [@@deriving sexp]
 
 val of_json : (Json.t -> 'child) -> Json.t -> 'child t

@@ -23,6 +23,19 @@ module Param_dsl = struct
   let string = Fn.id
   let int = Int.to_string
 
+  let pagination_ (pagination : Listing.Pagination.t) =
+    let key =
+      match pagination with
+      | Before _ -> "before"
+      | After _ -> "after"
+    in
+    let value =
+      match pagination with
+      | Before page_id | After page_id -> Listing.Page_id.to_string page_id
+    in
+    [ key, [ value ] ]
+  ;;
+
   let fullname_ id =
     let (kind : Thing_kind.t), id36_string =
       match id with
@@ -45,26 +58,6 @@ module Param_dsl = struct
 end
 
 module Parameters = struct
-  module Pagination = struct
-    type t =
-      | Before of Listing.Page_id.t
-      | After of Listing.Page_id.t
-    [@@deriving sexp]
-
-    let params_of_t t =
-      let key =
-        match t with
-        | Before _ -> "before"
-        | After _ -> "after"
-      in
-      let value =
-        match t with
-        | Before page_id | After page_id -> Listing.Page_id.to_string page_id
-      in
-      [ key, [ value ] ]
-    ;;
-  end
-
   module Comment_sort = struct
     type t =
       | Confidence
@@ -634,7 +627,7 @@ struct
     let listing_params =
       let open Param_dsl in
       combine
-        [ include_optional Pagination.params_of_t pagination
+        [ include_optional pagination_ pagination
         ; optional' int "count" count
         ; optional' int "limit" limit
         ; optional' (const "all") "show" show_all
