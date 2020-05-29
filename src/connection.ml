@@ -280,60 +280,22 @@ let create config ~user_agent =
 
 let more_children_sequencer t = t.more_children_sequencer
 
-let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
-  Auth.with_t t.auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-      Rate_limiter.with_t t.rate_limiter ~time_source:t.time_source ~f:(fun () ->
-          f headers))
-;;
-
-let with_retry_internal ?(allowed_exception_retries = 3) f =
-  let next_time_to_wait time =
-    Time_ns.Span.(max (Time_ns.Span.scale_int time 2) Time_ns.Span.minute)
-  in
-  let rec with_retry f time_to_wait allowed_exception_retries =
-    match%bind try_with f with
-    | Ok ((response, _body) as result) ->
-      (match Cohttp.Response.status response with
-      | #Cohttp.Code.server_error_status ->
-        Log.Global.error_s
-          [%message "got server error status code" (response : Cohttp.Response.t)];
-        with_retry f (next_time_to_wait time_to_wait) allowed_exception_retries
-      | _ -> return result)
-    | Error exn ->
-      (match allowed_exception_retries with
-      | 0 ->
-        raise_s
-          [%message "Saw repeated exceptions while retrying HTTP request" (exn : Exn.t)]
-      | n ->
-        Log.Global.error_s [%message "saw exception" (exn : Exn.t)];
-        with_retry f (next_time_to_wait time_to_wait) (n - 1))
-  in
-  with_retry f Time_ns.Span.second allowed_exception_retries
-;;
-
-let with_retry t ~f ~headers =
-  with_retry_internal (fun () ->
-      with_t
-        t
-        ~f
-        ~headers
-        ~cohttp_client_wrapper:t.cohttp_client_wrapper
-        ~time_source:t.time_source)
+let with_t { auth; rate_limiter; cohttp_client_wrapper; time_source; _ } ~f ~headers =
+  Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
+      Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
 ;;
 
 let post_form t uri ~params =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
-  with_retry
-    t
-    ~f:(fun headers -> Cohttp_client_wrapper.post_form ~headers ~params uri)
-    ~headers
+  with_t t ~headers ~f:(fun headers ->
+      Cohttp_client_wrapper.post_form ~headers ~params uri)
 ;;
 
 let get t uri =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
-  with_retry t ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri) ~headers
+  with_t t ~headers ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri)
 ;;
 
 module For_testing = struct
