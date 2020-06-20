@@ -8,7 +8,7 @@ val iter
        (Connection.t
         -> before:'id option
         -> limit:int
-        -> ('thing list, Cohttp.Response.t * Cohttp_async.Body.t) result Deferred.t)
+        -> ('thing list, Api.Api_error.t) result Deferred.t)
   -> get_before_parameter:('thing -> 'id)
   -> f:('thing -> unit Deferred.t)
   -> _ Deferred.t
@@ -20,11 +20,11 @@ val fold
        (Connection.t
         -> before:'id option
         -> limit:int
-        -> ('thing list, Cohttp.Response.t * Cohttp_async.Body.t) result Deferred.t)
+        -> ('thing list, Api.Api_error.t) result Deferred.t)
   -> get_before_parameter:('thing -> 'id)
   -> init:'state
   -> f:('state -> 'thing -> 'state Deferred.t)
-  -> on_error:('state -> Cohttp.Response.t * Cohttp_async.Body.t -> 'state Deferred.t)
+  -> on_error:('state -> Api.Api_error.t -> 'state Deferred.t)
   -> _ Deferred.t
 
 val fold_until_finished
@@ -34,12 +34,10 @@ val fold_until_finished
        (Connection.t
         -> before:'id option
         -> limit:int
-        -> ('thing list, Cohttp.Response.t * Cohttp_async.Body.t) result Deferred.t)
+        -> ('thing list, Api.Api_error.t) result Deferred.t)
   -> get_before_parameter:('thing -> 'id)
   -> init:'state
   -> f:('state -> 'thing -> ('state, 'result) Continue_or_stop.t Deferred.t)
   -> on_error:
-       ('state
-        -> Cohttp.Response.t * Cohttp_async.Body.t
-        -> ('state, 'result) Continue_or_stop.t Deferred.t)
+       ('state -> Api.Api_error.t -> ('state, 'result) Continue_or_stop.t Deferred.t)
   -> 'result Deferred.t

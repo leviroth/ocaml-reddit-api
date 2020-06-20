@@ -978,21 +978,27 @@ end
 
 module type Realtime = S with type Connection.t := Connection.t
 
-module type Api = sig
-  include
-    Realtime
-      with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+module type Api_error = sig
+  type t =
+    | Cohttp_raised of Exn.t
+    | Reddit_reported_error of Cohttp.Response.t * Cohttp_async.Body.t
+  [@@deriving sexp_of]
+end
 
-  module Exn : Realtime with type 'a response := 'a with module Parameters := Parameters
+module type Api = sig
+  module Api_error : Api_error
+  include Realtime with type 'a response := ('a, Api_error.t) Result.t
 
   module Raw :
     Realtime
-      with type _ response := Cohttp.Response.t * Cohttp_async.Body.t
+      with type _ response := (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Result.t
       with module Parameters := Parameters
+
+  module Exn : Realtime with type 'a response := 'a with module Parameters := Parameters
 
   module For_testing :
     S
       with type Connection.t := Cohttp.Response.t * Cohttp_async.Body.t
-      with type 'a response := ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+      with type 'a response := ('a, Api_error.t) Result.t
       with module Parameters := Parameters
 end

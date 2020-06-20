@@ -64,7 +64,7 @@ let fold_until_finished
         |> List.filter ~f:(fun child ->
                not (Bounded_set.mem seen (get_before_parameter child : id)))
       in
-        List.iter list ~f:(fun child -> Bounded_set.add seen (get_before_parameter child));
+      List.iter list ~f:(fun child -> Bounded_set.add seen (get_before_parameter child));
       let continue state =
         match List.hd list with
         | None ->
@@ -80,9 +80,7 @@ let fold_until_finished
       (match first_pass with
       | true -> continue state
       | false ->
-        (match%bind
-           fold_helper list ~init:state ~f
-         with
+        (match%bind fold_helper list ~init:state ~f with
         | Stop result -> return result
         | Continue state -> continue state))
   in
@@ -128,11 +126,7 @@ let iter
     ~get_before_parameter
     ~init:()
     ~f:(fun () child -> f child)
-    ~on_error:(fun () (response, (_ : Cohttp_async.Body.t)) ->
-      let status = Cohttp.Response.status response in
-      let code = Cohttp.Code.code_of_status status in
-      Log.Global.error_s
-        [%message
-          "Received error response" (code : int) (status : Cohttp.Code.status_code)];
+    ~on_error:(fun () error ->
+      Log.Global.error_s [%message "Received error response" (error : Api.Api_error.t)];
       return ())
 ;;

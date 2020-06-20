@@ -288,14 +288,16 @@ let with_t { auth; rate_limiter; cohttp_client_wrapper; time_source; _ } ~f ~hea
 let post_form t uri ~params =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
-  with_t t ~headers ~f:(fun headers ->
-      Cohttp_client_wrapper.post_form ~headers ~params uri)
+  Monitor.try_with (fun () ->
+      with_t t ~headers ~f:(fun headers ->
+          Cohttp_client_wrapper.post_form ~headers ~params uri))
 ;;
 
 let get t uri =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
-  with_t t ~headers ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri)
+  Monitor.try_with (fun () ->
+      with_t t ~headers ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri))
 ;;
 
 module For_testing = struct

@@ -520,16 +520,26 @@ module Parameters = struct
   end
 end
 
+module Api_error = struct
+  type t =
+    | Cohttp_raised of Exn.t
+    | Reddit_reported_error of Cohttp.Response.t * Cohttp_async.Body.t
+  [@@deriving sexp_of]
+end
+
 module Make (Connection : sig
   type t
 
-  val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+  val get
+    :  t
+    -> Uri.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
   val post_form
     :  t
     -> Uri.t
     -> params:(string * string list) list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
   val more_children_sequencer : t -> unit Sequencer.t
 end) (Output : sig
@@ -537,7 +547,7 @@ end) (Output : sig
 
   val finalize
     :  (Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Option.t)
-    -> Cohttp.Response.t * Cohttp_async.Body.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Result.t
     -> 'a t Deferred.t
 end) =
 struct
@@ -548,11 +558,14 @@ struct
     let params = ("raw_json", [ "1" ]) :: params in
     let params = param_list_override params in
     let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
-    match http_verb with
-    | `GET ->
-      let uri = Uri.add_query_params uri params in
-      Connection.get connection uri >>= k
-    | `POST -> Connection.post_form connection uri ~params >>= k
+    let%bind response =
+      match http_verb with
+      | `GET ->
+        let uri = Uri.add_query_params uri params in
+        Connection.get connection uri
+      | `POST -> Connection.post_form connection uri ~params
+    in
+    k response
   ;;
 
   let get = call_api ~http_verb:`GET
@@ -1873,7 +1886,7 @@ struct
 end
 
 module Raw_param = struct
-  type _ t = Cohttp.Response.t * Cohttp_async.Body.t
+  type _ t = (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Result.t
 
   let finalize
       (_ : Cohttp.Response.t * Cohttp_async.Body.t -> 'a Deferred.Option.t)
@@ -1889,22 +1902,34 @@ module Exn_param = struct
   type 'a t = 'a
 
   let finalize f response =
-    match%bind f response with
-    | Some x -> return x
-    | None ->
-      let response, body = response in
-      raise_s
-        [%message
-          "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)]
+    match response with
+    | Error exn -> raise exn
+    | Ok response ->
+      (match%bind f response with
+      | Some x -> return x
+      | None ->
+        let response, body = response in
+        raise_s
+          [%message
+            "HTTP error" (response : Cohttp.Response.t) (body : Cohttp_async.Body.t)])
   ;;
 end
 
 module Exn = Make (Connection) (Exn_param)
 
 module Typed_param = struct
-  type 'a t = ('a, Cohttp.Response.t * Cohttp_async.Body.t) Result.t
+  type 'a t = ('a, Api_error.t) Result.t
 
-  let finalize f response = f response >>| Result.of_option ~error:response
+  let finalize f response =
+    match response with
+    | Error exn -> return (Error (Api_error.Cohttp_raised exn))
+    | Ok response ->
+      (match%bind f response with
+      | Some result -> return (Ok result)
+      | None ->
+        let response, body = response in
+        return (Error (Api_error.Reddit_reported_error (response, body))))
+  ;;
 end
 
 include Make (Connection) (Typed_param)
@@ -1914,8 +1939,8 @@ module For_testing =
     (struct
       type t = Cohttp.Response.t * Cohttp_async.Body.t
 
-      let get t _ = return t
-      let post_form t _ ~params:_ = return t
+      let get t _ = return (Ok t)
+      let post_form t _ ~params:_ = return (Ok t)
       let more_children_sequencer _ = Sequencer.create ()
     end)
     (Typed_param)

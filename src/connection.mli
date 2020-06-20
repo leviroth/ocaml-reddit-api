@@ -20,9 +20,9 @@ val post_form
   :  t
   -> Uri.t
   -> params:(string * string list) list
-  -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+  -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
-val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
 module For_testing : sig
   module type Cohttp_client_wrapper = sig
