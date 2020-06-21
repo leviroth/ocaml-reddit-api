@@ -46,9 +46,7 @@ let fold_until_finished
     let limit, cache_busting_counter =
       match before with
       | Some _ -> 100, cache_busting_counter
-      | None ->
-        let cache_busting_counter = (cache_busting_counter + 1) mod 30 in
-        100 - cache_busting_counter, cache_busting_counter
+      | None -> 100 - cache_busting_counter, (cache_busting_counter + 1) mod 30
     in
     match%bind get_listing connection ~before ~limit with
     | Error response ->
@@ -60,22 +58,21 @@ let fold_until_finished
         loop state before backoff cache_busting_counter)
     | Ok list ->
       let list =
-        List.rev list
-        |> List.filter ~f:(fun child ->
-               not (Bounded_set.mem seen (get_before_parameter child : id)))
+        List.filter list ~f:(fun child ->
+            not (Bounded_set.mem seen (get_before_parameter child : id)))
       in
+      let most_recent_element = List.hd list in
+      let list = List.rev list in
       List.iter list ~f:(fun child -> Bounded_set.add seen (get_before_parameter child));
       let continue state =
-        match List.hd list with
-        | None ->
-          let backoff = Backoff.increment backoff in
-          let%bind () = Backoff.after backoff in
-          loop state None backoff cache_busting_counter
-        | Some child ->
-          let before = Some (get_before_parameter child) in
-          let backoff = Backoff.initial in
-          let%bind () = Backoff.after backoff in
-          loop state before backoff cache_busting_counter
+        let before = Option.map most_recent_element ~f:get_before_parameter in
+        let backoff =
+          match List.is_empty list with
+          | true -> Backoff.increment backoff
+          | false -> Backoff.initial
+        in
+        let%bind () = Backoff.after backoff in
+        loop state before backoff cache_busting_counter
       in
       (match first_pass with
       | true -> continue state
