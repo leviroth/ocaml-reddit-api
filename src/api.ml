@@ -1589,7 +1589,7 @@ struct
 
   let search_profiles = with_listing_params search_profiles'
 
-  let about ~subreddit =
+  let about_subreddit ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
     get ~endpoint ~params:[] return
   ;;
@@ -1670,6 +1670,11 @@ struct
         ]
     in
     get ~endpoint ~params return
+  ;;
+
+  let about_user ~username =
+    let endpoint = sprintf !"/user/%{Username}/about" username in
+    get ~endpoint ~params:[] return
   ;;
 
   let list_subreddits = with_listing_params list_subreddits'

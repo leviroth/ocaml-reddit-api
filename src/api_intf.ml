@@ -839,7 +839,9 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
-  val about : subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val about_subreddit
+    :  subreddit:Subreddit_name.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val subreddit_settings
     :  ?created:bool
@@ -888,6 +890,8 @@ module type S = sig
       with_listing_params
 
   (** Users *)
+
+  val about_user : username:Username.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val list_user_subreddits
     : (?subreddit_detail:bool
