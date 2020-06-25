@@ -1591,7 +1591,7 @@ struct
 
   let about_subreddit ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response Subreddit.of_json_with_tag_exn)
   ;;
 
   let subreddit_about ?(params = []) ~subreddit endpoint =
@@ -1674,7 +1674,7 @@ struct
 
   let about_user ~username =
     let endpoint = sprintf !"/user/%{Username}/about" username in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response User.of_json_with_tag_exn)
   ;;
 
   let list_subreddits = with_listing_params list_subreddits'
