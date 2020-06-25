@@ -637,7 +637,19 @@ struct
     get ~endpoint:"/api/v1/me/karma" ~params:[] (handle_json_response Karma_list.of_json)
   ;;
 
-  let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] return
+  let trophies =
+    get
+      ~endpoint:"/api/v1/me/trophies"
+      ~params:[]
+      (handle_json_response (fun json ->
+           match json with
+           | `Object
+               [ ("kind", `String "TrophyList")
+               ; ("data", `Object [ ("trophies", `Array trophies) ])
+               ] -> List.map trophies ~f:Award.of_json_with_tag_exn
+           | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)]))
+  ;;
+
   let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[] return
 
   let with_listing_params k ?pagination ?count ?limit ?show_all =

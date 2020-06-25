@@ -251,7 +251,7 @@ module type S = sig
 
   val me : User.t call
   val karma : Karma_list.t call
-  val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val trophies : Award.t list call
 
   val friends
     : (?subreddit_detail:bool
