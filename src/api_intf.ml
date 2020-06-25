@@ -2,242 +2,239 @@ open! Core
 open Async
 open Thing
 
-module type S = sig
-  module Connection : T
-
-  module Parameters : sig
-    module Comment_sort : sig
-      type t =
-        | Confidence
-        | Top
-        | New
-        | Controversial
-        | Old
-        | Random
-        | Q_and_a
-        | Live
-      [@@deriving sexp]
-    end
-
-    module Sticky_state : sig
-      type t =
-        | Sticky of { slot : int }
-        | Unsticky
-      [@@deriving sexp]
-    end
-
-    module Link_kind : sig
-      module Self_post_body : sig
-        type t =
-          | Markdown of string
-          | Richtext_json of Json.t
-        [@@deriving sexp]
-      end
-
-      type t =
-        | Link of { url : string }
-        | Self of Self_post_body.t
-      [@@deriving sexp]
-    end
-
-    module Vote_direction : sig
-      type t =
-        | Up
-        | Neutral
-        | Down
-      [@@deriving sexp]
-    end
-
-    module Info_query : sig
-      type t =
-        | Id of
-            [ `Link of Link.Id.t
-            | `Comment of Comment.Id.t
-            | `Subreddit of Subreddit.Id.t
-            ]
-            list
-        | Url of Uri.t
-      [@@deriving sexp]
-    end
-
-    module Duplicate_sort : sig
-      type t =
-        | Number_of_comments
-        | New
-    end
-
-    module Historical_span : sig
-      type t =
-        | Hour
-        | Day
-        | Week
-        | Month
-        | Year
-        | All
-      [@@deriving sexp]
-    end
-
-    module Mod_filter : sig
-      type t =
-        | Moderators of Username.t list
-        | Admin
-    end
-
-    module Links_or_comments : sig
-      type t =
-        | Links
-        | Comments
-    end
-
-    module How_to_distinguish : sig
-      type t =
-        | Mod
-        | Admin
-        | Special
-        | Undistinguish
-    end
-
-    module Search_sort : sig
-      type t =
-        | Relevance
-        | Hot
-        | Top
-        | New
-        | Comments
-    end
-
-    module Search_type : sig
-      type t =
-        | Subreddit
-        | Link
-        | User
-      [@@deriving sexp]
-
-      include Comparable.S with type t := t
-    end
-
-    module Link_type : sig
-      type t =
-        | Any
-        | Link
-        | Self
-    end
-
-    module Spam_level : sig
-      type t =
-        | Low
-        | High
-        | All
-    end
-
-    module Subreddit_type : sig
-      type t =
-        | Gold_restricted
-        | Archived
-        | Restricted
-        | Employees_only
-        | Gold_only
-        | Private
-        | User
-        | Public
-    end
-
-    module Wiki_mode : sig
-      type t =
-        | Disabled
-        | Mod_only
-        | Anyone
-    end
-
-    module Stylesheet_operation : sig
-      type t =
-        | Save
-        | Preview
-    end
-
-    module Subscription_action : sig
-      type t =
-        | Subscribe
-        | Unsubscribe
-    end
-
-    module Image_type : sig
-      type t =
-        | Png
-        | Jpg
-    end
-
-    module Upload_type : sig
-      type t =
-        | Image
-        | Header
-        | Icon
-        | Banner
-    end
-
-    module Subreddit_search_sort : sig
-      type t =
-        | Relevance
-        | Activity
-    end
-
-    module Subreddit_relationship : sig
-      type t =
-        | Subscriber
-        | Contributor
-        | Moderator
-        | Stream_subscriber
-    end
-
-    module Subreddit_listing_sort : sig
-      type t =
-        | Popular
-        | New
-        | Gold
-        | Default
-    end
-
-    module User_subreddit_sort : sig
-      type t =
-        | Popular
-        | New
-    end
-
-    module Relationship : sig
-      module Duration : sig
-        type t =
-          | Permanent
-          | Days of int
-        [@@deriving sexp]
-      end
-
-      type t =
-        | Friend
-        | Moderator
-        | Moderator_invite
-        | Contributor
-        | Banned
-        | Muted
-        | Wiki_banned
-        | Wiki_contributor
-      [@@deriving sexp]
-    end
-
-    module Add_or_remove : sig
-      type t =
-        | Add
-        | Remove
-    end
-
-    module Comment_response : sig
-      type t =
-        { link : Thing.Link.t
-        ; comment_forest :
-            [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
-        }
-    end
+module type Parameters = sig
+  module Comment_sort : sig
+    type t =
+      | Confidence
+      | Top
+      | New
+      | Controversial
+      | Old
+      | Random
+      | Q_and_a
+      | Live
+    [@@deriving sexp]
   end
 
+  module Sticky_state : sig
+    type t =
+      | Sticky of { slot : int }
+      | Unsticky
+    [@@deriving sexp]
+  end
+
+  module Link_kind : sig
+    module Self_post_body : sig
+      type t =
+        | Markdown of string
+        | Richtext_json of Json.t
+      [@@deriving sexp]
+    end
+
+    type t =
+      | Link of { url : string }
+      | Self of Self_post_body.t
+    [@@deriving sexp]
+  end
+
+  module Vote_direction : sig
+    type t =
+      | Up
+      | Neutral
+      | Down
+    [@@deriving sexp]
+  end
+
+  module Info_query : sig
+    type t =
+      | Id of
+          [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
+          list
+      | Url of Uri.t
+    [@@deriving sexp]
+  end
+
+  module Duplicate_sort : sig
+    type t =
+      | Number_of_comments
+      | New
+  end
+
+  module Historical_span : sig
+    type t =
+      | Hour
+      | Day
+      | Week
+      | Month
+      | Year
+      | All
+    [@@deriving sexp]
+  end
+
+  module Mod_filter : sig
+    type t =
+      | Moderators of Username.t list
+      | Admin
+  end
+
+  module Links_or_comments : sig
+    type t =
+      | Links
+      | Comments
+  end
+
+  module How_to_distinguish : sig
+    type t =
+      | Mod
+      | Admin
+      | Special
+      | Undistinguish
+  end
+
+  module Search_sort : sig
+    type t =
+      | Relevance
+      | Hot
+      | Top
+      | New
+      | Comments
+  end
+
+  module Search_type : sig
+    type t =
+      | Subreddit
+      | Link
+      | User
+    [@@deriving sexp]
+
+    include Comparable.S with type t := t
+  end
+
+  module Link_type : sig
+    type t =
+      | Any
+      | Link
+      | Self
+  end
+
+  module Spam_level : sig
+    type t =
+      | Low
+      | High
+      | All
+  end
+
+  module Subreddit_type : sig
+    type t =
+      | Gold_restricted
+      | Archived
+      | Restricted
+      | Employees_only
+      | Gold_only
+      | Private
+      | User
+      | Public
+  end
+
+  module Wiki_mode : sig
+    type t =
+      | Disabled
+      | Mod_only
+      | Anyone
+  end
+
+  module Stylesheet_operation : sig
+    type t =
+      | Save
+      | Preview
+  end
+
+  module Subscription_action : sig
+    type t =
+      | Subscribe
+      | Unsubscribe
+  end
+
+  module Image_type : sig
+    type t =
+      | Png
+      | Jpg
+  end
+
+  module Upload_type : sig
+    type t =
+      | Image
+      | Header
+      | Icon
+      | Banner
+  end
+
+  module Subreddit_search_sort : sig
+    type t =
+      | Relevance
+      | Activity
+  end
+
+  module Subreddit_relationship : sig
+    type t =
+      | Subscriber
+      | Contributor
+      | Moderator
+      | Stream_subscriber
+  end
+
+  module Subreddit_listing_sort : sig
+    type t =
+      | Popular
+      | New
+      | Gold
+      | Default
+  end
+
+  module User_subreddit_sort : sig
+    type t =
+      | Popular
+      | New
+  end
+
+  module Relationship : sig
+    module Duration : sig
+      type t =
+        | Permanent
+        | Days of int
+      [@@deriving sexp]
+    end
+
+    type t =
+      | Friend
+      | Moderator
+      | Moderator_invite
+      | Contributor
+      | Banned
+      | Muted
+      | Wiki_banned
+      | Wiki_contributor
+    [@@deriving sexp]
+  end
+
+  module Add_or_remove : sig
+    type t =
+      | Add
+      | Remove
+  end
+
+  module Comment_response : sig
+    type t =
+      { link : Thing.Link.t
+      ; comment_forest :
+          [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
+      }
+  end
+end
+
+module type S = sig
+  module Connection : T
+  module Parameters : Parameters
   open Parameters
 
   type 'a with_listing_params :=
