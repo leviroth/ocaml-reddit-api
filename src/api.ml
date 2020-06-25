@@ -631,8 +631,12 @@ struct
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
   let get_link_listing = get_listing Link.of_json_with_tag_exn
   let get_subreddit_listing = get_listing Subreddit.of_json_with_tag_exn
-  let me = get ~endpoint:"/api/v1/me" ~params:[] return
-  let karma = get ~endpoint:"/api/v1/me/karma" ~params:[] return
+  let me = get ~endpoint:"/api/v1/me" ~params:[] (handle_json_response User.of_json)
+
+  let karma =
+    get ~endpoint:"/api/v1/me/karma" ~params:[] (handle_json_response Karma_list.of_json)
+  ;;
+
   let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] return
   let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[] return
 

@@ -249,8 +249,8 @@ module type S = sig
 
   (** Account *)
 
-  val me : (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val karma : (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val me : User.t call
+  val karma : Karma_list.t call
   val trophies : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val friends
