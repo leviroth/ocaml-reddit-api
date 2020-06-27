@@ -30,7 +30,7 @@ let server_stub responses : (module Connection.For_testing.Cohttp_client_wrapper
     let post_form uri ~headers ~params =
       Core.print_s
         [%message
-          "post_from"
+          "post_form"
             (uri : Uri_sexp.t)
             (headers : Cohttp.Header.t)
             (params : (string * string list) list)];
@@ -67,7 +67,7 @@ let%expect_test "info" =
   in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
@@ -83,7 +83,7 @@ let%expect_test "me" =
   let%bind _response = Api.Raw.me connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
@@ -99,7 +99,7 @@ let%expect_test "karma" =
   let%bind _response = Api.Raw.karma connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
@@ -115,7 +115,7 @@ let%expect_test "trophies" =
   let%bind _response = Api.Raw.trophies connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
@@ -132,24 +132,26 @@ let%expect_test "friends" =
   let%bind () =
     [%expect
       {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
-    (post_from
-     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/friends)))
-     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))
-     (params ((raw_json (1))))) |}]
+    (get
+     (uri
+      ((scheme (https)) (host (oauth.reddit.com)) (path /prefs/friends)
+       (query ((raw_json (1))))))
+     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))) |}]
   in
   let%bind _response =
     Api.Raw.friends ~pagination:(After (Listing.Page_id.of_string "t3_1jklj")) connection
   in
   [%expect
     {|
-    (post_from
-     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/friends)))
-     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))
-     (params ((raw_json (1)) (after (t3_1jklj))))) |}]
+    (get
+     (uri
+      ((scheme (https)) (host (oauth.reddit.com)) (path /prefs/friends)
+       (query ((raw_json (1)) (after (t3_1jklj))))))
+     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))) |}]
 ;;
 
 let%expect_test "blocked" =
@@ -157,14 +159,15 @@ let%expect_test "blocked" =
   let%bind _response = Api.Raw.blocked connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
-    (post_from
-     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/blocked)))
-     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))
-     (params ((raw_json (1))))) |}]
+    (get
+     (uri
+      ((scheme (https)) (host (oauth.reddit.com)) (path /prefs/blocked)
+       (query ((raw_json (1))))))
+     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))) |}]
 ;;
 
 let%expect_test "messaging" =
@@ -172,14 +175,15 @@ let%expect_test "messaging" =
   let%bind _response = Api.Raw.messaging connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
-    (post_from
-     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/messaging)))
-     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))
-     (params ((raw_json (1))))) |}]
+    (get
+     (uri
+      ((scheme (https)) (host (oauth.reddit.com)) (path /prefs/messaging)
+       (query ((raw_json (1))))))
+     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))) |}]
 ;;
 
 let%expect_test "trusted" =
@@ -187,12 +191,13 @@ let%expect_test "trusted" =
   let%bind _response = Api.Raw.trusted connection in
   [%expect
     {|
-    (post_from
+    (post_form
      (uri ((scheme (https)) (host (www.reddit.com)) (path /api/v1/access_token)))
      (headers ((authorization "Basic Og==")))
      (params ((grant_type (password)) (username ("")) (password ("")))))
-    (post_from
-     (uri ((scheme (https)) (host (oauth.reddit.com)) (path /api/trusted)))
-     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))
-     (params ((raw_json (1))))) |}]
+    (get
+     (uri
+      ((scheme (https)) (host (oauth.reddit.com)) (path /prefs/trusted)
+       (query ((raw_json (1))))))
+     (headers ((authorization "bearer <FAKE_ACCESS_TOKEN>")))) |}]
 ;;

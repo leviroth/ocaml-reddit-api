@@ -252,30 +252,10 @@ module type S = sig
   val me : User.t call
   val karma : Karma_list.t call
   val trophies : Award.t list call
-
-  val friends
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
-
-  val blocked
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
-
-  val messaging
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
-
-  val trusted
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
+  val friends : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
+  val blocked : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
+  val messaging : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
+  val trusted : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
 
   (** Captcha *)
 
@@ -417,9 +397,7 @@ module type S = sig
   (** Listings *)
 
   val best
-    : (?include_categories:bool
-       -> ?subreddit_detail:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+    : (?include_categories:bool -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val links_by_id : links:Link.Id.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
@@ -433,7 +411,6 @@ module type S = sig
     -> ?showedits:bool
     -> ?showmore:bool
     -> ?sort:Comment_sort.t
-    -> ?subreddit_detail:bool
     -> ?threaded:bool
     -> ?truncate:int
     -> link:Link.Id.t
@@ -441,7 +418,6 @@ module type S = sig
 
   val duplicates
     : (?crossposts_only:bool
-       -> ?subreddit_detail:bool
        -> ?sort:Duplicate_sort.t
        -> link:Link.Id.t
        -> Link.t Listing.t call)
@@ -450,29 +426,21 @@ module type S = sig
   val hot
     : (?location:string
        -> ?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
        -> Link.t Listing.t call)
       with_listing_params
 
   val new_
-    : (?include_categories:bool
-       -> ?subreddit_detail:bool
-       -> ?subreddit:Subreddit_name.t
-       -> Link.t Listing.t call)
+    : (?include_categories:bool -> ?subreddit:Subreddit_name.t -> Link.t Listing.t call)
       with_listing_params
 
   val rising
-    : (?include_categories:bool
-       -> ?subreddit_detail:bool
-       -> ?subreddit:Subreddit_name.t
-       -> Link.t Listing.t call)
+    : (?include_categories:bool -> ?subreddit:Subreddit_name.t -> Link.t Listing.t call)
       with_listing_params
 
   val top
     : (?since:Historical_span.t
        -> ?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
        -> Link.t Listing.t call)
       with_listing_params
@@ -480,7 +448,6 @@ module type S = sig
   val controversial
     : (?since:Historical_span.t
        -> ?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
        -> Link.t Listing.t call)
       with_listing_params
@@ -528,7 +495,6 @@ module type S = sig
   val inbox
     : (?include_categories:bool
        -> ?mid:string
-       -> ?subreddit_detail:bool
        -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
@@ -536,7 +502,6 @@ module type S = sig
   val unread
     : (?include_categories:bool
        -> ?mid:string
-       -> ?subreddit_detail:bool
        -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
@@ -544,7 +509,6 @@ module type S = sig
   val comment_replies
     : (?include_categories:bool
        -> ?mid:string
-       -> ?subreddit_detail:bool
        -> mark_read:bool
        -> Comment.t Listing.t call)
       with_listing_params
@@ -557,14 +521,12 @@ module type S = sig
   val sent
     : (?include_categories:bool
        -> ?mid:string
-       -> ?subreddit_detail:bool
        -> mark_read:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val log
     : (?mod_filter:Mod_filter.t
-       -> ?subreddit_detail:bool
        -> ?subreddit:Subreddit_name.t
        -> ?type_:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -574,7 +536,6 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> ?subreddit_detail:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
@@ -582,7 +543,6 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> ?subreddit_detail:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
@@ -590,7 +550,6 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> ?subreddit_detail:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
@@ -598,7 +557,6 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> ?subreddit_detail:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
@@ -606,7 +564,6 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> ?subreddit_detail:bool
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
@@ -659,7 +616,6 @@ module type S = sig
        -> ?restrict_to_subreddit:Subreddit_name.t
        -> ?since:Historical_span.t
        -> ?sort:Search_sort.t
-       -> ?subreddit_detail:bool
        -> ?types:Search_type.Set.t
        -> query:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -669,7 +625,6 @@ module type S = sig
 
   val banned
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -677,7 +632,6 @@ module type S = sig
 
   val muted
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -685,7 +639,6 @@ module type S = sig
 
   val wiki_banned
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -693,7 +646,6 @@ module type S = sig
 
   val contributors
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -701,7 +653,6 @@ module type S = sig
 
   val wiki_contributors
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -709,7 +660,6 @@ module type S = sig
 
   val moderators
     : (?include_categories:bool
-       -> ?subreddit_detail:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -830,8 +780,7 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val search_profiles
-    : (?subreddit_detail:bool
-       -> ?sort:Subreddit_search_sort.t
+    : (?sort:Subreddit_search_sort.t
        -> query:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
@@ -863,7 +812,6 @@ module type S = sig
 
   val get_subreddits
     : (?include_categories:bool
-       -> ?subreddit_detail:string
        -> relationship:Subreddit_relationship.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
@@ -871,14 +819,12 @@ module type S = sig
   val search_subreddits
     : (?show_users:bool
        -> ?sort:Subreddit_search_sort.t
-       -> ?subreddit_detail:bool
        -> query:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val list_subreddits
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
+    : (?include_categories:bool
        -> ?show_users:bool
        -> sort:Subreddit_listing_sort.t
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
@@ -889,8 +835,7 @@ module type S = sig
   val about_user : username:Username.t -> User.t call
 
   val list_user_subreddits
-    : (?subreddit_detail:bool
-       -> ?include_categories:bool
+    : (?include_categories:bool
        -> sort:User_subreddit_sort.t
        -> Subreddit.t Listing.t call)
       with_listing_params
@@ -938,9 +883,7 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val wiki_discussions
-    : (?subreddit_detail:string
-       -> page:Wiki_page.Id.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+    : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val wiki_pages
@@ -948,15 +891,11 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val subreddit_wiki_revisions
-    : (?subreddit_detail:string
-       -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+    : (?subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val wiki_page_revisions
-    : (?subreddit_detail:string
-       -> page:Wiki_page.Id.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+    : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
   val wiki_permissions

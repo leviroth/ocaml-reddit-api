@@ -665,17 +665,9 @@ struct
     k ~listing_params
   ;;
 
-  let prefs' which k ~listing_params ?subreddit_detail ?include_categories =
-    let endpoint = sprintf "/api/%s" which in
-    let params =
-      let open Param_dsl in
-      combine
-        [ listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ]
-    in
-    post k ~endpoint ~params
+  let prefs' which k ~listing_params =
+    let endpoint = sprintf "/prefs/%s" which in
+    get k ~endpoint ~params:listing_params
   ;;
 
   let prefs endpoint k = with_listing_params (prefs' endpoint k)
@@ -984,15 +976,11 @@ struct
 
   let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
 
-  let best' ~listing_params ?include_categories ?subreddit_detail =
+  let best' ~listing_params ?include_categories =
     let endpoint = "/best" in
     let params =
       let open Param_dsl in
-      combine
-        [ listing_params
-        ; optional' bool "include_categories" include_categories
-        ; optional' bool "sr_detail" subreddit_detail
-        ]
+      combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
     get ~endpoint ~params return
   ;;
@@ -1017,7 +1005,6 @@ struct
       ?showedits
       ?showmore
       ?sort
-      ?subreddit_detail
       ?threaded
       ?truncate
       ~link
@@ -1035,7 +1022,6 @@ struct
         ; optional' bool "showedits" showedits
         ; optional' bool "showmore" showmore
         ; optional' Comment_sort.to_string "sort" sort
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' bool "threaded" threaded
         ; optional' int "truncate" truncate
         ]
@@ -1058,14 +1044,13 @@ struct
            | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
   ;;
 
-  let duplicates' ~listing_params ?crossposts_only ?subreddit_detail ?sort ~link =
+  let duplicates' ~listing_params ?crossposts_only ?sort ~link =
     let endpoint = sprintf !"/duplicates/%{Link.Id}" link in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
         ; optional' bool "crossposts_only" crossposts_only
-        ; optional' bool "sr_detail" subreddit_detail
         ; include_optional Duplicate_sort.params_of_t sort
         ]
     in
@@ -1078,7 +1063,6 @@ struct
       endpoint_part
       ~listing_params
       ?include_categories
-      ?subreddit_detail
       ?subreddit
       ~extra_params
     =
@@ -1088,7 +1072,6 @@ struct
       combine
         [ listing_params
         ; optional' bool "include_categories" include_categories
-        ; optional' bool "sr_detail" subreddit_detail
         ; extra_params
         ]
     in
@@ -1166,15 +1149,7 @@ struct
   let read_message = read_message' `Do
   let unread_message = read_message' `Undo
 
-  let message_listing'
-      k
-      endpoint
-      ~listing_params
-      ?include_categories
-      ?mid
-      ?subreddit_detail
-      ~mark_read
-    =
+  let message_listing' k endpoint ~listing_params ?include_categories ?mid ~mark_read =
     let endpoint = "/message/" ^ endpoint in
     let params =
       let open Param_dsl in
@@ -1182,7 +1157,6 @@ struct
         [ listing_params
         ; optional' bool "include_categories" include_categories
         ; optional' string "mid" mid
-        ; optional' bool "sr_detail" subreddit_detail
         ; required' bool "mark" mark_read
         ]
     in
@@ -1209,14 +1183,13 @@ struct
       (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
   ;;
 
-  let log' ~listing_params ?mod_filter ?subreddit_detail ?subreddit ?type_ =
+  let log' ~listing_params ?mod_filter ?subreddit ?type_ =
     let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
         ; include_optional Mod_filter.params_of_t mod_filter
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' string "type" type_
         ]
     in
@@ -1226,14 +1199,13 @@ struct
   let subreddit_comments = with_listing_params subreddit_comments'
   let log = with_listing_params log'
 
-  let mod_listing' ~listing_params ?location ?only ?subreddit ?subreddit_detail ~endpoint =
+  let mod_listing' ~listing_params ?location ?only ?subreddit ~endpoint =
     let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
         ; include_optional Links_or_comments.params_of_t only
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' string "location" location
         ]
     in
@@ -1312,7 +1284,6 @@ struct
       ?restrict_to_subreddit
       ?since
       ?sort
-      ?subreddit_detail
       ?types
       ~query
     =
@@ -1332,7 +1303,6 @@ struct
         ; required' string "q" query
         ; include_optional Historical_span.params_of_t since
         ; include_optional Search_sort.params_of_t sort
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional
             Search_type.to_string
             "type"
@@ -1345,21 +1315,13 @@ struct
 
   let search = with_listing_params search'
 
-  let about_endpoint'
-      endpoint
-      ~listing_params
-      ?include_categories
-      ?subreddit_detail
-      ?user
-      ~subreddit
-    =
+  let about_endpoint' endpoint ~listing_params ?include_categories ?user ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
         ; optional' bool "include_categories" include_categories
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' username_ "user" user
         ]
     in
@@ -1589,13 +1551,12 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let search_profiles' ~listing_params ?subreddit_detail ?sort ~query =
+  let search_profiles' ~listing_params ?sort ~query =
     let endpoint = "/profiles/search" in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
-        ; optional' bool "sr_detail" subreddit_detail
         ; required' string "q" query
         ; optional' Subreddit_search_sort.to_string "sort" sort
         ]
@@ -1636,28 +1597,23 @@ struct
     get ~endpoint ~params return
   ;;
 
-  let get_subreddits' ~listing_params ?include_categories ?subreddit_detail ~relationship =
+  let get_subreddits' ~listing_params ?include_categories ~relationship =
     let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
     let params =
       let open Param_dsl in
-      combine
-        [ listing_params
-        ; optional' string "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ]
+      combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
     get ~endpoint ~params return
   ;;
 
   let get_subreddits = with_listing_params get_subreddits'
 
-  let search_subreddits' ~listing_params ?show_users ?sort ?subreddit_detail ~query =
+  let search_subreddits' ~listing_params ?show_users ?sort ~query =
     let endpoint = "/subreddits/search" in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' bool "show_users" show_users
         ; required' string "q" query
         ; optional' Subreddit_search_sort.to_string "sort" sort
@@ -1668,19 +1624,12 @@ struct
 
   let search_subreddits = with_listing_params search_subreddits'
 
-  let list_subreddits'
-      ~listing_params
-      ?subreddit_detail
-      ?include_categories
-      ?show_users
-      ~sort
-    =
+  let list_subreddits' ~listing_params ?include_categories ?show_users ~sort =
     let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
-        ; optional' bool "sr_detail" subreddit_detail
         ; optional' bool "include_categories" include_categories
         ; optional' bool "show_users" show_users
         ]
@@ -1695,15 +1644,11 @@ struct
 
   let list_subreddits = with_listing_params list_subreddits'
 
-  let list_user_subreddits' ~listing_params ?subreddit_detail ?include_categories ~sort =
+  let list_user_subreddits' ~listing_params ?include_categories ~sort =
     let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
     let params =
       let open Param_dsl in
-      combine
-        [ listing_params
-        ; optional' bool "sr_detail" subreddit_detail
-        ; optional' bool "include_categories" include_categories
-        ]
+      combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
     get ~endpoint ~params get_subreddit_listing
   ;;
@@ -1815,19 +1760,11 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let wiki_discussions'
-      ~listing_params
-      ?subreddit_detail
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-    =
+  let wiki_discussions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/discussions/%s" page)
     in
-    let params =
-      let open Param_dsl in
-      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-    in
-    get ~endpoint ~params return
+    get ~endpoint ~params:listing_params return
   ;;
 
   let wiki_discussions = with_listing_params wiki_discussions'
@@ -1837,30 +1774,18 @@ struct
     get ~endpoint ~params:[] return
   ;;
 
-  let subreddit_wiki_revisions' ~listing_params ?subreddit_detail ?subreddit =
+  let subreddit_wiki_revisions' ~listing_params ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
-    let params =
-      let open Param_dsl in
-      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-    in
-    get ~endpoint ~params return
+    get ~endpoint ~params:listing_params return
   ;;
 
   let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'
 
-  let wiki_page_revisions'
-      ~listing_params
-      ?subreddit_detail
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-    =
+  let wiki_page_revisions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/revisions/%s" page)
     in
-    let params =
-      let open Param_dsl in
-      combine [ listing_params; optional' string "sr_detail" subreddit_detail ]
-    in
-    get ~endpoint ~params return
+    get ~endpoint ~params:listing_params return
   ;;
 
   let wiki_page_revisions = with_listing_params wiki_page_revisions'
