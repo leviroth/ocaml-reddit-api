@@ -304,4 +304,153 @@ module For_testing = struct
   module type Cohttp_client_wrapper = Cohttp_client_wrapper
 
   let create = create_internal
+
+  module Cassette = struct
+    module type Wrapper = sig
+      include Cohttp_client_wrapper
+
+      val seal : unit -> unit
+    end
+
+    module Interaction = struct
+      module Request = struct
+        module T = struct
+          type t =
+            | Get of
+                { uri : Uri_sexp.t
+                ; headers : Cohttp.Header.t
+                }
+            | Post_form of
+                { uri : Uri_sexp.t
+                ; headers : Cohttp.Header.t
+                ; params : (string * string list) list
+                }
+          [@@deriving sexp, compare]
+        end
+
+        include T
+        include Comparable.Make (T)
+      end
+
+      type t =
+        { request : Request.t
+        ; response : Cohttp.Response.t * string
+        }
+      [@@deriving sexp]
+    end
+
+    let recording_wrapper filename : (module Wrapper) =
+      (module struct
+        module Cohttp_client_wrapper = (val live_cohttp_client "ocaml-reddit testing")
+
+        let queue : Interaction.t Queue.t = Queue.create ()
+
+        let save_interaction request response =
+          let%bind response_to_write =
+            let response, body = response in
+            let%bind body = Cohttp_async.Body.to_string body in
+            return (response, body)
+          in
+          Queue.enqueue queue { request; response = response_to_write };
+          return (Tuple2.map_snd response_to_write ~f:Cohttp_async.Body.of_string)
+        ;;
+
+        let get uri ~headers =
+          let%bind response = Cohttp_client_wrapper.get uri ~headers in
+          let%bind response = save_interaction (Get { uri; headers }) response in
+          return response
+        ;;
+
+        let post_form uri ~headers ~params =
+          let%bind response = Cohttp_client_wrapper.post_form uri ~headers ~params in
+          let%bind response =
+            save_interaction (Post_form { uri; headers; params }) response
+          in
+          return response
+        ;;
+
+        let seal () =
+          Out_channel.with_file filename ~f:(fun out_channel ->
+              Queue.iter queue ~f:(fun interaction ->
+                  Interaction.sexp_of_t interaction |> Sexp.output_mach out_channel))
+        ;;
+      end)
+    ;;
+
+    let reading_wrapper filename : (module Wrapper) =
+      (module struct
+        let queue : Interaction.t Queue.t =
+          In_channel.with_file filename ~f:(fun in_channel ->
+              Sexp.input_sexps in_channel
+              |> List.map ~f:Interaction.t_of_sexp
+              |> Queue.of_list)
+        ;;
+
+        let dequeue_response () =
+          let ({ request; response } : Interaction.t) = Queue.dequeue_exn queue in
+          let response = Tuple2.map_snd response ~f:Cohttp_async.Body.of_string in
+          request, response
+        ;;
+
+        let get uri ~headers =
+          let request, response = dequeue_response () in
+          let fail () =
+            raise_s
+              [%message
+                "Test request did not match record"
+                  (uri : Uri_sexp.t)
+                  (headers : Cohttp.Header.t)
+                  ~recorded_request:(request : Interaction.Request.t)]
+          in
+          match request with
+          | Post_form _ -> fail ()
+          | Get request ->
+            (match
+               Uri.equal uri request.uri
+               && [%compare.equal: Cohttp.Header.t] headers request.headers
+             with
+            | false -> fail ()
+            | true -> return response)
+        ;;
+
+        let post_form uri ~headers ~params =
+          let request, response = dequeue_response () in
+          let fail () =
+            raise_s
+              [%message
+                "Test request did not match record"
+                  (uri : Uri_sexp.t)
+                  (headers : Cohttp.Header.t)
+                  (params : (string * string list) list)
+                  ~recorded_request:(request : Interaction.Request.t)]
+          in
+          match request with
+          | Get _ -> fail ()
+          | Post_form request ->
+            (match
+               Uri.equal uri request.uri
+               && [%compare.equal: Cohttp.Header.t] headers request.headers
+               && [%equal: (string * string list) list] params request.params
+             with
+            | false -> fail ()
+            | true -> return response)
+        ;;
+
+        let seal () = assert (Queue.is_empty queue)
+      end)
+    ;;
+
+    let with_t filename ~f =
+      let%bind (module Wrapper) =
+        match%bind Sys.file_exists_exn filename with
+        | true -> return (reading_wrapper filename)
+        | false -> return (recording_wrapper filename)
+      in
+      Monitor.protect
+        (fun () -> f (module Wrapper : Cohttp_client_wrapper))
+        ~finally:(fun () ->
+          Wrapper.seal ();
+          return ())
+    ;;
+  end
 end

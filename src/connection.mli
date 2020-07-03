@@ -43,4 +43,11 @@ module For_testing : sig
     -> Config.t
     -> time_source:Time_source.t
     -> t
+
+  module Cassette : sig
+    val with_t
+      :  Filename.t
+      -> f:((module Cohttp_client_wrapper) -> 'a Deferred.t)
+      -> 'a Deferred.t
+  end
 end
