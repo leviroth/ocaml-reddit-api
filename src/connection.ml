@@ -301,6 +301,34 @@ let get t uri =
 ;;
 
 module For_testing = struct
+  module Placeholders : sig
+    type t
+
+    val create : unit -> t
+    val add : t -> secret:string -> placeholder:string -> unit
+    val filter_string : t -> string -> string
+    val insert_dummy_strings : t -> string -> string
+  end = struct
+    type t = string String.Table.t
+
+    let create () = String.Table.create ()
+
+    let add t ~secret ~placeholder =
+      let placeholder = sprintf "<%s>" (String.uppercase placeholder) in
+      Hashtbl.add_exn t ~key:placeholder ~data:secret
+    ;;
+
+    let filter_string t string =
+      Hashtbl.fold t ~init:string ~f:(fun ~key:placeholder ~data:secret string ->
+          String.substr_replace_all string ~pattern:secret ~with_:placeholder)
+    ;;
+
+    let insert_dummy_strings t string =
+      Hashtbl.fold t ~init:string ~f:(fun ~key:placeholder ~data:secret string ->
+          String.substr_replace_all string ~pattern:placeholder ~with_:secret)
+    ;;
+  end
+
   module type Cohttp_client_wrapper = Cohttp_client_wrapper
 
   let create = create_internal
@@ -313,6 +341,10 @@ module For_testing = struct
     end
 
     module Interaction = struct
+      let map_headers headers ~f =
+        Cohttp.Header.map (fun _key values -> List.map values ~f) headers
+      ;;
+
       module Request = struct
         module T = struct
           type t =
@@ -326,10 +358,28 @@ module For_testing = struct
                 ; params : (string * string list) list
                 }
           [@@deriving sexp, compare]
+
+          let uri (Get { uri; _ } | Post_form { uri; _ }) = uri
         end
 
         include T
         include Comparable.Make (T)
+
+        let map t ~f =
+          let map_uri uri = Uri.to_string uri |> f |> Uri.of_string in
+          let map_params params =
+            List.map params ~f:(fun (key, values) -> key, List.map values ~f)
+          in
+          match t with
+          | Get { uri; headers } ->
+            Get { uri = map_uri uri; headers = map_headers headers ~f }
+          | Post_form { uri; headers; params } ->
+            Post_form
+              { uri = map_uri uri
+              ; headers = map_headers headers ~f
+              ; params = map_params params
+              }
+        ;;
       end
 
       type t =
@@ -337,9 +387,17 @@ module For_testing = struct
         ; response : Cohttp.Response.t * string
         }
       [@@deriving sexp]
+
+      let map { request; response = response, body } ~f =
+        let request = Request.map request ~f in
+        let response =
+          { response with headers = map_headers response.headers ~f }, f body
+        in
+        { request; response }
+      ;;
     end
 
-    let recording_wrapper filename : (module Wrapper) =
+    let recording_wrapper filename placeholders : (module Wrapper) =
       (module struct
         module Cohttp_client_wrapper = (val live_cohttp_client "ocaml-reddit testing")
 
@@ -369,15 +427,33 @@ module For_testing = struct
           return response
         ;;
 
+        let is_access_token_interaction (interaction : Interaction.t) =
+          String.is_substring
+            (Interaction.Request.uri interaction.request |> Uri.to_string)
+            ~substring:"api/v1/access_token"
+        ;;
+
         let seal () =
           Out_channel.with_file filename ~f:(fun out_channel ->
               Queue.iter queue ~f:(fun interaction ->
-                  Interaction.sexp_of_t interaction |> Sexp.output_mach out_channel))
+                  (match is_access_token_interaction interaction with
+                  | false -> ()
+                  | true ->
+                    let _, body = interaction.response in
+                    let json = Json.of_string body in
+                    let token = Json.find json ~key:"access_token" |> Json.get_string in
+                    Placeholders.add
+                      placeholders
+                      ~secret:token
+                      ~placeholder:"access_token");
+                  Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
+                  |> Interaction.sexp_of_t
+                  |> Sexp.output_mach out_channel))
         ;;
       end)
     ;;
 
-    let reading_wrapper filename : (module Wrapper) =
+    let reading_wrapper filename placeholders : (module Wrapper) =
       (module struct
         let queue : Interaction.t Queue.t =
           In_channel.with_file filename ~f:(fun in_channel ->
@@ -387,7 +463,10 @@ module For_testing = struct
         ;;
 
         let dequeue_response () =
-          let ({ request; response } : Interaction.t) = Queue.dequeue_exn queue in
+          let ({ request; response } : Interaction.t) =
+            Queue.dequeue_exn queue
+            |> Interaction.map ~f:(Placeholders.insert_dummy_strings placeholders)
+          in
           let response = Tuple2.map_snd response ~f:Cohttp_async.Body.of_string in
           request, response
         ;;
@@ -440,11 +519,21 @@ module For_testing = struct
       end)
     ;;
 
-    let with_t filename ~f =
+    let with_t filename ~credentials ~f =
+      let placeholders = Placeholders.create () in
+      let ({ client_id; client_secret; password; username } : Config.t) = credentials in
+      Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+      Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
+      Placeholders.add placeholders ~secret:password ~placeholder:"password";
+      Placeholders.add placeholders ~secret:username ~placeholder:"username";
+      Placeholders.add
+        placeholders
+        ~secret:(Config.basic_auth_string credentials)
+        ~placeholder:"authorization";
       let%bind (module Wrapper) =
         match%bind Sys.file_exists_exn filename with
-        | true -> return (reading_wrapper filename)
-        | false -> return (recording_wrapper filename)
+        | true -> return (reading_wrapper filename placeholders)
+        | false -> return (recording_wrapper filename placeholders)
       in
       Monitor.protect
         (fun () -> f (module Wrapper : Cohttp_client_wrapper))

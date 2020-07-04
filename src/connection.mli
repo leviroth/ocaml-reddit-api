@@ -47,6 +47,7 @@ module For_testing : sig
   module Cassette : sig
     val with_t
       :  Filename.t
+      -> credentials:Config.t
       -> f:((module Cohttp_client_wrapper) -> 'a Deferred.t)
       -> 'a Deferred.t
   end
