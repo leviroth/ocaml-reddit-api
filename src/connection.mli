@@ -1,7 +1,7 @@
 open! Core
 open Async
 
-module Config : sig
+module Credentials : sig
   type t =
     { client_id : string
     ; client_secret : string
@@ -13,7 +13,7 @@ end
 
 type t [@@deriving sexp_of]
 
-val create : Config.t -> user_agent:string -> t
+val create : Credentials.t -> user_agent:string -> t
 val more_children_sequencer : t -> unit Sequencer.t
 
 val post_form
@@ -40,14 +40,14 @@ module For_testing : sig
 
   val create
     :  (module Cohttp_client_wrapper)
-    -> Config.t
+    -> Credentials.t
     -> time_source:Time_source.t
     -> t
 
   module Cassette : sig
     val with_t
       :  Filename.t
-      -> credentials:Config.t
+      -> credentials:Credentials.t
       -> f:((module Cohttp_client_wrapper) -> 'a Deferred.t)
       -> 'a Deferred.t
   end

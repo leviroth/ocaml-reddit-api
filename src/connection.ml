@@ -1,7 +1,7 @@
 open! Core
 open! Async
 
-module Config = struct
+module Credentials = struct
   type t =
     { client_id : string
     ; client_secret : string
@@ -57,27 +57,29 @@ module Auth = struct
   end
 
   type t =
-    { config : Config.t
+    { credentials : Credentials.t
     ; mutable access_token : Access_token.t option
     }
   [@@deriving sexp]
 
-  let create config () = { config; access_token = None }
+  let create credentials () = { credentials; access_token = None }
 
   let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
     let open Async.Let_syntax in
     let%bind _response, body =
       let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
       let headers =
-        Cohttp.Header.init_with "Authorization" (Config.basic_auth_string t.config)
+        Cohttp.Header.init_with
+          "Authorization"
+          (Credentials.basic_auth_string t.credentials)
       in
       Cohttp_client_wrapper.post_form
         ~headers
         uri
         ~params:
           [ "grant_type", [ "password" ]
-          ; "username", [ t.config.username ]
-          ; "password", [ t.config.password ]
+          ; "username", [ t.credentials.username ]
+          ; "password", [ t.credentials.password ]
           ]
     in
     let%bind response_string = Cohttp_async.Body.to_string body in
@@ -262,8 +264,8 @@ type t =
   }
 [@@deriving sexp_of]
 
-let create_internal cohttp_client_wrapper config ~time_source =
-  { auth = Auth.create config ()
+let create_internal cohttp_client_wrapper credentials ~time_source =
+  { auth = Auth.create credentials ()
   ; rate_limiter = Rate_limiter.create ()
   ; cohttp_client_wrapper
   ; time_source
@@ -271,10 +273,10 @@ let create_internal cohttp_client_wrapper config ~time_source =
   }
 ;;
 
-let create config ~user_agent =
+let create credentials ~user_agent =
   create_internal
     (live_cohttp_client user_agent)
-    config
+    credentials
     ~time_source:(Time_source.wall_clock ())
 ;;
 
@@ -521,14 +523,16 @@ module For_testing = struct
 
     let with_t filename ~credentials ~f =
       let placeholders = Placeholders.create () in
-      let ({ client_id; client_secret; password; username } : Config.t) = credentials in
+      let ({ client_id; client_secret; password; username } : Credentials.t) =
+        credentials
+      in
       Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
       Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
       Placeholders.add placeholders ~secret:password ~placeholder:"password";
       Placeholders.add placeholders ~secret:username ~placeholder:"username";
       Placeholders.add
         placeholders
-        ~secret:(Config.basic_auth_string credentials)
+        ~secret:(Credentials.basic_auth_string credentials)
         ~placeholder:"authorization";
       let%bind (module Wrapper) =
         match%bind Sys.file_exists_exn filename with

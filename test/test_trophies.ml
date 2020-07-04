@@ -5,7 +5,7 @@ open Ocaml_reddit
 let%expect_test _ =
   let credential_path = Sys.getenv_exn "CREDENTIALS" in
   let credentials =
-    Sexp.load_sexp_conv_exn credential_path [%of_sexp: Connection.Config.t]
+    Sexp.load_sexp_conv_exn credential_path [%of_sexp: Connection.Credentials.t]
   in
   Connection.For_testing.Cassette.with_t
     "data/trophies.sexp"
