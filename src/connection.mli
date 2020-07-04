@@ -25,30 +25,9 @@ val post_form
 val get : t -> Uri.t -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
 module For_testing : sig
-  module type Cohttp_client_wrapper = sig
-    val get
-      :  Uri.t
-      -> headers:Cohttp.Header.t
-      -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-
-    val post_form
-      :  Uri.t
-      -> headers:Cohttp.Header.t
-      -> params:(string * string list) list
-      -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-  end
-
-  val create
-    :  (module Cohttp_client_wrapper)
-    -> Credentials.t
-    -> time_source:Time_source.t
-    -> t
-
-  module Cassette : sig
-    val with_t
-      :  Filename.t
-      -> credentials:Credentials.t
-      -> f:((module Cohttp_client_wrapper) -> 'a Deferred.t)
-      -> 'a Deferred.t
-  end
+  val with_cassette
+    :  Filename.t
+    -> credentials:Credentials.t
+    -> f:(t -> 'a Deferred.t)
+    -> 'a Deferred.t
 end

@@ -331,15 +331,13 @@ module For_testing = struct
     ;;
   end
 
-  module type Cohttp_client_wrapper = Cohttp_client_wrapper
-
-  let create = create_internal
-
   module Cassette = struct
-    module type Wrapper = sig
+    module type S = sig
       include Cohttp_client_wrapper
 
       val seal : unit -> unit
+      val read_only_time_source : Time_source.t
+      val read_write_time_source : Time_source.Read_write.t option
     end
 
     module Interaction = struct
@@ -399,7 +397,7 @@ module For_testing = struct
       ;;
     end
 
-    let recording_wrapper filename placeholders : (module Wrapper) =
+    let recording filename placeholders : (module S) =
       (module struct
         module Cohttp_client_wrapper = (val live_cohttp_client "ocaml-reddit testing")
 
@@ -452,10 +450,13 @@ module For_testing = struct
                   |> Interaction.sexp_of_t
                   |> Sexp.output_mach out_channel))
         ;;
+
+        let read_only_time_source = Time_source.wall_clock ()
+        let read_write_time_source = None
       end)
     ;;
 
-    let reading_wrapper filename placeholders : (module Wrapper) =
+    let reading filename placeholders : (module S) =
       (module struct
         let queue : Interaction.t Queue.t =
           In_channel.with_file filename ~f:(fun in_channel ->
@@ -518,6 +519,9 @@ module For_testing = struct
         ;;
 
         let seal () = assert (Queue.is_empty queue)
+        let time_source = Time_source.create ~now:Time_ns.epoch ()
+        let read_write_time_source = Some time_source
+        let read_only_time_source = Time_source.read_only time_source
       end)
     ;;
 
@@ -534,16 +538,30 @@ module For_testing = struct
         placeholders
         ~secret:(Credentials.basic_auth_string credentials)
         ~placeholder:"authorization";
-      let%bind (module Wrapper) =
-        match%bind Sys.file_exists_exn filename with
-        | true -> return (reading_wrapper filename placeholders)
-        | false -> return (recording_wrapper filename placeholders)
+      let%bind (module Cassette) =
+        let%bind make =
+          match%bind Sys.file_exists_exn filename with
+          | true -> return reading
+          | false -> return recording
+        in
+        return (make filename placeholders)
       in
       Monitor.protect
-        (fun () -> f (module Wrapper : Cohttp_client_wrapper))
+        (fun () -> f (module Cassette : S))
         ~finally:(fun () ->
-          Wrapper.seal ();
+          Cassette.seal ();
           return ())
     ;;
   end
+
+  let with_cassette filename ~credentials ~f =
+    Cassette.with_t filename ~credentials ~f:(fun (module Cassette : Cassette.S) ->
+        let connection =
+          create_internal
+            (module Cassette)
+            credentials
+            ~time_source:Cassette.read_only_time_source
+        in
+        f connection)
+  ;;
 end
