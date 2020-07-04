@@ -3,6 +3,6 @@
  (libraries core ocaml_reddit)
  (inline_tests
   (deps
-   (source_tree data)))
+   (source_tree cassettes)))
  (preprocess
   (pps ppx_jane)))
