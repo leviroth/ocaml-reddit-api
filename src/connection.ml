@@ -434,21 +434,19 @@ module For_testing = struct
         ;;
 
         let seal () =
-          Out_channel.with_file filename ~f:(fun out_channel ->
-              Queue.iter queue ~f:(fun interaction ->
-                  (match is_access_token_interaction interaction with
-                  | false -> ()
-                  | true ->
-                    let _, body = interaction.response in
-                    let json = Json.of_string body in
-                    let token = Json.find json ~key:"access_token" |> Json.get_string in
-                    Placeholders.add
-                      placeholders
-                      ~secret:token
-                      ~placeholder:"access_token");
-                  Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
-                  |> Interaction.sexp_of_t
-                  |> Sexp.output_mach out_channel))
+          printf "Please move the following to tests/%s\n\n" filename;
+          Queue.iter queue ~f:(fun interaction ->
+              (match is_access_token_interaction interaction with
+              | false -> ()
+              | true ->
+                let _, body = interaction.response in
+                let json = Json.of_string body in
+                let token = Json.find json ~key:"access_token" |> Json.get_string in
+                Placeholders.add placeholders ~secret:token ~placeholder:"access_token");
+              Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
+              |> Interaction.sexp_of_t
+              |> Sexp.output_mach Out_channel.stdout);
+          printf "\n\nPlease move the above to tests/%s" filename
         ;;
 
         let read_only_time_source = Time_source.wall_clock ()
