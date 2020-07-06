@@ -347,7 +347,7 @@ module type S = sig
     :  ?to_profile:bool
     -> link:Link.Id.t
     -> sticky_state:Sticky_state.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val set_suggested_sort
     :  link:Link.Id.t

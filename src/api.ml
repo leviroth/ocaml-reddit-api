@@ -607,6 +607,17 @@ struct
     Json.of_string body_string |> f |> return
   ;;
 
+  let assert_no_errors =
+    handle_json_response (fun json ->
+        match Json.find json ~key:"json" |> Json.find ~key:"errors" |> Json.get_array with
+        | [] -> ()
+        | errors ->
+          raise_s
+            [%message
+              "Unexpected errors in body of non-error HTTP response"
+                (errors : Json.t list)])
+  ;;
+
   let ignore_success_response response =
     let%bind (_ : Cohttp.Response.t * Cohttp_async.Body.t) =
       result_of_response response
@@ -888,7 +899,7 @@ struct
         ; optional' bool "to_profile" to_profile
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let set_suggested_sort ~link ~sort =
