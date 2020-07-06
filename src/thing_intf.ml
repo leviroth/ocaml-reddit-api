@@ -31,9 +31,11 @@ module type Thing = sig
   and Link : sig
     include S
 
+    val title : t -> string
     val author : t -> Username.t
     val moderation_info : t -> Moderation_info.t option
     val subreddit : t -> Subreddit_name.t
+    val is_stickied : t -> bool
   end
 
   and Message : sig

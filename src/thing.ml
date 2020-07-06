@@ -66,6 +66,9 @@ struct
     let banned_at = time_of_field t ~field_name:"banned_at_utc" in
     Moderation_info.of_listing_fields ~approved_by ~approved_at ~banned_by ~banned_at
   ;;
+
+  let title t = get_field_exn t "title" |> Json.get_string
+  let is_stickied t = get_field_exn t "stickied" |> Json.get_bool
 end
 
 module Comment = Make (struct
