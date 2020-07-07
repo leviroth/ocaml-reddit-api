@@ -376,7 +376,7 @@ module type S = sig
     -> subreddit:Subreddit_name.t
     -> title:string
     -> kind:Link_kind.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> (Link.Id.t * Uri.t) call
 
   val vote
     :  ?rank:int

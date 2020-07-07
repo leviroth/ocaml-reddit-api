@@ -117,12 +117,10 @@ module Parameters = struct
       match t with
       | Link { url } -> [ "kind", [ "link" ]; "url", [ url ] ]
       | Self body ->
-        [ "kind", [ "link" ]
-        ; ( "text"
-          , [ (match body with
-              | Markdown markdown -> markdown
-              | Richtext_json json -> Json.to_string json)
-            ] )
+        [ "kind", [ "self" ]
+        ; (match body with
+          | Markdown markdown -> "text", [ markdown ]
+          | Richtext_json json -> "richtext_json", [ Json.to_string json ])
         ]
     ;;
   end
@@ -947,7 +945,7 @@ struct
       ~title
       ~kind
     =
-    let endpoint = "/api/store_visits" in
+    let endpoint = "/api/submit" in
     let params =
       let open Param_dsl in
       combine
@@ -969,7 +967,14 @@ struct
         ; optional' string "event_tz" event_tz
         ]
     in
-    post ~endpoint ~params return
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           let json = Json.find json ~key:"json" |> Json.find ~key:"data" in
+           let id = Json.find json ~key:"id" |> Json.get_string |> Link.Id.of_string in
+           let url = Json.find json ~key:"url" |> Json.get_string |> Uri.of_string in
+           id, url))
   ;;
 
   let vote ?rank ~direction ~target =
