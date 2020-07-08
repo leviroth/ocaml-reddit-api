@@ -16,6 +16,18 @@ module type Parameters = sig
     [@@deriving sexp]
   end
 
+  module Flair_target : sig
+    type t =
+      | Link of Link.Id.t
+      | User of Username.t
+  end
+
+  module Color : sig
+    type t
+
+    val create : red:int -> green:int -> blue:int -> t
+  end
+
   module Sticky_state : sig
     type t =
       | Sticky of { slot : int }
@@ -260,6 +272,18 @@ module type S = sig
   (** Captcha *)
 
   val needs_captcha : (Cohttp.Response.t * Cohttp_async.Body.t) call
+
+  (** Flair *)
+
+  val select_flair
+    :  ?background_color:Color.t
+    -> ?css_class:string
+    -> ?flair_template_id:Uuid.t
+    -> ?text:string
+    -> ?text_color:Color.t
+    -> subreddit:Subreddit_name.t
+    -> target:Flair_target.t
+    -> unit call
 
   (** Links and comments *)
 

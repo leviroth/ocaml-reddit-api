@@ -86,6 +86,45 @@ module Parameters = struct
     ;;
   end
 
+  module Flair_target = struct
+    type t =
+      | Link of Link.Id.t
+      | User of Username.t
+
+    let params_of_t t =
+      let open Param_dsl in
+      match t with
+      | Link link_id -> required' fullname_ "link" (`Link link_id)
+      | User username -> required' username_ "name" username
+    ;;
+  end
+
+  module Color = struct
+    type t = string
+
+    let validate component value =
+      let lower = Maybe_bound.Incl 0x00 in
+      let upper = Maybe_bound.Incl 0xFF in
+      match Maybe_bound.interval_contains_exn value ~lower ~upper ~compare with
+      | true -> ()
+      | false ->
+        raise_s
+          [%message
+            "Color component out of range"
+              (component : string)
+              (value : int)
+              (lower : int Maybe_bound.t)
+              (upper : int Maybe_bound.t)]
+    ;;
+
+    let create ~red ~green ~blue =
+      validate "red" red;
+      validate "green" green;
+      validate "blue" blue;
+      sprintf "#%02X%02X%02X" red green blue
+    ;;
+  end
+
   module Sticky_state = struct
     type t =
       | Sticky of { slot : int }
@@ -684,6 +723,30 @@ struct
   let blocked = prefs "blocked" return
   let messaging = prefs "messaging" return
   let trusted = prefs "trusted" return
+
+  let select_flair
+      ?background_color
+      ?css_class
+      ?flair_template_id
+      ?text
+      ?text_color
+      ~subreddit
+      ~target
+    =
+    let endpoint = optional_subreddit_endpoint ~subreddit "/api/selectflair" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ Flair_target.params_of_t target
+        ; optional' string "background_color" background_color
+        ; optional' string "css_class" css_class
+        ; optional' Uuid.to_string "flair_template_id" flair_template_id
+        ; optional' string "text" text
+        ; optional' string "text_color" text_color
+        ]
+    in
+    post ~endpoint ~params ignore_success_response
+  ;;
 
   let add_comment ?return_rtjson ?richtext_json ~parent ~text =
     let endpoint = "/api/comment" in
