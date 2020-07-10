@@ -434,7 +434,7 @@ module For_testing = struct
         ;;
 
         let seal () =
-          printf "Please move the following to tests/%s\n\n" filename;
+          printf "Please move the following to test/%s\n\n" filename;
           Queue.iter queue ~f:(fun interaction ->
               (match is_access_token_interaction interaction with
               | false -> ()
@@ -446,7 +446,7 @@ module For_testing = struct
               Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
               |> Interaction.sexp_of_t
               |> Sexp.output_mach Out_channel.stdout);
-          printf "\n\nPlease move the above to tests/%s" filename
+          printf "\n\nPlease move the above to test/%s" filename
         ;;
 
         let read_only_time_source = Time_source.wall_clock ()
