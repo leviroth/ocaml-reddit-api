@@ -976,7 +976,7 @@ struct
             (Option.value_map sort ~f:Comment_sort.to_string ~default:"blank")
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let spoiler' ~link = simple_toggle' "spoiler" (`Link link) return

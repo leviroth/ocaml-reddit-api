@@ -373,11 +373,7 @@ module type S = sig
     -> sticky_state:Sticky_state.t
     -> unit call
 
-  val set_suggested_sort
-    :  link:Link.Id.t
-    -> sort:Comment_sort.t option
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
+  val set_suggested_sort : link:Link.Id.t -> sort:Comment_sort.t option -> unit call
   val spoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
   val unspoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
