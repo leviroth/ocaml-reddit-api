@@ -33,6 +33,12 @@ let get_int t =
   | _ -> raise_s [%message "Json is not a number" (t : t)]
 ;;
 
+let get_float t =
+  match t with
+  | `Number s -> Float.of_string s
+  | _ -> raise_s [%message "Json is not a number" (t : t)]
+;;
+
 let find t ~key =
   match t with
   | `Object l -> List.Assoc.find_exn l key ~equal:String.equal

@@ -69,6 +69,14 @@ struct
 
   let title t = get_field_exn t "title" |> Json.get_string
   let is_stickied t = get_field_exn t "stickied" |> Json.get_bool
+
+  let creation_time t =
+    get_field_exn t "created_utc"
+    |> Json.get_float
+    |> Time.Span.of_sec
+    |> Time_ns.Span.of_span_float_round_nearest
+    |> Time_ns.of_span_since_epoch
+  ;;
 end
 
 module Comment = Make (struct
