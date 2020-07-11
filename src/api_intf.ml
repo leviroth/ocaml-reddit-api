@@ -342,7 +342,7 @@ module type S = sig
          | `Modmail_conversation of Modmail_conversation.Id.t
          ]
     -> reason:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val report_award : award_id:string -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 

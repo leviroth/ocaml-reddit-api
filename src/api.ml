@@ -901,7 +901,7 @@ struct
         ; optional' bool "from_help_desk" from_help_desk
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let report_award ~award_id =
