@@ -13,7 +13,7 @@ module Pagination : sig
   [@@deriving sexp]
 end
 
-type 'child t [@@deriving sexp]
+type +'child t [@@deriving sexp]
 
 val of_json : (Json.t -> 'child) -> Json.t -> 'child t
 val children : 'child t -> 'child list
