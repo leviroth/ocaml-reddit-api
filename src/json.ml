@@ -63,3 +63,9 @@ let get_bool t =
   | `False -> false
   | _ -> raise_s [%message "Json is not a bool" (t : t)]
 ;;
+
+let none_if_null t =
+  match (t : t) with
+  | `Null -> None
+  | t -> Some t
+;;

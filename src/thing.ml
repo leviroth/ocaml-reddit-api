@@ -37,14 +37,17 @@ struct
 
   let username_of_field t ~field_name =
     let open Option.Monad_infix in
-    get_field t field_name >>| Json.get_string >>| Username.of_string
+    get_field t field_name
+    >>= Json.none_if_null
+    >>| Json.get_string
+    >>| Username.of_string
   ;;
 
   let time_of_field t ~field_name =
     let open Option.Monad_infix in
     get_field t field_name
-    >>| Json.get_string
-    >>| Float.of_string
+    >>= Json.none_if_null
+    >>| Json.get_float
     >>| Time.Span.of_sec
     >>| Time.of_span_since_epoch
   ;;
