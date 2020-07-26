@@ -36,6 +36,18 @@ let to_string t =
   | Modmail_conversation -> "modmail"
 ;;
 
+let to_string_long t =
+  match t with
+  | Comment -> "Comment"
+  | User -> "User"
+  | Link -> "Link"
+  | Message -> "Message"
+  | Subreddit -> "Subreddit"
+  | Award -> "Award"
+  | More_comments -> "more"
+  | Modmail_conversation -> "modmail"
+;;
+
 let of_polymorphic_tag = function
   | `Comment _ -> Comment
   | `User _ -> User

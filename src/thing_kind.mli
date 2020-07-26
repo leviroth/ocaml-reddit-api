@@ -13,6 +13,8 @@ type t =
 
 include Stringable.S with type t := t
 
+val to_string_long : t -> string
+
 val of_polymorphic_tag
   :  [< `Award of _
      | `Comment of _

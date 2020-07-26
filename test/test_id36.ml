@@ -58,3 +58,15 @@ let%expect_test "roundtrip: string -> int -> string" =
     ((test_case nikcv) (int 39497359) (id36 nikcv))
     ((test_case 8a93d) (int 13915273) (id36 8a93d)) |}]
 ;;
+
+let%expect_test "prefixes" =
+  List.iter [ "0"; "a1"; "aklzj"; "t1_0"; "t1_a1"; "t1_aklzj" ] ~f:(fun test_case ->
+      Thing.Comment.Id.of_string test_case |> [%sexp_of: Thing.Comment.Id.t] |> print_s);
+  [%expect {|
+    0
+    a1
+    aklzj
+    0
+    a1
+    aklzj |}]
+;;

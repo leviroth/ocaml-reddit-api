@@ -7,7 +7,24 @@ end) =
 struct
   type t = Json.t String.Map.t [@@deriving sexp]
 
-  module Id = Id36
+  let module_name = Thing_kind.to_string_long Param.kind
+
+  module Id = struct
+    include Id36
+
+    include Identifiable.Make (struct
+      include Id36
+
+      let module_name = sprintf "%s.Id" module_name
+
+      let of_string s =
+        let prefix = sprintf !"%{Thing_kind}_" Param.kind in
+        Id36.of_string (String.chop_prefix_if_exists s ~prefix)
+      ;;
+
+      let to_string = Id36.to_string
+    end)
+  end
 
   let of_json = Json.to_map
 
