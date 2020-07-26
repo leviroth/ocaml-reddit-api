@@ -1349,6 +1349,21 @@ struct
     get ~endpoint ~params:[] return
   ;;
 
+  let create_modmail_conversation ~subject ~body ~subreddit ~to_ ~hide_author =
+    let endpoint = "/api/mod/conversations" in
+    let params =
+      let open Param_dsl in
+      combine
+        [ required' string "subject" subject
+        ; required' string "body" body
+        ; required' username_ "to" to_
+        ; required' Subreddit_name.to_string "srName" subreddit
+        ; required' Bool.to_string "isAuthorHidden" hide_author
+        ]
+    in
+    post ~endpoint ~params (handle_json_response Modmail.Conversation.of_json)
+  ;;
+
   let search'
       ~listing_params
       ?category

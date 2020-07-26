@@ -628,6 +628,16 @@ module type S = sig
     :  subreddit:Subreddit_name.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
+  (** New modmail *)
+
+  val create_modmail_conversation
+    :  subject:string
+    -> body:string
+    -> subreddit:Subreddit_name.t
+    -> to_:Username.t
+    -> hide_author:bool
+    -> Modmail.Conversation.t call
+
   (** Search *)
 
   val search
