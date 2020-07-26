@@ -6,7 +6,6 @@ module type S = sig
   module Id : Id36.S
 
   val of_json : Json.t -> t
-  val of_json_with_tag_exn : Json.t -> t
   val to_json : t -> Json.t
   val get_field : t -> string -> Json.t option
   val get_field_exn : t -> string -> Json.t

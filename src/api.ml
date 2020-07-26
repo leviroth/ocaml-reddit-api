@@ -677,8 +677,8 @@ struct
   ;;
 
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
-  let get_link_listing = get_listing Link.of_json_with_tag_exn
-  let get_subreddit_listing = get_listing Subreddit.of_json_with_tag_exn
+  let get_link_listing = get_listing Link.of_json
+  let get_subreddit_listing = get_listing Subreddit.of_json
   let me = get ~endpoint:"/api/v1/me" ~params:[] (handle_json_response User.of_json)
 
   let karma =
@@ -694,7 +694,7 @@ struct
            | `Object
                [ ("kind", `String "TrophyList")
                ; ("data", `Object [ ("trophies", `Array trophies) ])
-               ] -> List.map trophies ~f:Award.of_json_with_tag_exn
+               ] -> List.map trophies ~f:Award.of_json
            | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)]))
   ;;
 
@@ -768,7 +768,7 @@ struct
            |> Json.find ~key:"data"
            |> Json.find ~key:"things"
            |> Json.index ~index:0
-           |> Comment.of_json_with_tag_exn))
+           |> Comment.of_json))
   ;;
 
   let delete ~id =
@@ -1112,9 +1112,7 @@ struct
            match Json.get_array json with
            | [ link_json; comment_forest_json ] ->
              let link =
-               Listing.of_json Link.of_json_with_tag_exn link_json
-               |> Listing.children
-               |> List.hd_exn
+               Listing.of_json Link.of_json link_json |> Listing.children |> List.hd_exn
              in
              let comment_forest =
                Listing.of_json comment_or_more_of_json comment_forest_json
@@ -1248,18 +1246,13 @@ struct
   let sent = message_listing "sent" return
 
   let comment_replies =
-    message_listing
-      "comments"
-      (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
+    message_listing "comments" (handle_json_response (Listing.of_json Comment.of_json))
   ;;
 
   let subreddit_comments' ~listing_params ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/comments" subreddit in
     let params = listing_params in
-    get
-      ~endpoint
-      ~params
-      (handle_json_response (Listing.of_json Comment.of_json_with_tag_exn))
+    get ~endpoint ~params (handle_json_response (Listing.of_json Comment.of_json))
   ;;
 
   let log' ~listing_params ?mod_filter ?subreddit ?type_ =
@@ -1647,7 +1640,7 @@ struct
 
   let about_subreddit ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
-    get ~endpoint ~params:[] (handle_json_response Subreddit.of_json_with_tag_exn)
+    get ~endpoint ~params:[] (handle_json_response Subreddit.of_json)
   ;;
 
   let subreddit_about ?(params = []) ~subreddit endpoint =
@@ -1718,7 +1711,7 @@ struct
 
   let about_user ~username =
     let endpoint = sprintf !"/user/%{Username}/about" username in
-    get ~endpoint ~params:[] (handle_json_response User.of_json_with_tag_exn)
+    get ~endpoint ~params:[] (handle_json_response User.of_json)
   ;;
 
   let list_subreddits = with_listing_params list_subreddits'

@@ -26,22 +26,34 @@ struct
     end)
   end
 
-  let of_json = Json.to_map
+  let of_json_inner = Json.to_map
 
-  let of_json_with_tag_exn json =
-    let kind = Thing_kind.of_string (Json.find json ~key:"kind" |> Json.get_string) in
-    match Thing_kind.equal kind Param.kind with
-    | false ->
-      raise_s
-        [%message
-          "Unexpected kind"
-            ~expected:(Param.kind : Thing_kind.t)
-            (kind : Thing_kind.t)
-            (json : Json.t)]
-    | true -> of_json (Json.find json ~key:"data")
+  let of_json (json : Json.t) =
+    match json with
+    | `Object alist ->
+      (match List.Assoc.find alist "kind" ~equal:String.equal with
+      | None -> of_json_inner json
+      | Some (`String kind) ->
+        (match Thing_kind.equal Param.kind (Thing_kind.of_string kind) with
+        | true -> of_json_inner (Json.find json ~key:"data")
+        | false ->
+          raise_s
+            [%message
+              "Unexpected thing kind"
+                ~expected:(Param.kind : Thing_kind.t)
+                (json : Json.t)])
+      | Some kind ->
+        raise_s [%message "Thing kind is not a string" (kind : Json.t) (json : Json.t)])
+    | _ -> raise_s [%message "Unexpected thing JSON type" (json : Json.t)]
   ;;
 
-  let to_json t = `Object (Map.to_alist t)
+  let to_json t =
+    `Object
+      [ "kind", `String (Thing_kind.to_string Param.kind)
+      ; "data", `Object (Map.to_alist t)
+      ]
+  ;;
+
   let get_field = Map.find
 
   let get_field_exn t field =
