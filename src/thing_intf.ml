@@ -20,7 +20,6 @@ module type Thing = sig
     include S
 
     val author : t -> Username.t
-    val moderation_info : t -> Moderation_info.t option
     val subreddit : t -> Subreddit_name.t
   end
 
@@ -33,7 +32,6 @@ module type Thing = sig
 
     val title : t -> string
     val author : t -> Username.t
-    val moderation_info : t -> Moderation_info.t option
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t

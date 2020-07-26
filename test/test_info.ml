@@ -22,15 +22,10 @@ let%expect_test "info" =
             ~title:(Thing.Link.title link : string)
             ~author:(Thing.Link.author link : Username.t)
             ~creation_time:(Thing.Link.creation_time link : Time_ns.t)
-            ~moderation_info:(Thing.Link.moderation_info link : Moderation_info.t option)
             ~is_stickied:(Thing.Link.is_stickied link : bool)];
       [%expect
         {|
         ("Link attributes" (id hmjd8r) (title "This is a title")
          (author BJO_test_user) (creation_time (2020-07-06 19:42:12.000000000-04:00))
-         (moderation_info
-          (((state Removed)
-            (history
-             ((moderator L72_Elite_Kraken) (time (2020-07-14 07:56:08.000000-04:00)))))))
          (is_stickied false)) |}])
 ;;
