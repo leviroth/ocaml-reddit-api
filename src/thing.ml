@@ -53,7 +53,7 @@ struct
   let total_karma = karma_field "total_karma"
 end
 
-module Comment = struct
+module Comment' = struct
   include Make (struct
     let kind = Thing_kind.Comment
   end)
@@ -111,9 +111,33 @@ module Award = Make (struct
   let kind = Thing_kind.Award
 end)
 
-module More_comments = Make (struct
-  let kind = Thing_kind.More_comments
-end)
+module More_comments = struct
+  include Make (struct
+    let kind = Thing_kind.More_comments
+  end)
+
+  module Details = struct
+    module By_children = struct
+      type t = Comment'.Id.t list
+
+      let children = ident
+    end
+
+    type t =
+      | By_children of By_children.t
+      | By_parent of Comment'.Id.t
+  end
+
+  let count t = get_field_exn t "count" |> Json.get_int
+
+  let details t : Details.t =
+    match count t with
+    | 0 -> By_parent (required_field "parent_id" (string >> Comment'.Id.of_string) t)
+    | _ ->
+      By_children
+        (required_field "children" (Json.get_list (string >> Comment'.Id.of_string)) t)
+  ;;
+end
 
 module Modmail_conversation = Make (struct
   let kind = Thing_kind.Modmail_conversation
@@ -122,7 +146,7 @@ end)
 module Fullname = struct
   module M = struct
     type t =
-      [ `Comment of Comment.Id.t
+      [ `Comment of Comment'.Id.t
       | `User of User.Id.t
       | `Link of Link.Id.t
       | `Message of Message.Id.t
@@ -154,7 +178,7 @@ end
 
 module Poly = struct
   type t =
-    [ `Comment of Comment.t
+    [ `Comment of Comment'.t
     | `User of User.t
     | `Link of Link.t
     | `Message of Message.t
@@ -167,13 +191,28 @@ module Poly = struct
 
   let of_json json =
     let kind = Json.find json [ "kind" ] |> Json.get_string |> Thing_kind.of_string in
-    let data = Json.find json [ "data" ] |> Comment.of_json in
+    let data = Json.find json [ "data" ] |> Comment'.of_json in
     Thing_kind.to_polymorphic_tag_uniform kind ~data
   ;;
 
   let fullname t =
     let kind, data = Thing_kind.of_polymorphic_tag_with_uniform_data t in
-    let id = Comment.id data in
+    let id = Comment'.id data in
     Thing_kind.to_polymorphic_tag_uniform kind ~data:id
+  ;;
+end
+
+module Comment = struct
+  include Comment'
+
+  let replies t =
+    match get_field_exn t "replies" with
+    | `String "" -> []
+    | json ->
+      Listing.of_json Poly.of_json json
+      |> Listing.children
+      |> List.map ~f:(function
+             | (`Comment _ | `More_comments _) as v -> v
+             | _ -> assert false)
   ;;
 end

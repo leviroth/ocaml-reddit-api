@@ -5,11 +5,11 @@ open! Import
 let%expect_test "comment_fields" =
   with_cassette "comment_fields" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hle3h4" in
-      let%bind ({ comment_forest; _ } : Api.Parameters.Comment_response.t) =
+      let%bind ({ comment_forest; _ } : Comment_response.t) =
         Api.Exn.comments connection ~link
       in
       let first_comment =
-        match Listing.children comment_forest |> List.hd_exn with
+        match List.hd_exn comment_forest with
         | `Comment comment -> comment
         | _ -> assert false
       in

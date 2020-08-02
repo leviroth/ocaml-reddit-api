@@ -538,14 +538,6 @@ module Parameters = struct
       | Remove -> "del"
     ;;
   end
-
-  module Comment_response = struct
-    type t =
-      { link : Thing.Link.t
-      ; comment_forest :
-          [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
-      }
-  end
 end
 
 module Api_error = struct
@@ -848,29 +840,26 @@ struct
   let mark_nsfw = mark_nsfw' `Do
   let unmark_nsfw = mark_nsfw' `Undo
 
-  let more_children
-      ?id
-      ?limit_children
-      ~link:link_id
-      ~children
-      ~sort
-      ?param_list_override
-      connection
-    =
+  let more_children ?limit_children ~link ~more_comments ~sort =
     let endpoint = "/api/morechildren" in
-    let link_fullname = `Link link_id in
+    let children = More_comments.Details.By_children.children more_comments in
     let params =
       let open Param_dsl in
       combine
         [ api_type
         ; required Comment.Id.to_string "children" children
-        ; required' fullname_ "link_id" link_fullname
-        ; optional' More_comments.Id.to_string "id" id
+        ; required' fullname_ "link_id" (`Link link)
         ; optional' bool "limit_children" limit_children
         ; required' Comment_sort.to_string "sort" sort
         ]
     in
-    get ~sequence:More_children return ~endpoint ~params ?param_list_override connection
+    get
+      ~sequence:More_children
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           Json.find json [ "json"; "data"; "things" ]
+           |> Json.get_list comment_or_more_of_json))
   ;;
 
   let report
@@ -1115,6 +1104,7 @@ struct
              in
              let comment_forest =
                Listing.of_json comment_or_more_of_json comment_forest_json
+               |> Listing.children
              in
              { Comment_response.link; comment_forest }
            | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
