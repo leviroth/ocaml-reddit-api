@@ -1,7 +1,7 @@
 open! Core
 
 module type S = sig
-  type t [@@deriving sexp]
+  type t [@@deriving sexp, bin_io]
 
   module Id : Id36.S
 

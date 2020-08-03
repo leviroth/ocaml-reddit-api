@@ -9,7 +9,7 @@ type t =
   | `Object of (string * t) list
   | `Array of t list
   ]
-[@@deriving sexp]
+[@@deriving sexp, bin_io]
 
 include (Jsonaf : module type of Jsonaf with type t := t)
 

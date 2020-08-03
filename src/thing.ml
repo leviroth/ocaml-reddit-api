@@ -5,7 +5,7 @@ module Make (Param : sig
   val kind : Thing_kind.t
 end) =
 struct
-  type t = Json.t String.Map.t [@@deriving sexp]
+  type t = Json.t String.Map.t [@@deriving sexp, bin_io]
 
   let module_name = Thing_kind.to_string_long Param.kind
 
