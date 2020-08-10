@@ -7,12 +7,17 @@ module Make (Hashable : Hashable.S) = struct
     }
 
   let create ~capacity = { capacity; hash_queue = Hashable.Hash_queue.create () }
-  let mem { hash_queue; _ } value = Hash_queue.mem hash_queue value
 
-  let add { capacity; hash_queue } value =
+  let mem { hash_queue; _ } value =
     match Hash_queue.lookup_and_move_to_back hash_queue value with
-    | Some () -> ()
-    | None ->
+    | Some () -> true
+    | None -> false
+  ;;
+
+  let add ({ hash_queue; capacity } as t) value =
+    match mem t value with
+    | true -> ()
+    | false ->
       Hash_queue.enqueue_back_exn hash_queue value ();
       (match Hash_queue.length hash_queue > capacity with
       | false -> ()
