@@ -64,6 +64,10 @@ struct
 
   let id t = get_field_exn t "id" |> Json.get_string |> Id.of_string
 
+  let url t =
+    get_field t "url" |> Option.map ~f:(Fn.compose Uri.of_string Json.get_string)
+  ;;
+
   let username_of_field t ~field_name =
     let open Option.Monad_infix in
     get_field t field_name

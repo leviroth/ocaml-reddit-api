@@ -31,6 +31,7 @@ module type Thing = sig
 
     val title : t -> string
     val author : t -> Username.t
+    val url : t -> Uri.t option
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t
