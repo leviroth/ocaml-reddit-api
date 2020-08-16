@@ -1,7 +1,6 @@
 open! Core
 open! Async
 open! Import
-open Ocaml_reddit
 
 let%expect_test "select_flair" =
   with_cassette "select_flair" ~f:(fun connection ->

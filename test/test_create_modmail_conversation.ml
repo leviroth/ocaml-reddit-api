@@ -1,7 +1,6 @@
 open! Core
 open! Async
 open! Import
-open Ocaml_reddit
 
 let%expect_test "create_modmail_conversation" =
   with_cassette "create_modmail_conversation" ~f:(fun connection ->

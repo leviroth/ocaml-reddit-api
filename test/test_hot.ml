@@ -1,7 +1,6 @@
 open! Core
 open! Async
 open! Import
-open Ocaml_reddit
 
 let%expect_test "hot" =
   with_cassette "hot" ~f:(fun connection ->

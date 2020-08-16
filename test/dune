@@ -1,6 +1,6 @@
 (library
- (name ocaml_reddit_test)
- (libraries core ocaml_reddit)
+ (name reddit_api_test)
+ (libraries core reddit_api)
  (inline_tests
   (deps
    (source_tree cassettes)))

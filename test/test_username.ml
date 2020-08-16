@@ -1,5 +1,5 @@
 open! Core
-open Ocaml_reddit
+open! Import
 
 let%expect_test "Normalization" =
   let usernames =

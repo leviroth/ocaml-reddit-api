@@ -1,5 +1,5 @@
 open! Core
-open Ocaml_reddit
+open! Import
 
 let%expect_test "roundtrip: int -> string -> int" =
   let test_cases =

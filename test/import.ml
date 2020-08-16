@@ -1,6 +1,6 @@
 open! Core
 open! Async
-open Ocaml_reddit
+include Reddit_api
 
 let with_cassette cassette_name ~f =
   let credential_path = Sys.getenv_exn "CREDENTIALS" in

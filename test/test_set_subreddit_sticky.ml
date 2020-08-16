@@ -1,7 +1,6 @@
 open! Core
 open! Async
 open! Import
-open Ocaml_reddit
 
 let%expect_test "set_subreddit_sticky" =
   with_cassette "set_subreddit_sticky" ~f:(fun connection ->

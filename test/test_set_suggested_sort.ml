@@ -1,7 +1,6 @@
 open! Core
 open! Async
 open! Import
-open Ocaml_reddit
 
 let%expect_test "set_suggested_sort" =
   with_cassette "set_suggested_sort" ~f:(fun connection ->

@@ -1,5 +1,5 @@
 (library
- (name ocaml_reddit)
+ (name reddit_api)
  (libraries async core cohttp-async jsonaf)
  (preprocess
   (pps ppx_jane)))
