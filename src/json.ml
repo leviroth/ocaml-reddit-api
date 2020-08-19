@@ -1,4 +1,5 @@
 open! Core
+include Jsonaf
 
 type t =
   [ `Null
@@ -10,8 +11,6 @@ type t =
   | `Array of t list
   ]
 [@@deriving sexp, bin_io]
-
-include (Jsonaf : module type of Jsonaf with type t := t)
 
 let of_string string = of_string string ~consume:Prefix |> Result.ok_or_failwith
 
