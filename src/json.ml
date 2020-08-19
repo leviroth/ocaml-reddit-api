@@ -13,7 +13,7 @@ type t =
 
 include (Jsonaf : module type of Jsonaf with type t := t)
 
-let of_string string = of_string string |> Result.ok_or_failwith
+let of_string string = of_string string ~consume:Prefix |> Result.ok_or_failwith
 
 let to_map t =
   match t with
