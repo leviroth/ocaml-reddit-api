@@ -2,6 +2,8 @@ open! Core
 open! Async
 include Reddit_api
 
+let () = Time_ns.set_sexp_zone Time_ns.Zone.utc
+
 let with_cassette cassette_name ~f =
   let credentials =
     match Sys.getenv "CREDENTIALS" with
