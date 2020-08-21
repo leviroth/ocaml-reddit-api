@@ -15,6 +15,34 @@ module Credentials = struct
   ;;
 end
 
+module Sequencer = struct
+  module T = struct
+    type t = More_children [@@deriving hash, compare, sexp, bin_io]
+  end
+
+  include T
+  include Hashable.Make (T)
+end
+
+module Sequencer_table = Sequencer_table.Make (Sequencer)
+
+module type T = sig
+  type t [@@deriving sexp_of]
+
+  val post_form
+    :  ?sequence:Sequencer.t
+    -> t
+    -> Uri.t
+    -> params:(string * string list) list
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+
+  val get
+    :  ?sequence:Sequencer.t
+    -> t
+    -> Uri.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+end
+
 module type Cohttp_client_wrapper = sig
   val get
     :  Uri.t
@@ -40,287 +68,291 @@ let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper
   end)
 ;;
 
-module Auth = struct
-  module Access_token = struct
+module Local = struct
+  module Auth = struct
+    module Access_token = struct
+      type t =
+        { token : string
+        ; expiration : Time_ns.t
+        }
+      [@@deriving sexp]
+
+      let is_almost_expired { expiration; _ } ~time_source =
+        let time_with_padding =
+          Time_ns.add (Time_source.now time_source) (Time_ns.Span.of_int_sec 10)
+        in
+        Time_ns.( <= ) expiration time_with_padding
+      ;;
+    end
+
     type t =
-      { token : string
-      ; expiration : Time_ns.t
+      { credentials : Credentials.t
+      ; mutable access_token : Access_token.t option
       }
     [@@deriving sexp]
 
-    let is_almost_expired { expiration; _ } ~time_source =
-      let time_with_padding =
-        Time_ns.add (Time_source.now time_source) (Time_ns.Span.of_int_sec 10)
+    let create credentials () = { credentials; access_token = None }
+
+    let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
+      let open Async.Let_syntax in
+      let%bind _response, body =
+        let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
+        let headers =
+          Cohttp.Header.init_with
+            "Authorization"
+            (Credentials.basic_auth_string t.credentials)
+        in
+        Cohttp_client_wrapper.post_form
+          ~headers
+          uri
+          ~params:
+            [ "grant_type", [ "password" ]
+            ; "username", [ t.credentials.username ]
+            ; "password", [ t.credentials.password ]
+            ]
       in
-      Time_ns.( <= ) expiration time_with_padding
+      let%bind response_string = Cohttp_async.Body.to_string body in
+      let response_json = Json.of_string response_string in
+      let access_token : Access_token.t =
+        let token = Json.find response_json ~key:"access_token" |> Json.get_string in
+        let expiration =
+          let additional_seconds =
+            Json.find response_json ~key:"expires_in"
+            |> Json.get_int
+            |> Time_ns.Span.of_int_sec
+          in
+          Time_ns.add (Time_source.now time_source) additional_seconds
+        in
+        { token; expiration }
+      in
+      t.access_token <- Some access_token;
+      return access_token
     ;;
-  end
 
-  type t =
-    { credentials : Credentials.t
-    ; mutable access_token : Access_token.t option
-    }
-  [@@deriving sexp]
-
-  let create credentials () = { credentials; access_token = None }
-
-  let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
-    let open Async.Let_syntax in
-    let%bind _response, body =
-      let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
+    let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
+      let%bind access_token =
+        match t.access_token with
+        | None -> get_token cohttp_client_wrapper t ~time_source
+        | Some access_token -> return access_token
+      in
+      let%bind { token; _ } =
+        match Access_token.is_almost_expired access_token ~time_source with
+        | true -> get_token cohttp_client_wrapper t ~time_source
+        | false -> return access_token
+      in
       let headers =
-        Cohttp.Header.init_with
-          "Authorization"
-          (Credentials.basic_auth_string t.credentials)
+        Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)
       in
-      Cohttp_client_wrapper.post_form
-        ~headers
-        uri
-        ~params:
-          [ "grant_type", [ "password" ]
-          ; "username", [ t.credentials.username ]
-          ; "password", [ t.credentials.password ]
+      f headers
+    ;;
+  end
+
+  module Rate_limiter : sig
+    type t [@@deriving sexp]
+
+    val create : unit -> t
+
+    val with_t
+      :  t
+      -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
+      -> time_source:Time_source.t
+      -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+  end = struct
+    module Server_side_info = struct
+      type t =
+        { remaining_api_calls : int
+        ; reset_time : Time_ns.t
+        }
+      [@@deriving sexp, fields]
+
+      let t_of_headers headers ~time_source =
+        let open Option.Let_syntax in
+        let%bind remaining_api_calls =
+          Cohttp.Header.get headers "X-Ratelimit-Remaining"
+          >>| Float.of_string
+          >>| Int.of_float
+        and reset_time =
+          let%bind relative_reset_time =
+            Cohttp.Header.get headers "X-Ratelimit-Reset"
+            >>| Int.of_string
+            >>| Time_ns.Span.of_int_sec
+          in
+          return (Time_ns.add (Time_source.now time_source) relative_reset_time)
+        in
+        return { remaining_api_calls; reset_time }
+      ;;
+
+      let compare_approximate_reset_times time1 time2 =
+        let tolerance = Time_ns.Span.of_int_sec 60 in
+        let lower = Maybe_bound.Incl (Time_ns.sub time2 tolerance) in
+        let upper = Maybe_bound.Incl (Time_ns.add time2 tolerance) in
+        match
+          Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time_ns.compare
+        with
+        | Below_lower_bound -> -1
+        | In_range -> 0
+        | Above_upper_bound -> 1
+      ;;
+
+      let demonstrates_reset old_t new_t =
+        match
+          compare_approximate_reset_times old_t.reset_time new_t.reset_time
+          |> Ordering.of_int
+        with
+        | Less -> true
+        | Greater | Equal -> false
+      ;;
+
+      let compare_by_inferred_time_on_server t t' =
+        Comparable.lexicographic
+          [ Comparable.lift compare_approximate_reset_times ~f:reset_time
+          ; Fn.flip (Comparable.lift compare ~f:remaining_api_calls)
           ]
-    in
-    let%bind response_string = Cohttp_async.Body.to_string body in
-    let response_json = Json.of_string response_string in
-    let access_token : Access_token.t =
-      let token = Json.find response_json ~key:"access_token" |> Json.get_string in
-      let expiration =
-        let additional_seconds =
-          Json.find response_json ~key:"expires_in"
-          |> Json.get_int
-          |> Time_ns.Span.of_int_sec
-        in
-        Time_ns.add (Time_source.now time_source) additional_seconds
-      in
-      { token; expiration }
-    in
-    t.access_token <- Some access_token;
-    return access_token
-  ;;
+          t
+          t'
+      ;;
 
-  let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
-    let%bind access_token =
-      match t.access_token with
-      | None -> get_token cohttp_client_wrapper t ~time_source
-      | Some access_token -> return access_token
-    in
-    let%bind { token; _ } =
-      match Access_token.is_almost_expired access_token ~time_source with
-      | true -> get_token cohttp_client_wrapper t ~time_source
-      | false -> return access_token
-    in
-    let headers = Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token) in
-    f headers
-  ;;
-end
+      let update t t' =
+        match compare_by_inferred_time_on_server t t' |> Ordering.of_int with
+        | Less | Equal -> t'
+        | Greater -> t
+      ;;
+    end
 
-module Rate_limiter : sig
-  type t [@@deriving sexp]
-
-  val create : unit -> t
-
-  val with_t
-    :  t
-    -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
-    -> time_source:Time_source.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
-end = struct
-  module Server_side_info = struct
     type t =
-      { remaining_api_calls : int
-      ; reset_time : Time_ns.t
+      { mutable server_side_info : Server_side_info.t option
+      ; mutable waiting_for_reset : bool
+      ; jobs : (unit -> unit) Queue.t
       }
-    [@@deriving sexp, fields]
+    [@@deriving sexp]
 
-    let t_of_headers headers ~time_source =
-      let open Option.Let_syntax in
-      let%bind remaining_api_calls =
-        Cohttp.Header.get headers "X-Ratelimit-Remaining"
-        >>| Float.of_string
-        >>| Int.of_float
-      and reset_time =
-        let%bind relative_reset_time =
-          Cohttp.Header.get headers "X-Ratelimit-Reset"
-          >>| Int.of_string
-          >>| Time_ns.Span.of_int_sec
-        in
-        return (Time_ns.add (Time_source.now time_source) relative_reset_time)
-      in
-      return { remaining_api_calls; reset_time }
+    let create () =
+      { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
     ;;
 
-    let compare_approximate_reset_times time1 time2 =
-      let tolerance = Time_ns.Span.of_int_sec 60 in
-      let lower = Maybe_bound.Incl (Time_ns.sub time2 tolerance) in
-      let upper = Maybe_bound.Incl (Time_ns.add time2 tolerance) in
-      match
-        Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time_ns.compare
-      with
-      | Below_lower_bound -> -1
-      | In_range -> 0
-      | Above_upper_bound -> 1
+    let rec clear_queue t ~time_source =
+      match t.waiting_for_reset with
+      | true -> ()
+      | false ->
+        Queue.dequeue t.jobs
+        |> Option.iter ~f:(fun job ->
+               match t.server_side_info with
+               | None ->
+                 t.waiting_for_reset <- true;
+                 job ()
+               | Some ({ reset_time; remaining_api_calls } as server_side_info) ->
+                 (match remaining_api_calls with
+                 | 0 ->
+                   t.waiting_for_reset <- true;
+                   upon (Time_source.at time_source reset_time) job
+                 | n ->
+                   t.server_side_info
+                     <- Some { server_side_info with remaining_api_calls = n - 1 };
+                   job ();
+                   clear_queue t ~time_source))
     ;;
 
-    let demonstrates_reset old_t new_t =
-      match
-        compare_approximate_reset_times old_t.reset_time new_t.reset_time
-        |> Ordering.of_int
-      with
-      | Less -> true
-      | Greater | Equal -> false
+    let update_server_side_info t new_server_side_info =
+      t.server_side_info
+        <- Some
+             (match t.server_side_info with
+             | None -> new_server_side_info
+             | Some server_side_info ->
+               Server_side_info.update server_side_info new_server_side_info)
     ;;
 
-    let compare_by_inferred_time_on_server t t' =
-      Comparable.lexicographic
-        [ Comparable.lift compare_approximate_reset_times ~f:reset_time
-        ; Fn.flip (Comparable.lift compare ~f:remaining_api_calls)
-        ]
-        t
-        t'
-    ;;
-
-    let update t t' =
-      match compare_by_inferred_time_on_server t t' |> Ordering.of_int with
-      | Less | Equal -> t'
-      | Greater -> t
+    let with_t t ~f ~time_source =
+      let ivar = Ivar.create () in
+      Queue.enqueue t.jobs (fun () ->
+          upon (f ()) (fun ((response, _body) as result) ->
+              let headers = Cohttp.Response.headers response in
+              Server_side_info.t_of_headers headers ~time_source
+              |> Option.iter ~f:(fun new_server_side_info ->
+                     (match t.server_side_info with
+                     | None -> t.waiting_for_reset <- false
+                     | Some old_server_side_info ->
+                       (match
+                          Server_side_info.demonstrates_reset
+                            old_server_side_info
+                            new_server_side_info
+                        with
+                       | false -> ()
+                       | true -> t.waiting_for_reset <- false));
+                     update_server_side_info t new_server_side_info);
+              Ivar.fill ivar result;
+              clear_queue t ~time_source));
+      clear_queue t ~time_source;
+      Ivar.read ivar
     ;;
   end
 
   type t =
-    { mutable server_side_info : Server_side_info.t option
-    ; mutable waiting_for_reset : bool
-    ; jobs : (unit -> unit) Queue.t
+    { auth : Auth.t
+    ; rate_limiter : Rate_limiter.t
+    ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
+    ; time_source : Time_source.t
+    ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
     }
-  [@@deriving sexp]
+  [@@deriving sexp_of]
 
-  let create () =
-    { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
+  let create_internal cohttp_client_wrapper credentials ~time_source =
+    { auth = Auth.create credentials ()
+    ; rate_limiter = Rate_limiter.create ()
+    ; cohttp_client_wrapper
+    ; time_source
+    ; sequencer_table = Sequencer_table.create ()
+    }
   ;;
 
-  let rec clear_queue t ~time_source =
-    match t.waiting_for_reset with
-    | true -> ()
-    | false ->
-      Queue.dequeue t.jobs
-      |> Option.iter ~f:(fun job ->
-             match t.server_side_info with
-             | None ->
-               t.waiting_for_reset <- true;
-               job ()
-             | Some ({ reset_time; remaining_api_calls } as server_side_info) ->
-               (match remaining_api_calls with
-               | 0 ->
-                 t.waiting_for_reset <- true;
-                 upon (Time_source.at time_source reset_time) job
-               | n ->
-                 t.server_side_info
-                   <- Some { server_side_info with remaining_api_calls = n - 1 };
-                 job ();
-                 clear_queue t ~time_source))
+  let create credentials ~user_agent =
+    create_internal
+      (live_cohttp_client user_agent)
+      credentials
+      ~time_source:(Time_source.wall_clock ())
   ;;
 
-  let update_server_side_info t new_server_side_info =
-    t.server_side_info
-      <- Some
-           (match t.server_side_info with
-           | None -> new_server_side_info
-           | Some server_side_info ->
-             Server_side_info.update server_side_info new_server_side_info)
+  let with_t
+      ?sequence
+      { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
+      ~f
+      ~headers
+    =
+    let run (None : Nothing.t option) =
+      Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
+          Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
+    in
+    match sequence with
+    | None -> run None
+    | Some sequencer -> Sequencer_table.enqueue sequencer_table ~key:sequencer run
   ;;
 
-  let with_t t ~f ~time_source =
-    let ivar = Ivar.create () in
-    Queue.enqueue t.jobs (fun () ->
-        upon (f ()) (fun ((response, _body) as result) ->
-            let headers = Cohttp.Response.headers response in
-            Server_side_info.t_of_headers headers ~time_source
-            |> Option.iter ~f:(fun new_server_side_info ->
-                   (match t.server_side_info with
-                   | None -> t.waiting_for_reset <- false
-                   | Some old_server_side_info ->
-                     (match
-                        Server_side_info.demonstrates_reset
-                          old_server_side_info
-                          new_server_side_info
-                      with
-                     | false -> ()
-                     | true -> t.waiting_for_reset <- false));
-                   update_server_side_info t new_server_side_info);
-            Ivar.fill ivar result;
-            clear_queue t ~time_source));
-    clear_queue t ~time_source;
-    Ivar.read ivar
+  let post_form ?sequence t uri ~params =
+    let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
+    let headers = Cohttp.Header.init () in
+    Monitor.try_with (fun () ->
+        with_t ?sequence t ~headers ~f:(fun headers ->
+            Cohttp_client_wrapper.post_form ~headers ~params uri))
+  ;;
+
+  let get ?sequence t uri =
+    let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
+    let headers = Cohttp.Header.init () in
+    Monitor.try_with (fun () ->
+        with_t ?sequence t ~headers ~f:(fun headers ->
+            Cohttp_client_wrapper.get ~headers uri))
   ;;
 end
 
-module Sequencer = struct
-  module T = struct
-    type t = More_children [@@deriving hash, compare, sexp, bin_io]
-  end
+type t = T : (module T with type t = 't) * 't -> t
 
-  include T
-  include Hashable.Make (T)
-end
-
-module Sequencer_table = Sequencer_table.Make (Sequencer)
-
-type t =
-  { auth : Auth.t
-  ; rate_limiter : Rate_limiter.t
-  ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
-  ; time_source : Time_source.t
-  ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
-  }
-[@@deriving sexp_of]
-
-let create_internal cohttp_client_wrapper credentials ~time_source =
-  { auth = Auth.create credentials ()
-  ; rate_limiter = Rate_limiter.create ()
-  ; cohttp_client_wrapper
-  ; time_source
-  ; sequencer_table = Sequencer_table.create ()
-  }
-;;
+let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
 let create credentials ~user_agent =
-  create_internal
-    (live_cohttp_client user_agent)
-    credentials
-    ~time_source:(Time_source.wall_clock ())
+  T ((module Local), Local.create credentials ~user_agent)
 ;;
 
-let with_t
-    ?sequence
-    { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
-    ~f
-    ~headers
-  =
-  let run (None : Nothing.t option) =
-    Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-        Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
-  in
-  match sequence with
-  | None -> run None
-  | Some sequencer -> Sequencer_table.enqueue sequencer_table ~key:sequencer run
-;;
-
-let post_form ?sequence t uri ~params =
-  let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
-  let headers = Cohttp.Header.init () in
-  Monitor.try_with (fun () ->
-      with_t ?sequence t ~headers ~f:(fun headers ->
-          Cohttp_client_wrapper.post_form ~headers ~params uri))
-;;
-
-let get ?sequence t uri =
-  let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
-  let headers = Cohttp.Header.init () in
-  Monitor.try_with (fun () ->
-      with_t ?sequence t ~headers ~f:(fun headers ->
-          Cohttp_client_wrapper.get ~headers uri))
-;;
+let get ?sequence (T ((module T), t)) = T.get ?sequence t
+let post_form ?sequence (T ((module T), t)) = T.post_form ?sequence t
 
 module For_testing = struct
   module Placeholders : sig
@@ -575,10 +607,12 @@ module For_testing = struct
   let with_cassette filename ~credentials ~f =
     Cassette.with_t filename ~credentials ~f:(fun (module Cassette : Cassette.S) ->
         let connection =
-          create_internal
-            (module Cassette)
-            credentials
-            ~time_source:Cassette.read_only_time_source
+          T
+            ( (module Local)
+            , Local.create_internal
+                (module Cassette)
+                credentials
+                ~time_source:Cassette.read_only_time_source )
         in
         f connection)
   ;;
