@@ -564,22 +564,7 @@ module Api_error = struct
   [@@deriving sexp_of]
 end
 
-module Make (Connection : sig
-  type t
-
-  val get
-    :  t
-    -> Uri.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
-
-  val post_form
-    :  t
-    -> Uri.t
-    -> params:(string * string list) list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
-
-  val more_children_sequencer : t -> unit Sequencer.t
-end) (Output : sig
+module Make (Output : sig
   type 'a t
 
   val finalize
@@ -588,8 +573,6 @@ end) (Output : sig
     -> 'a t Deferred.t
 end) =
 struct
-  module Connection = Connection
-
   let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
     let k = Output.finalize k in
     let params = ("raw_json", [ "1" ]) :: params in
@@ -1929,7 +1912,7 @@ module Raw_param = struct
   ;;
 end
 
-module Raw = Make (Connection) (Raw_param)
+module Raw = Make (Raw_param)
 
 module Exn_param = struct
   type 'a t = 'a
@@ -1948,7 +1931,7 @@ module Exn_param = struct
   ;;
 end
 
-module Exn = Make (Connection) (Exn_param)
+module Exn = Make (Exn_param)
 
 module Typed_param = struct
   type 'a t = ('a, Api_error.t) Result.t
@@ -1965,15 +1948,4 @@ module Typed_param = struct
   ;;
 end
 
-include Make (Connection) (Typed_param)
-
-module For_testing =
-  Make
-    (struct
-      type t = Cohttp.Response.t * Cohttp_async.Body.t
-
-      let get t _ = return (Ok t)
-      let post_form t _ ~params:_ = return (Ok t)
-      let more_children_sequencer _ = Sequencer.create ()
-    end)
-    (Typed_param)
+include Make (Typed_param)
