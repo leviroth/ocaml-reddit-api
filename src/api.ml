@@ -573,7 +573,15 @@ module Make (Output : sig
     -> 'a t Deferred.t
 end) =
 struct
-  let call_api k ?(param_list_override = Fn.id) connection ~endpoint ~http_verb ~params =
+  let call_api
+      ?sequence
+      k
+      ?(param_list_override = Fn.id)
+      connection
+      ~endpoint
+      ~http_verb
+      ~params
+    =
     let k = Output.finalize k in
     let params = ("raw_json", [ "1" ]) :: params in
     let params = param_list_override params in
@@ -582,8 +590,8 @@ struct
       match http_verb with
       | `GET ->
         let uri = Uri.add_query_params uri params in
-        Connection.get connection uri
-      | `POST -> Connection.post_form connection uri ~params
+        Connection.get ?sequence connection uri
+      | `POST -> Connection.post_form ?sequence connection uri ~params
     in
     k response
   ;;
@@ -850,9 +858,7 @@ struct
         ; required' Comment_sort.to_string "sort" sort
         ]
     in
-    let sequencer = Connection.more_children_sequencer connection in
-    Throttle.enqueue sequencer (fun () ->
-        get return ~endpoint ~params ?param_list_override connection)
+    get ~sequence:More_children return ~endpoint ~params ?param_list_override connection
   ;;
 
   let report

@@ -19,4 +19,5 @@
   (cohttp-async (>= 2.5.4))
   (core (= v0.14.0))
   (angstrom (>= 0.14.0))
-  (faraday (>= 0.7.0))))
+  (faraday (>= 0.7.0))
+  (sequencer_table (= v0.14.0))))

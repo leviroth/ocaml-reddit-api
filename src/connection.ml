@@ -255,12 +255,23 @@ end = struct
   ;;
 end
 
+module Sequencer = struct
+  module T = struct
+    type t = More_children [@@deriving hash, compare, sexp, bin_io]
+  end
+
+  include T
+  include Hashable.Make (T)
+end
+
+module Sequencer_table = Sequencer_table.Make (Sequencer)
+
 type t =
   { auth : Auth.t
   ; rate_limiter : Rate_limiter.t
   ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
   ; time_source : Time_source.t
-  ; more_children_sequencer : unit Sequencer.t
+  ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
   }
 [@@deriving sexp_of]
 
@@ -269,7 +280,7 @@ let create_internal cohttp_client_wrapper credentials ~time_source =
   ; rate_limiter = Rate_limiter.create ()
   ; cohttp_client_wrapper
   ; time_source
-  ; more_children_sequencer = Sequencer.create ()
+  ; sequencer_table = Sequencer_table.create ()
   }
 ;;
 
@@ -280,26 +291,35 @@ let create credentials ~user_agent =
     ~time_source:(Time_source.wall_clock ())
 ;;
 
-let more_children_sequencer t = t.more_children_sequencer
-
-let with_t { auth; rate_limiter; cohttp_client_wrapper; time_source; _ } ~f ~headers =
-  Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-      Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
+let with_t
+    ?sequence
+    { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
+    ~f
+    ~headers
+  =
+  let run (None : Nothing.t option) =
+    Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
+        Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
+  in
+  match sequence with
+  | None -> run None
+  | Some sequencer -> Sequencer_table.enqueue sequencer_table ~key:sequencer run
 ;;
 
-let post_form t uri ~params =
+let post_form ?sequence t uri ~params =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
   Monitor.try_with (fun () ->
-      with_t t ~headers ~f:(fun headers ->
+      with_t ?sequence t ~headers ~f:(fun headers ->
           Cohttp_client_wrapper.post_form ~headers ~params uri))
 ;;
 
-let get t uri =
+let get ?sequence t uri =
   let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
   let headers = Cohttp.Header.init () in
   Monitor.try_with (fun () ->
-      with_t t ~headers ~f:(fun headers -> Cohttp_client_wrapper.get ~headers uri))
+      with_t ?sequence t ~headers ~f:(fun headers ->
+          Cohttp_client_wrapper.get ~headers uri))
 ;;
 
 module For_testing = struct

@@ -15,6 +15,7 @@ depends: [
   "core" {= "v0.14.0"}
   "angstrom" {>= "0.14.0"}
   "faraday" {>= "0.7.0"}
+  "sequencer_table" {= "v0.14.0"}
 ]
 build: [
   ["dune" "subst"] {pinned}
