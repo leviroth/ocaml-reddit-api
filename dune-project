@@ -18,6 +18,5 @@
   (async_ssl (= v0.14.0))
   (cohttp-async (>= 2.5.4))
   (core (= v0.14.0))
-  (angstrom (>= 0.14.0))
-  (faraday (>= 0.7.0))
+  (jsonaf (>= dev))
   (sequencer_table (= v0.14.0))))

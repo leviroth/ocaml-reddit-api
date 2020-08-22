@@ -25,6 +25,8 @@ jobs:
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
 
+      - run: opam repo add leviroth https://github.com/leviroth/opam-repository.git
+
       - run: opam pin add reddit_api.dev . --no-action
 
       - run: opam depext reddit_api --yes --with-doc --with-test
