@@ -354,6 +354,137 @@ let create credentials ~user_agent =
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
 let post_form ?sequence (T ((module T), t)) = T.post_form ?sequence t
 
+module Remote = struct
+  module Protocol = struct
+    module Cohttp_response = struct
+      module T = struct
+        include Cohttp.Response
+        module Binable = Sexp
+
+        let to_binable = Cohttp.Response.sexp_of_t
+        let of_binable = Cohttp.Response.t_of_sexp
+
+        let caller_identity =
+          Bin_prot.Shape.Uuid.of_string "013b732e-e3fc-11ea-95d1-ffe802709160"
+        ;;
+      end
+
+      include T
+      include Bin_prot.Utils.Make_binable_with_uuid (T)
+    end
+
+    module Uri = struct
+      module T = struct
+        include Uri
+        module Binable = String
+
+        let to_binable = Uri.to_string
+        let of_binable = Uri.of_string
+
+        let caller_identity =
+          Bin_prot.Shape.Uuid.of_string "118c15e0-e400-11ea-b4dc-6bc3e7e7983c"
+        ;;
+      end
+
+      include T
+      include Bin_prot.Utils.Make_binable_with_uuid (T)
+    end
+
+    module Exn = struct
+      module T = struct
+        include Exn
+        module Binable = Error
+
+        let to_binable t = Error.of_exn ~backtrace:`Get t
+        let of_binable = Error.to_exn
+
+        let caller_identity =
+          Bin_prot.Shape.Uuid.of_string "dffaba84-e410-11ea-ad49-0755ab1141a3"
+        ;;
+      end
+
+      include T
+      include Bin_prot.Utils.Make_binable_with_uuid (T)
+    end
+
+    let get =
+      Rpc.Rpc.create
+        ~name:"get"
+        ~version:1
+        ~bin_query:[%bin_type_class: Sequencer.t option * Uri.t]
+        ~bin_response:[%bin_type_class: (Cohttp_response.t * string, Exn.t) Result.t]
+    ;;
+
+    let post_form =
+      Rpc.Rpc.create
+        ~name:"post_form"
+        ~version:1
+        ~bin_query:
+          [%bin_type_class: Sequencer.t option * Uri.t * (string * string list) list]
+        ~bin_response:[%bin_type_class: (Cohttp_response.t * string, Exn.t) Result.t]
+    ;;
+  end
+
+  module Client = struct
+    type t = Rpc.Connection.t [@@deriving sexp_of]
+
+    let get_body v =
+      let open Deferred.Result.Let_syntax in
+      let%bind response, body = v in
+      let body = `String body in
+      return (response, body)
+    ;;
+
+    let get ?sequence t uri =
+      get_body (Rpc.Rpc.dispatch_exn Protocol.get t (sequence, uri))
+    ;;
+
+    let post_form ?sequence t uri ~params =
+      get_body (Rpc.Rpc.dispatch_exn Protocol.post_form t (sequence, uri, params))
+    ;;
+  end
+
+  module Server = struct
+    let get_body v =
+      let open Deferred.Result.Let_syntax in
+      let%bind response, body = v in
+      let%bind body = Cohttp_async.Body.to_string body |> Deferred.ok in
+      return (response, body)
+    ;;
+
+    let get =
+      Rpc.Rpc.implement Protocol.get (fun t (sequence, uri) ->
+          get_body (get ?sequence t uri))
+    ;;
+
+    let post_form =
+      Rpc.Rpc.implement Protocol.post_form (fun t (sequence, uri, params) ->
+          get_body (post_form ?sequence t uri ~params))
+    ;;
+
+    let implementations =
+      Rpc.Implementations.create_exn
+        ~implementations:[ get; post_form ]
+        ~on_unknown_rpc:`Close_connection
+    ;;
+
+    let serve t ~where_to_listen =
+      Rpc.Connection.serve
+        ~implementations
+        ~initial_connection_state:(fun _ _ -> t)
+        ~where_to_listen
+        ()
+    ;;
+  end
+
+  let serve = Server.serve
+
+  let connect_exn where_to_connect =
+    let%bind t = Rpc.Connection.client where_to_connect >>| Result.ok_exn in
+    return (T ((module Client), t))
+  ;;
+end
+
 module For_testing = struct
   module Placeholders : sig
     type t
