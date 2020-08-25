@@ -57,6 +57,13 @@ module type Thing = sig
 
   and Subreddit : sig
     include S
+
+    val name : t -> Subreddit_name.t
+    val title : t -> string
+    val description : t -> string
+    val subscribers : t -> int
+    val active_users : t -> int
+    val creation_time : t -> Time_ns.t
   end
 
   and Award : sig

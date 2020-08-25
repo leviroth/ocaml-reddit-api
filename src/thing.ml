@@ -63,7 +63,8 @@ struct
     | None -> raise_s [%message "Field missing in get_field_exn" (t : t) (field : string)]
   ;;
 
-  let id t = get_field_exn t "id" |> Json.get_string |> Id.of_string
+  let get_string_field_exn field t = get_field_exn t field |> Json.get_string
+  let id t = get_string_field_exn "id" t |> Id.of_string
 
   let url t =
     get_field t "url" |> Option.map ~f:(Fn.compose Uri.of_string Json.get_string)
@@ -92,12 +93,13 @@ struct
     | None -> raise_s [%message "Missing author" (t : t)]
   ;;
 
-  let subreddit t =
-    get_field_exn t "subreddit" |> Json.get_string |> Subreddit_name.of_string
-  ;;
-
-  let title t = get_field_exn t "title" |> Json.get_string
+  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
+  let title = get_string_field_exn "title"
+  let name t = get_string_field_exn "display_name" t |> Subreddit_name.of_string
+  let description = get_string_field_exn "description"
   let is_stickied t = get_field_exn t "stickied" |> Json.get_bool
+  let active_users t = get_field_exn t "active_user_count" |> Json.get_int
+  let subscribers t = get_field_exn t "subscribers" |> Json.get_int
 
   let creation_time t =
     get_field_exn t "created_utc"
