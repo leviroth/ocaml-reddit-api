@@ -10,6 +10,7 @@ module type S = sig
   val get_field : t -> string -> Json.t option
   val get_field_exn : t -> string -> Json.t
   val id : t -> Id.t
+  val field_map : t -> Json.t String.Map.t
 end
 
 module type Thing = sig
@@ -18,12 +19,31 @@ module type Thing = sig
   module rec Comment : sig
     include S
 
+    module Score : sig
+      type t =
+        | Score of int
+        | Hidden
+      [@@deriving sexp]
+    end
+
+    val body : t -> string
     val author : t -> Username.t
     val subreddit : t -> Subreddit_name.t
+    val depth : t -> int option
+    val score : t -> Score.t
   end
 
   and User : sig
     include S
+
+    val name : t -> Username.t
+    val creation_time : t -> Time_ns.t
+    val link_karma : t -> int
+    val comment_karma : t -> int
+    val awarder_karma : t -> int
+    val awardee_karma : t -> int
+    val total_karma : t -> int
+    val subreddit : t -> Subreddit.t
   end
 
   and Link : sig
@@ -35,6 +55,7 @@ module type Thing = sig
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t
+    val score : t -> int
   end
 
   and Message : sig
@@ -45,6 +66,13 @@ module type Thing = sig
 
   and Subreddit : sig
     include S
+
+    val name : t -> Subreddit_name.t
+    val title : t -> string
+    val description : t -> string
+    val subscribers : t -> int
+    val active_users : t -> int
+    val creation_time : t -> Time_ns.t
   end
 
   and Award : sig
