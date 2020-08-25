@@ -7,6 +7,7 @@ end) =
 struct
   type t = Json.t String.Map.t [@@deriving sexp, bin_io]
 
+  let field_map = Fn.id
   let module_name = Thing_kind.to_string_long Param.kind
 
   module Id = struct
@@ -105,19 +106,42 @@ struct
     |> Time_ns.Span.of_span_float_round_nearest
     |> Time_ns.of_span_since_epoch
   ;;
+
+  let depth t = get_field t "depth" |> Option.map ~f:Json.get_int
 end
 
-module Comment = Make (struct
-  let kind = Thing_kind.Comment
-end)
+module Comment = struct
+  include Make (struct
+    let kind = Thing_kind.Comment
+  end)
+
+  module Score = struct
+    type t =
+      | Score of int
+      | Hidden
+    [@@deriving sexp]
+  end
+
+  let score t : Score.t =
+    match get_field_exn t "score_hidden" |> Json.get_bool with
+    | true -> Hidden
+    | false -> get_field_exn t "score" |> Json.get_int |> Score
+  ;;
+
+  let body t = get_field_exn t "body" |> Json.get_string
+end
 
 module User = Make (struct
   let kind = Thing_kind.User
 end)
 
-module Link = Make (struct
-  let kind = Thing_kind.Link
-end)
+module Link = struct
+  include Make (struct
+    let kind = Thing_kind.Link
+  end)
+
+  let score t = get_field_exn t "score" |> Json.get_int
+end
 
 module Message = Make (struct
   let kind = Thing_kind.Message
