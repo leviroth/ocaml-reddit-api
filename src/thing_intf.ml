@@ -35,6 +35,15 @@ module type Thing = sig
 
   and User : sig
     include S
+
+    val name : t -> Username.t
+    val creation_time : t -> Time_ns.t
+    val link_karma : t -> int
+    val comment_karma : t -> int
+    val awarder_karma : t -> int
+    val awardee_karma : t -> int
+    val total_karma : t -> int
+    val subreddit : t -> Subreddit.t
   end
 
   and Link : sig

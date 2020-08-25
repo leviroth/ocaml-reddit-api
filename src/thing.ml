@@ -93,9 +93,7 @@ struct
     | None -> raise_s [%message "Missing author" (t : t)]
   ;;
 
-  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
   let title = get_string_field_exn "title"
-  let name t = get_string_field_exn "display_name" t |> Subreddit_name.of_string
   let description = get_string_field_exn "description"
   let is_stickied t = get_field_exn t "stickied" |> Json.get_bool
   let active_users t = get_field_exn t "active_user_count" |> Json.get_int
@@ -110,6 +108,12 @@ struct
   ;;
 
   let depth t = get_field t "depth" |> Option.map ~f:Json.get_int
+  let karma_field field t = get_field_exn t field |> Json.get_int
+  let link_karma = karma_field "link_karma"
+  let comment_karma = karma_field "comment_karma"
+  let awarder_karma = karma_field "awarder_karma"
+  let awardee_karma = karma_field "awardee_karma"
+  let total_karma = karma_field "total_karma"
 end
 
 module Comment = struct
@@ -131,11 +135,8 @@ module Comment = struct
   ;;
 
   let body t = get_field_exn t "body" |> Json.get_string
+  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
 end
-
-module User = Make (struct
-  let kind = Thing_kind.User
-end)
 
 module Link = struct
   include Make (struct
@@ -143,15 +144,29 @@ module Link = struct
   end)
 
   let score t = get_field_exn t "score" |> Json.get_int
+  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
 end
 
 module Message = Make (struct
   let kind = Thing_kind.Message
 end)
 
-module Subreddit = Make (struct
-  let kind = Thing_kind.Subreddit
-end)
+module Subreddit = struct
+  include Make (struct
+    let kind = Thing_kind.Subreddit
+  end)
+
+  let name t = get_string_field_exn "display_name" t |> Subreddit_name.of_string
+end
+
+module User = struct
+  include Make (struct
+    let kind = Thing_kind.User
+  end)
+
+  let name t = get_string_field_exn "name" t |> Username.of_string
+  let subreddit t = get_field_exn t "subreddit" |> Subreddit.of_json
+end
 
 module Award = Make (struct
   let kind = Thing_kind.Award
