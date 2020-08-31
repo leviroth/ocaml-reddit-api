@@ -263,10 +263,10 @@ module type S = sig
   val me : User.t call
   val karma : Karma_list.t call
   val trophies : Award.t list call
-  val friends : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
-  val blocked : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
-  val messaging : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
-  val trusted : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
+  val friends : User_list.t call with_listing_params
+  val blocked : User_list.t call with_listing_params
+  val messaging : User_list.t call with_listing_params
+  val trusted : User_list.t call with_listing_params
 
   (** Captcha *)
 

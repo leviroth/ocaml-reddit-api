@@ -710,10 +710,24 @@ struct
   ;;
 
   let prefs endpoint k = with_listing_params (prefs' endpoint k)
-  let friends = prefs "friends" return
-  let blocked = prefs "blocked" return
-  let messaging = prefs "messaging" return
-  let trusted = prefs "trusted" return
+
+  let userlist json =
+    let of_array_item json =
+      Json.find json ~key:"data"
+      |> Json.find ~key:"children"
+      |> Json.get_array
+      |> List.map ~f:User_list.Item.of_json
+    in
+    match json with
+    | `Object _ -> of_array_item json
+    | `Array l -> List.concat_map l ~f:of_array_item
+    | _ -> raise_s [%message "Unexpect User_list.t JSON" (json : Json.t)]
+  ;;
+
+  let friends = prefs "friends" (handle_json_response userlist)
+  let blocked = prefs "blocked" (handle_json_response userlist)
+  let messaging = prefs "messaging" (handle_json_response userlist)
+  let trusted = prefs "trusted" (handle_json_response userlist)
 
   let select_flair
       ?background_color
