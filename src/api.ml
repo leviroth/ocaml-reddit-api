@@ -689,8 +689,6 @@ struct
            | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)]))
   ;;
 
-  let needs_captcha = get ~endpoint:"/api/v1/me/needs_captcha" ~params:[] return
-
   let with_listing_params k ?pagination ?count ?limit ?show_all =
     let listing_params =
       let open Param_dsl in
