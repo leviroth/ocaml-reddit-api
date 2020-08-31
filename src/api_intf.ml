@@ -294,9 +294,7 @@ module type S = sig
     -> text:string
     -> Thing.Comment.t call
 
-  val delete
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val delete : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
 
   val edit
     :  ?return_rtjson:bool
