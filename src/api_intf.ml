@@ -268,10 +268,6 @@ module type S = sig
   val messaging : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
   val trusted : (Cohttp.Response.t * Cohttp_async.Body.t) call with_listing_params
 
-  (** Captcha *)
-
-  val needs_captcha : (Cohttp.Response.t * Cohttp_async.Body.t) call
-
   (** Flair *)
 
   val select_flair
