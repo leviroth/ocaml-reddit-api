@@ -979,7 +979,7 @@ struct
     post ~endpoint ~params assert_no_errors
   ;;
 
-  let spoiler' ~link = simple_toggle' "spoiler" (`Link link) return
+  let spoiler' ~link = simple_toggle' "spoiler" (`Link link) ignore_empty_object
   let spoiler = spoiler' `Do
   let unspoiler = spoiler' `Undo
 

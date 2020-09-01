@@ -356,8 +356,8 @@ module type S = sig
     -> unit call
 
   val set_suggested_sort : link:Link.Id.t -> sort:Comment_sort.t option -> unit call
-  val spoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unspoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val spoiler : link:Link.Id.t -> unit call
+  val unspoiler : link:Link.Id.t -> unit call
 
   val store_visits
     :  links:Link.Id.t list

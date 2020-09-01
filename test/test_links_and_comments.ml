@@ -42,3 +42,17 @@ let%expect_test "set_contest_mode" =
       let%bind () = Api.Exn.set_contest_mode connection ~link ~enabled:false in
       [%expect])
 ;;
+
+let%expect_test "spoiler" =
+  with_cassette "spoiler" ~f:(fun connection ->
+      let link = Thing.Link.Id.of_string "hofd3k" in
+      let%bind () = Api.Exn.spoiler connection ~link in
+      [%expect])
+;;
+
+let%expect_test "unspoiler" =
+  with_cassette "unspoiler" ~f:(fun connection ->
+      let link = Thing.Link.Id.of_string "hofd3k" in
+      let%bind () = Api.Exn.unspoiler connection ~link in
+      [%expect])
+;;
