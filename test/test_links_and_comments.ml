@@ -56,3 +56,12 @@ let%expect_test "unspoiler" =
       let%bind () = Api.Exn.unspoiler connection ~link in
       [%expect])
 ;;
+
+let%expect_test "vote" =
+  with_cassette "vote" ~f:(fun connection ->
+      let target = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
+      let%bind () = Api.Exn.vote connection ~target ~direction:Down in
+      let%bind () = Api.Exn.vote connection ~target ~direction:Neutral in
+      let%bind () = Api.Exn.vote connection ~target ~direction:Up in
+      [%expect])
+;;

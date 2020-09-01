@@ -384,7 +384,7 @@ module type S = sig
     :  ?rank:int
     -> direction:Vote_direction.t
     -> target:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val info
     :  ?subreddit:Subreddit_name.t

@@ -1046,11 +1046,11 @@ struct
       let open Param_dsl in
       combine
         [ Vote_direction.params_of_t direction
-        ; required' fullname_ "fullname" target
+        ; required' fullname_ "id" target
         ; optional' int "rank" rank
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
