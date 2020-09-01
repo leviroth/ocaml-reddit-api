@@ -807,16 +807,6 @@ struct
           raise_s [%message "Expected link or comment response" (response : Thing.Poly.t)])
   ;;
 
-  let follow ~link ~follow =
-    let endpoint = "/api/follow_post" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ required' fullname_ "fullname" (`Link link); required' bool "follow" follow ]
-    in
-    post ~endpoint ~params return
-  ;;
-
   let simple_toggle verb fullnames k direction =
     let verb =
       match direction with

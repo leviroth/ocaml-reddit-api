@@ -299,11 +299,6 @@ module type S = sig
     -> text:string
     -> [> `Link of Link.t | `Comment of Comment.t ] call
 
-  val follow
-    :  link:Link.Id.t
-    -> follow:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
   val hide : links:Link.Id.t list -> unit call
   val unhide : links:Link.Id.t list -> unit call
   val lock : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
