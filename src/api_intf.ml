@@ -297,12 +297,7 @@ module type S = sig
     -> ?richtext_json:Json.t
     -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> text:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val follow
-    :  link:Link.Id.t
-    -> follow:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [> `Link of Link.t | `Comment of Comment.t ] call
 
   val hide : links:Link.Id.t list -> unit call
   val unhide : links:Link.Id.t list -> unit call
@@ -342,23 +337,17 @@ module type S = sig
   val save
     :  ?category:string
     -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val unsave
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
+  val unsave : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
   val saved_categories : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val send_replies
     :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> enabled:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val set_contest_mode
-    :  link:Link.Id.t
-    -> enabled:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val set_contest_mode : link:Link.Id.t -> enabled:bool -> unit call
 
   val set_subreddit_sticky
     :  ?to_profile:bool
@@ -367,8 +356,8 @@ module type S = sig
     -> unit call
 
   val set_suggested_sort : link:Link.Id.t -> sort:Comment_sort.t option -> unit call
-  val spoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-  val unspoiler : link:Link.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val spoiler : link:Link.Id.t -> unit call
+  val unspoiler : link:Link.Id.t -> unit call
 
   val store_visits
     :  links:Link.Id.t list
@@ -395,7 +384,7 @@ module type S = sig
     :  ?rank:int
     -> direction:Vote_direction.t
     -> target:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val info
     :  ?subreddit:Subreddit_name.t

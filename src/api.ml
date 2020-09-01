@@ -751,6 +751,15 @@ struct
     post ~endpoint ~params ignore_success_response
   ;;
 
+  let handle_things_response =
+    handle_json_response (fun json ->
+        Json.find json ~key:"json"
+        |> Json.find ~key:"data"
+        |> Json.find ~key:"things"
+        |> Json.index ~index:0
+        |> Thing.Poly.of_json)
+  ;;
+
   let add_comment ?return_rtjson ?richtext_json ~parent ~text =
     let endpoint = "/api/comment" in
     let params =
@@ -763,15 +772,11 @@ struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post
-      ~endpoint
-      ~params
-      (handle_json_response (fun json ->
-           Json.find json ~key:"json"
-           |> Json.find ~key:"data"
-           |> Json.find ~key:"things"
-           |> Json.index ~index:0
-           |> Comment.of_json))
+    post ~endpoint ~params (fun response ->
+        match%bind.Deferred.Option handle_things_response response with
+        | `Comment c -> Deferred.Option.return c
+        | response ->
+          raise_s [%message "Expected comment response" (response : Thing.Poly.t)])
   ;;
 
   let delete ~id =
@@ -795,17 +800,11 @@ struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post ~endpoint ~params return
-  ;;
-
-  let follow ~link ~follow =
-    let endpoint = "/api/follow_post" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ required' fullname_ "fullname" (`Link link); required' bool "follow" follow ]
-    in
-    post ~endpoint ~params return
+    post ~endpoint ~params (fun response ->
+        match%bind.Deferred.Option handle_things_response response with
+        | (`Link _ | `Comment _) as v -> Deferred.Option.return v
+        | response ->
+          raise_s [%message "Expected link or comment response" (response : Thing.Poly.t)])
   ;;
 
   let simple_toggle verb fullnames k direction =
@@ -917,13 +916,13 @@ struct
       let open Param_dsl in
       combine [ required' fullname_ "id" id; optional' string "category" category ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let unsave ~id =
     let endpoint = "/api/save" in
     let params = [ "id", [ Param_dsl.fullname_ id ] ] in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[] return
@@ -934,7 +933,7 @@ struct
       let open Param_dsl in
       combine [ required' fullname_ "id" id; required' bool "state" enabled ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let set_contest_mode ~link ~enabled =
@@ -947,7 +946,7 @@ struct
         ; required' bool "state" enabled
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let set_subreddit_sticky ?to_profile ~link ~sticky_state =
@@ -980,7 +979,7 @@ struct
     post ~endpoint ~params assert_no_errors
   ;;
 
-  let spoiler' ~link = simple_toggle' "spoiler" (`Link link) return
+  let spoiler' ~link = simple_toggle' "spoiler" (`Link link) ignore_empty_object
   let spoiler = spoiler' `Do
   let unspoiler = spoiler' `Undo
 
@@ -1047,11 +1046,11 @@ struct
       let open Param_dsl in
       combine
         [ Vote_direction.params_of_t direction
-        ; required' fullname_ "fullname" target
+        ; required' fullname_ "id" target
         ; optional' int "rank" rank
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
