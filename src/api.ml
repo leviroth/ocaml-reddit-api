@@ -775,12 +775,12 @@ struct
   ;;
 
   let delete ~id =
-    let endpoint = "/api/comment" in
+    let endpoint = "/api/del" in
     let params =
       let open Param_dsl in
       Param_dsl.combine [ required' fullname_ "id" id ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let edit ?return_rtjson ?richtext_json ~id ~text =
