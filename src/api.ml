@@ -933,7 +933,7 @@ struct
       let open Param_dsl in
       combine [ required' fullname_ "id" id; required' bool "state" enabled ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let set_contest_mode ~link ~enabled =

@@ -25,3 +25,12 @@ let%expect_test "unsave" =
       let%bind () = Api.Exn.unsave connection ~id in
       [%expect {| |}])
 ;;
+
+let%expect_test "send_replies" =
+  with_cassette "send_replies" ~f:(fun connection ->
+      let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
+      let%bind () = Api.Exn.send_replies connection ~id ~enabled:true in
+      let%bind () = [%expect] in
+      let%bind () = Api.Exn.send_replies connection ~id ~enabled:false in
+      [%expect])
+;;

@@ -345,7 +345,7 @@ module type S = sig
   val send_replies
     :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> enabled:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val set_contest_mode
     :  link:Link.Id.t
