@@ -297,7 +297,7 @@ module type S = sig
     -> ?richtext_json:Json.t
     -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
     -> text:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [> `Link of Link.t | `Comment of Comment.t ] call
 
   val follow
     :  link:Link.Id.t

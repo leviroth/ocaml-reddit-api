@@ -751,6 +751,15 @@ struct
     post ~endpoint ~params ignore_success_response
   ;;
 
+  let handle_things_response =
+    handle_json_response (fun json ->
+        Json.find json ~key:"json"
+        |> Json.find ~key:"data"
+        |> Json.find ~key:"things"
+        |> Json.index ~index:0
+        |> Thing.Poly.of_json)
+  ;;
+
   let add_comment ?return_rtjson ?richtext_json ~parent ~text =
     let endpoint = "/api/comment" in
     let params =
@@ -763,15 +772,11 @@ struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post
-      ~endpoint
-      ~params
-      (handle_json_response (fun json ->
-           Json.find json ~key:"json"
-           |> Json.find ~key:"data"
-           |> Json.find ~key:"things"
-           |> Json.index ~index:0
-           |> Comment.of_json))
+    post ~endpoint ~params (fun response ->
+        match%bind.Deferred.Option handle_things_response response with
+        | `Comment c -> Deferred.Option.return c
+        | response ->
+          raise_s [%message "Expected comment response" (response : Thing.Poly.t)])
   ;;
 
   let delete ~id =
@@ -795,7 +800,11 @@ struct
         ; optional' json "richtext_json" richtext_json
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params (fun response ->
+        match%bind.Deferred.Option handle_things_response response with
+        | (`Link _ | `Comment _) as v -> Deferred.Option.return v
+        | response ->
+          raise_s [%message "Expected link or comment response" (response : Thing.Poly.t)])
   ;;
 
   let follow ~link ~follow =
