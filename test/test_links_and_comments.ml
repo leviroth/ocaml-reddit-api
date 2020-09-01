@@ -34,3 +34,11 @@ let%expect_test "send_replies" =
       let%bind () = Api.Exn.send_replies connection ~id ~enabled:false in
       [%expect])
 ;;
+
+let%expect_test "set_contest_mode" =
+  with_cassette "set_contest_mode" ~f:(fun connection ->
+      let link = Thing.Link.Id.of_string "hofd3k" in
+      let%bind () = Api.Exn.set_contest_mode connection ~link ~enabled:true in
+      let%bind () = Api.Exn.set_contest_mode connection ~link ~enabled:false in
+      [%expect])
+;;

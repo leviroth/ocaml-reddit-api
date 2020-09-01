@@ -946,7 +946,7 @@ struct
         ; required' bool "state" enabled
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let set_subreddit_sticky ?to_profile ~link ~sticky_state =

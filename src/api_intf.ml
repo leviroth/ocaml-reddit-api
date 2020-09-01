@@ -347,10 +347,7 @@ module type S = sig
     -> enabled:bool
     -> unit call
 
-  val set_contest_mode
-    :  link:Link.Id.t
-    -> enabled:bool
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val set_contest_mode : link:Link.Id.t -> enabled:bool -> unit call
 
   val set_subreddit_sticky
     :  ?to_profile:bool
