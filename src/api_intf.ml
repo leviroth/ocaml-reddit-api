@@ -337,12 +337,9 @@ module type S = sig
   val save
     :  ?category:string
     -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val unsave
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
+  val unsave : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
   val saved_categories : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val send_replies

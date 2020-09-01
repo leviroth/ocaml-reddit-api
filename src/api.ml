@@ -916,13 +916,13 @@ struct
       let open Param_dsl in
       combine [ required' fullname_ "id" id; optional' string "category" category ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let unsave ~id =
     let endpoint = "/api/save" in
     let params = [ "id", [ Param_dsl.fullname_ id ] ] in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let saved_categories = get ~endpoint:"/api/saved_categories" ~params:[] return
