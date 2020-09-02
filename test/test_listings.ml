@@ -13,3 +13,12 @@ let%expect_test "best" =
          ikl4g6 iknntd ikrrxo ikl05w ikn7gl iksu0i ikqhgj ikp413 ikpayi ikkxfh ikkwlk
          ikoad9 ikudf8 ikmxz9) |}])
 ;;
+
+let%expect_test "links_by_id" =
+  with_cassette "links_by_id" ~f:(fun connection ->
+      let links = List.map ~f:Thing.Link.Id.of_string [ "icqrut"; "ikksvt" ] in
+      let%bind listing = Api.Exn.links_by_id connection ~links in
+      let ids = Listing.children listing |> List.map ~f:Thing.Link.id in
+      print_s [%sexp (ids : Thing.Link.Id.t list)];
+      [%expect {| (icqrut ikksvt) |}])
+;;

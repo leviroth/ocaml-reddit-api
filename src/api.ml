@@ -1072,7 +1072,7 @@ struct
       |> String.concat ~sep:","
       |> sprintf "/by_id/%s"
     in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] get_link_listing
   ;;
 
   let comments
