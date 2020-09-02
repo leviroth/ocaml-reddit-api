@@ -22,3 +22,12 @@ let%expect_test "links_by_id" =
       print_s [%sexp (ids : Thing.Link.Id.t list)];
       [%expect {| (icqrut ikksvt) |}])
 ;;
+
+let%expect_test "random" =
+  with_cassette "random" ~f:(fun connection ->
+      let%bind link_id =
+        Api.Exn.random ~subreddit:(Subreddit_name.of_string "ocaml") connection
+      in
+      print_s [%sexp (link_id : Thing.Link.Id.t)];
+      [%expect {| feyhbv |}])
+;;

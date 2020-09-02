@@ -1187,7 +1187,28 @@ struct
 
   let random ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-    get ~endpoint ~params:[] return
+    let get_link_id (response, (_ : Cohttp_async.Body.t)) =
+      let () =
+        match Cohttp.Response.status response with
+        | `Found -> ()
+        | status ->
+          raise_s
+            [%message
+              "Unexpected HTTP response code"
+                (status : Cohttp.Code.status_code)
+                (response : Cohttp.Response.t)]
+      in
+      let uri =
+        Cohttp.Response.headers response |> Cohttp.Header.get_location |> Option.value_exn
+      in
+      let id =
+        match Uri.path uri |> String.split ~on:'/' with
+        | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> Link.Id.of_string id
+        | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
+      in
+      return id
+    in
+    get ~endpoint ~params:[] get_link_id
   ;;
 
   let block_author ~id = simple_post_fullname_as_id "block" id return
