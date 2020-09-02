@@ -1061,7 +1061,7 @@ struct
       let open Param_dsl in
       combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_link_listing
   ;;
 
   let best = with_listing_params best'

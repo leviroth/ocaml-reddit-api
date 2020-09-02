@@ -398,10 +398,7 @@ module type S = sig
 
   (** Listings *)
 
-  val best
-    : (?include_categories:bool -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
-
+  val best : (?include_categories:bool -> Link.t Listing.t call) with_listing_params
   val links_by_id : links:Link.Id.t list -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val comments
