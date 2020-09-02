@@ -1053,15 +1053,13 @@ struct
     post ~endpoint ~params ignore_empty_object
   ;;
 
-  let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
-
   let best' ~listing_params ?include_categories =
     let endpoint = "/best" in
     let params =
       let open Param_dsl in
       combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_link_listing
   ;;
 
   let best = with_listing_params best'
@@ -1072,7 +1070,7 @@ struct
       |> String.concat ~sep:","
       |> sprintf "/by_id/%s"
     in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] get_link_listing
   ;;
 
   let comments
@@ -1187,7 +1185,28 @@ struct
 
   let random ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-    get ~endpoint ~params:[] return
+    let get_link_id (response, (_ : Cohttp_async.Body.t)) =
+      let () =
+        match Cohttp.Response.status response with
+        | `Found -> ()
+        | status ->
+          raise_s
+            [%message
+              "Unexpected HTTP response code"
+                (status : Cohttp.Code.status_code)
+                (response : Cohttp.Response.t)]
+      in
+      let uri =
+        Cohttp.Response.headers response |> Cohttp.Header.get_location |> Option.value_exn
+      in
+      let id =
+        match Uri.path uri |> String.split ~on:'/' with
+        | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> Link.Id.of_string id
+        | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
+      in
+      return id
+    in
+    get ~endpoint ~params:[] get_link_id
   ;;
 
   let block_author ~id = simple_post_fullname_as_id "block" id return
