@@ -1053,8 +1053,6 @@ struct
     post ~endpoint ~params ignore_empty_object
   ;;
 
-  let trending_subreddits = get ~endpoint:"/api/trending_subreddits" ~params:[] return
-
   let best' ~listing_params ?include_categories =
     let endpoint = "/best" in
     let params =

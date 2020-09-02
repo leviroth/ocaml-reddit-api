@@ -452,7 +452,6 @@ module type S = sig
       with_listing_params
 
   val random : ?subreddit:Subreddit_name.t -> Link.Id.t call
-  val trending_subreddits : (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   (** Private messages *)
 
