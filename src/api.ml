@@ -150,6 +150,7 @@ module Parameters = struct
     type t =
       | Link of { url : string }
       | Self of Self_post_body.t
+      | Crosspost of Link.Id.t
     [@@deriving sexp]
 
     let params_of_t t =
@@ -160,6 +161,10 @@ module Parameters = struct
         ; (match body with
           | Markdown markdown -> "text", [ markdown ]
           | Richtext_json json -> "richtext_json", [ Json.to_string json ])
+        ]
+      | Crosspost link_id ->
+        [ "kind", [ "crosspost" ]
+        ; "crosspost_fullname", [ Param_dsl.fullname_ (`Link link_id) ]
         ]
     ;;
   end
