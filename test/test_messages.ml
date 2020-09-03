@@ -25,6 +25,20 @@ let%expect_test "uncollapse_message" =
       [%expect])
 ;;
 
+let%expect_test "read_message" =
+  with_cassette "read_message" ~f:(fun connection ->
+      let messages = [ message_id ] in
+      let%bind () = Api.Exn.read_message connection ~messages in
+      [%expect])
+;;
+
+let%expect_test "unread_message" =
+  with_cassette "unread_message" ~f:(fun connection ->
+      let messages = [ message_id ] in
+      let%bind () = Api.Exn.unread_message connection ~messages in
+      [%expect])
+;;
+
 let%expect_test "compose_message" =
   with_cassette "compose_message" ~f:(fun connection ->
       let%bind () =

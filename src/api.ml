@@ -1247,7 +1247,10 @@ struct
   ;;
 
   let read_message' ~messages =
-    simple_toggle "read_message" (List.map messages ~f:(fun x -> `Message x)) return
+    simple_toggle
+      "read_message"
+      (List.map messages ~f:(fun x -> `Message x))
+      ignore_empty_object
   ;;
 
   let read_message = read_message' `Do

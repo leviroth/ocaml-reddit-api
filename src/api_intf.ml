@@ -475,13 +475,8 @@ module type S = sig
     :  message:Message.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val read_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unread_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val read_message : messages:Message.Id.t list -> unit call
+  val unread_message : messages:Message.Id.t list -> unit call
 
   val inbox
     : (?include_categories:bool
