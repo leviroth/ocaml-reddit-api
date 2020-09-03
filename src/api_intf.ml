@@ -46,6 +46,7 @@ module type Parameters = sig
     type t =
       | Link of { url : string }
       | Self of Self_post_body.t
+      | Crosspost of Link.Id.t
     [@@deriving sexp]
   end
 
