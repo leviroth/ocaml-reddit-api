@@ -482,7 +482,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?mid:string
        -> mark_read:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
       with_listing_params
 
   val unread

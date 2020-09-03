@@ -672,6 +672,13 @@ struct
     | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.Poly.t)]
   ;;
 
+  let comment_or_message_of_json json =
+    let thing = Thing.Poly.of_json json in
+    match thing with
+    | (`Comment _ | `Message _) as thing -> thing
+    | _ -> raise_s [%message "Expected comment or message" (thing : Thing.Poly.t)]
+  ;;
+
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
   let get_link_listing = get_listing Link.of_json
   let get_subreddit_listing = get_listing Subreddit.of_json
@@ -1271,7 +1278,13 @@ struct
   ;;
 
   let message_listing endpoint k = with_listing_params (message_listing' k endpoint)
-  let inbox = message_listing "inbox" return
+
+  let inbox =
+    message_listing
+      "inbox"
+      (handle_json_response (Listing.of_json comment_or_message_of_json))
+  ;;
+
   let unread = message_listing "unread" return
   let sent = message_listing "sent" return
 

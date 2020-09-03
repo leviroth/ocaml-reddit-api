@@ -50,3 +50,15 @@ let%expect_test "compose_message" =
       in
       [%expect])
 ;;
+
+let%expect_test "inbox" =
+  with_cassette "inbox" ~f:(fun connection ->
+      let%bind listing = Api.Exn.inbox ~limit:2 connection ~mark_read:false in
+      Listing.children listing
+      |> List.iter ~f:(fun thing ->
+             print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
+      [%expect
+        {|
+          (Comment g3u0ce8)
+          (Message rdjz4y) |}])
+;;
