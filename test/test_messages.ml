@@ -71,3 +71,14 @@ let%expect_test "unread" =
       [%expect {|
           (Comment g3u0ce8) |}])
 ;;
+
+let%expect_test "sent" =
+  with_cassette "sent" ~f:(fun connection ->
+      let%bind listing = Api.Exn.sent ~limit:2 connection in
+      Listing.children listing
+      |> List.iter ~f:(fun message ->
+             print_s [%sexp (Thing.Message.id message : Thing.Message.Id.t)]);
+      [%expect {|
+          rdkr3p
+          rdk8sp |}])
+;;

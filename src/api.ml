@@ -1291,7 +1291,12 @@ struct
       (handle_json_response (Listing.of_json comment_or_message_of_json))
   ;;
 
-  let sent = message_listing "sent" return
+  let sent =
+    message_listing
+      "sent"
+      (handle_json_response (Listing.of_json Message.of_json))
+      ~mark_read:true
+  ;;
 
   let comment_replies =
     message_listing "comments" (handle_json_response (Listing.of_json Comment.of_json))

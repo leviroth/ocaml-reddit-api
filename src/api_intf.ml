@@ -492,6 +492,10 @@ module type S = sig
        -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
       with_listing_params
 
+  val sent
+    : (?include_categories:bool -> ?mid:string -> Message.t Listing.t call)
+      with_listing_params
+
   val comment_replies
     : (?include_categories:bool
        -> ?mid:string
@@ -503,13 +507,6 @@ module type S = sig
     : (subreddit:Subreddit_name.t -> Comment.t Listing.t call) with_listing_params
 
   (** Moderation *)
-
-  val sent
-    : (?include_categories:bool
-       -> ?mid:string
-       -> mark_read:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
 
   val log
     : (?mod_filter:Mod_filter.t
