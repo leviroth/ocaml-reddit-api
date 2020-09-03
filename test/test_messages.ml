@@ -57,8 +57,17 @@ let%expect_test "inbox" =
       Listing.children listing
       |> List.iter ~f:(fun thing ->
              print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
-      [%expect
-        {|
+      [%expect {|
           (Comment g3u0ce8)
           (Message rdjz4y) |}])
+;;
+
+let%expect_test "unread" =
+  with_cassette "unread" ~f:(fun connection ->
+      let%bind listing = Api.Exn.unread connection ~mark_read:false in
+      Listing.children listing
+      |> List.iter ~f:(fun thing ->
+             print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
+      [%expect {|
+          (Comment g3u0ce8) |}])
 ;;

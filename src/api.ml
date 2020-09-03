@@ -1285,7 +1285,12 @@ struct
       (handle_json_response (Listing.of_json comment_or_message_of_json))
   ;;
 
-  let unread = message_listing "unread" return
+  let unread =
+    message_listing
+      "unread"
+      (handle_json_response (Listing.of_json comment_or_message_of_json))
+  ;;
+
   let sent = message_listing "sent" return
 
   let comment_replies =
