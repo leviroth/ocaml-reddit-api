@@ -1239,7 +1239,7 @@ struct
         ; required' string "text" text
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let delete_message ~message =

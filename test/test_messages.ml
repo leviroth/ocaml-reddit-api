@@ -24,3 +24,15 @@ let%expect_test "uncollapse_message" =
       let%bind () = Api.Exn.uncollapse_message connection ~messages in
       [%expect])
 ;;
+
+let%expect_test "compose_message" =
+  with_cassette "compose_message" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.compose_message
+          connection
+          ~to_:(Username.of_string "BJO_test_user")
+          ~subject:"This is a message"
+          ~text:"This is its body"
+      in
+      [%expect])
+;;

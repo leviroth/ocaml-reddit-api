@@ -469,7 +469,7 @@ module type S = sig
     -> to_:Username.t
     -> subject:string
     -> text:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val delete_message
     :  message:Message.Id.t
