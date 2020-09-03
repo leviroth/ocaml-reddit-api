@@ -460,13 +460,8 @@ module type S = sig
     :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
     -> unit call
 
-  val collapse_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val uncollapse_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val collapse_message : messages:Message.Id.t list -> unit call
+  val uncollapse_message : messages:Message.Id.t list -> unit call
 
   val compose_message
     :  ?g_recaptcha_response:string
