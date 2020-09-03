@@ -672,6 +672,13 @@ struct
     | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.Poly.t)]
   ;;
 
+  let comment_or_message_of_json json =
+    let thing = Thing.Poly.of_json json in
+    match thing with
+    | (`Comment _ | `Message _) as thing -> thing
+    | _ -> raise_s [%message "Expected comment or message" (thing : Thing.Poly.t)]
+  ;;
+
   let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
   let get_link_listing = get_listing Link.of_json
   let get_subreddit_listing = get_listing Subreddit.of_json
@@ -1214,10 +1221,13 @@ struct
     get ~endpoint ~params:[] get_link_id
   ;;
 
-  let block_author ~id = simple_post_fullname_as_id "block" id return
+  let block_author ~id = simple_post_fullname_as_id "block" id ignore_empty_object
 
   let collapse_message' ~messages =
-    simple_toggle "collapse_message" (List.map messages ~f:(fun x -> `Message x)) return
+    simple_toggle
+      "collapse_message"
+      (List.map messages ~f:(fun x -> `Message x))
+      ignore_empty_object
   ;;
 
   let collapse_message = collapse_message' `Do
@@ -1236,7 +1246,7 @@ struct
         ; required' string "text" text
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let delete_message ~message =
@@ -1244,7 +1254,10 @@ struct
   ;;
 
   let read_message' ~messages =
-    simple_toggle "read_message" (List.map messages ~f:(fun x -> `Message x)) return
+    simple_toggle
+      "read_message"
+      (List.map messages ~f:(fun x -> `Message x))
+      ignore_empty_object
   ;;
 
   let read_message = read_message' `Do
@@ -1265,9 +1278,25 @@ struct
   ;;
 
   let message_listing endpoint k = with_listing_params (message_listing' k endpoint)
-  let inbox = message_listing "inbox" return
-  let unread = message_listing "unread" return
-  let sent = message_listing "sent" return
+
+  let inbox =
+    message_listing
+      "inbox"
+      (handle_json_response (Listing.of_json comment_or_message_of_json))
+  ;;
+
+  let unread =
+    message_listing
+      "unread"
+      (handle_json_response (Listing.of_json comment_or_message_of_json))
+  ;;
+
+  let sent =
+    message_listing
+      "sent"
+      (handle_json_response (Listing.of_json Message.of_json))
+      ~mark_read:true
+  ;;
 
   let comment_replies =
     message_listing "comments" (handle_json_response (Listing.of_json Comment.of_json))

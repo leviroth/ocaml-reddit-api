@@ -458,15 +458,10 @@ module type S = sig
 
   val block_author
     :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val collapse_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val uncollapse_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val collapse_message : messages:Message.Id.t list -> unit call
+  val uncollapse_message : messages:Message.Id.t list -> unit call
 
   val compose_message
     :  ?g_recaptcha_response:string
@@ -474,32 +469,31 @@ module type S = sig
     -> to_:Username.t
     -> subject:string
     -> text:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val delete_message
     :  message:Message.Id.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val read_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unread_message
-    :  messages:Message.Id.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val read_message : messages:Message.Id.t list -> unit call
+  val unread_message : messages:Message.Id.t list -> unit call
 
   val inbox
     : (?include_categories:bool
        -> ?mid:string
        -> mark_read:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
       with_listing_params
 
   val unread
     : (?include_categories:bool
        -> ?mid:string
        -> mark_read:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
+      with_listing_params
+
+  val sent
+    : (?include_categories:bool -> ?mid:string -> Message.t Listing.t call)
       with_listing_params
 
   val comment_replies
@@ -513,13 +507,6 @@ module type S = sig
     : (subreddit:Subreddit_name.t -> Comment.t Listing.t call) with_listing_params
 
   (** Moderation *)
-
-  val sent
-    : (?include_categories:bool
-       -> ?mid:string
-       -> mark_read:bool
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
 
   val log
     : (?mod_filter:Mod_filter.t
