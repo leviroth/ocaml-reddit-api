@@ -1214,7 +1214,7 @@ struct
     get ~endpoint ~params:[] get_link_id
   ;;
 
-  let block_author ~id = simple_post_fullname_as_id "block" id return
+  let block_author ~id = simple_post_fullname_as_id "block" id ignore_empty_object
 
   let collapse_message' ~messages =
     simple_toggle "collapse_message" (List.map messages ~f:(fun x -> `Message x)) return

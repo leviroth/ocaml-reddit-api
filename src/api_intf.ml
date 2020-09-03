@@ -458,7 +458,7 @@ module type S = sig
 
   val block_author
     :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val collapse_message
     :  messages:Message.Id.t list
