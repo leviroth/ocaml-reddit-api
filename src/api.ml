@@ -665,6 +665,13 @@ struct
         | _ -> raise_s [%message "Unexpected JSON response" (json : Json.t)])
   ;;
 
+  let link_or_comment_of_json json =
+    let thing = Thing.Poly.of_json json in
+    match thing with
+    | (`Link _ | `Comment _) as thing -> thing
+    | _ -> raise_s [%message "Expected link or comment" (thing : Thing.Poly.t)]
+  ;;
+
   let comment_or_more_of_json json =
     let thing = Thing.Poly.of_json json in
     match thing with
@@ -1324,8 +1331,14 @@ struct
   let subreddit_comments = with_listing_params subreddit_comments'
   let log = with_listing_params log'
 
-  let mod_listing' ~listing_params ?location ?only ?subreddit ~endpoint =
-    let endpoint = optional_subreddit_endpoint ?subreddit endpoint in
+  let mod_listing'
+      ~listing_params
+      ?location
+      ?only
+      ?(subreddit = Subreddit_name.of_string "mod")
+      ~endpoint
+    =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
     let params =
       let open Param_dsl in
       combine
@@ -1334,15 +1347,15 @@ struct
         ; optional' string "location" location
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing link_or_comment_of_json)
   ;;
 
   let mod_listing = with_listing_params mod_listing'
-  let reports = mod_listing ~endpoint:"/reports"
-  let spam = mod_listing ~endpoint:"/spam"
-  let modqueue = mod_listing ~endpoint:"/modqueue"
-  let unmoderated = mod_listing ~endpoint:"/unmoderated"
-  let edited = mod_listing ~endpoint:"/edited"
+  let reports = mod_listing ~endpoint:"reports"
+  let spam = mod_listing ~endpoint:"spam"
+  let modqueue = mod_listing ~endpoint:"modqueue"
+  let unmoderated = mod_listing ~endpoint:"unmoderated"
+  let edited = mod_listing ~endpoint:"edited"
 
   let accept_moderator_invite ~subreddit =
     let endpoint = sprintf !"/%{Subreddit_name}/api/accept_moderator_invite" subreddit in

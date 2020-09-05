@@ -519,35 +519,35 @@ module type S = sig
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val spam
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val modqueue
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val unmoderated
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val edited
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val accept_moderator_invite
