@@ -1315,8 +1315,14 @@ struct
     get ~endpoint ~params (handle_json_response (Listing.of_json Comment.of_json))
   ;;
 
+  let subreddit_comments = with_listing_params subreddit_comments'
+
+  let moderation_endpoint ?(subreddit = Subreddit_name.of_string "mod") endpoint =
+    sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint
+  ;;
+
   let log' ~listing_params ?mod_filter ?subreddit ?type_ =
-    let endpoint = optional_subreddit_endpoint ?subreddit "/about/log" in
+    let endpoint = moderation_endpoint ?subreddit "log" in
     let params =
       let open Param_dsl in
       combine
@@ -1325,20 +1331,13 @@ struct
         ; optional' string "type" type_
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing Mod_action.of_json)
   ;;
 
-  let subreddit_comments = with_listing_params subreddit_comments'
   let log = with_listing_params log'
 
-  let mod_listing'
-      ~listing_params
-      ?location
-      ?only
-      ?(subreddit = Subreddit_name.of_string "mod")
-      ~endpoint
-    =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
+  let mod_listing' ~listing_params ?location ?only ?subreddit ~endpoint =
+    let endpoint = moderation_endpoint ?subreddit endpoint in
     let params =
       let open Param_dsl in
       combine

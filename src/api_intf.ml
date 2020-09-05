@@ -512,7 +512,7 @@ module type S = sig
     : (?mod_filter:Mod_filter.t
        -> ?subreddit:Subreddit_name.t
        -> ?type_:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Mod_action.t Listing.t call)
       with_listing_params
 
   val reports
