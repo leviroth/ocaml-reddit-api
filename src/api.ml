@@ -1390,20 +1390,23 @@ struct
            | _ -> raise_s [%message "Expected comment or link" (thing : Thing.Poly.t)]))
   ;;
 
-  let ignore_reports' ~id = simple_toggle' "ignore_reports" id return
+  let ignore_reports' ~id = simple_toggle' "ignore_reports" id ignore_empty_object
   let ignore_reports = ignore_reports' `Do
   let unignore_reports = ignore_reports' `Undo
 
   let leavecontributor ~subreddit =
-    simple_post_fullname_as_id "leavecontributor" (`Subreddit subreddit) return
+    simple_post_fullname_as_id
+      "leavecontributor"
+      (`Subreddit subreddit)
+      ignore_empty_object
   ;;
 
   let leavemoderator ~subreddit =
-    simple_post_fullname_as_id "leavemoderator" (`Subreddit subreddit) return
+    simple_post_fullname_as_id "leavemoderator" (`Subreddit subreddit) ignore_empty_object
   ;;
 
   let mute_message_author' ~message =
-    simple_toggle' "mute_message_author" (`Message message) return
+    simple_toggle' "mute_message_author" (`Message message) ignore_empty_object
   ;;
 
   let mute_message_author = mute_message_author' `Do

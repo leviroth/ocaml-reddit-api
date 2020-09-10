@@ -563,29 +563,16 @@ module type S = sig
     -> how:How_to_distinguish.t
     -> [> `Link of Link.t | `Comment of Comment.t ] call
 
-  val ignore_reports
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val ignore_reports : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
 
   val unignore_reports
     :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val leavecontributor
-    :  subreddit:Subreddit.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val leavemoderator
-    :  subreddit:Subreddit.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val mute_message_author
-    :  message:Message.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unmute_message_author
-    :  message:Message.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val leavecontributor : subreddit:Subreddit.Id.t -> unit call
+  val leavemoderator : subreddit:Subreddit.Id.t -> unit call
+  val mute_message_author : message:Message.Id.t -> unit call
+  val unmute_message_author : message:Message.Id.t -> unit call
 
   val stylesheet
     :  subreddit:Subreddit_name.t
