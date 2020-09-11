@@ -118,7 +118,7 @@ module type Parameters = sig
       | Subreddit
       | Link
       | User
-    [@@deriving sexp]
+    [@@deriving sexp, enumerate]
 
     include Comparable.S with type t := t
   end
@@ -595,7 +595,9 @@ module type S = sig
        -> ?sort:Search_sort.t
        -> ?types:Search_type.Set.t
        -> query:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> (Thing.Link.t Listing.t option
+          * [ `Subreddit of Thing.Subreddit.t | `User of Thing.User.t ] Listing.t option)
+          call)
       with_listing_params
 
   (** Subreddits *)
