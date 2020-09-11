@@ -512,42 +512,42 @@ module type S = sig
     : (?mod_filter:Mod_filter.t
        -> ?subreddit:Subreddit_name.t
        -> ?type_:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Mod_action.t Listing.t call)
       with_listing_params
 
   val reports
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val spam
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val modqueue
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val unmoderated
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val edited
     : (?location:string
        -> ?only:Links_or_comments.t
        -> ?subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
       with_listing_params
 
   val accept_moderator_invite
@@ -563,33 +563,17 @@ module type S = sig
     -> how:How_to_distinguish.t
     -> [> `Link of Link.t | `Comment of Comment.t ] call
 
-  val ignore_reports
-    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val ignore_reports : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
 
   val unignore_reports
     :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
-  val leavecontributor
-    :  subreddit:Subreddit.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val leavemoderator
-    :  subreddit:Subreddit.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val mute_message_author
-    :  message:Message.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val unmute_message_author
-    :  message:Message.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val stylesheet
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val leavecontributor : subreddit:Subreddit.Id.t -> unit call
+  val leavemoderator : subreddit:Subreddit.Id.t -> unit call
+  val mute_message_author : message:Message.Id.t -> unit call
+  val unmute_message_author : message:Message.Id.t -> unit call
+  val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t call
 
   (** New modmail *)
 
