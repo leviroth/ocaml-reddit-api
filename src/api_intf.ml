@@ -573,10 +573,7 @@ module type S = sig
   val leavemoderator : subreddit:Subreddit.Id.t -> unit call
   val mute_message_author : message:Message.Id.t -> unit call
   val unmute_message_author : message:Message.Id.t -> unit call
-
-  val stylesheet
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t call
 
   (** New modmail *)
 

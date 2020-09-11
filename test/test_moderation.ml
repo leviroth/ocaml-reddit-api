@@ -90,3 +90,23 @@ let%expect_test "leavemoderator" =
       in
       [%expect {| |}])
 ;;
+
+let%expect_test "stylesheet" =
+  with_cassette "stylesheet" ~f:(fun connection ->
+      let%bind stylesheet =
+        Api.Exn.stylesheet connection ~subreddit:(Subreddit_name.of_string "Thirdrealm")
+      in
+      let images =
+        List.map (Stylesheet.images stylesheet) ~f:(fun image ->
+            [%sexp { url : string = Stylesheet.Image.link image }])
+      in
+      print_s
+        [%sexp
+          { stylesheet : string = Stylesheet.stylesheet_text stylesheet
+          ; images : Sexp.t list
+          }];
+      [%expect
+        {|
+          ((stylesheet "body {font-family: monospace}")
+           (images (((url "url(%%leviroth%%)"))))) |}])
+;;

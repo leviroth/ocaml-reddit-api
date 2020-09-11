@@ -1413,8 +1413,8 @@ struct
   let unmute_message_author = mute_message_author' `Undo
 
   let stylesheet ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/stylesheet" subreddit in
-    get ~endpoint ~params:[] return
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about/stylesheet" subreddit in
+    get ~endpoint ~params:[] (handle_json_response Stylesheet.of_json)
   ;;
 
   let create_modmail_conversation ~subject ~body ~subreddit ~to_ ~hide_author =
