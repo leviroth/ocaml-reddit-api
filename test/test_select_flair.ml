@@ -10,5 +10,6 @@ let%expect_test "select_flair" =
       let%bind () =
         Api.Exn.select_flair ~flair_template_id connection ~subreddit ~target:(Link link)
       in
-      [%expect {| |}])
+      [%expect {| |}];
+      return ())
 ;;

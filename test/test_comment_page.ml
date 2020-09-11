@@ -24,5 +24,6 @@ let%expect_test _ =
       (Comment fojwq7e) (Comment fojwqce) (Comment fojwk3e) (Comment fok2tyc)
       (Comment fojwue0) (Comment fojwiqa) (Comment fok23wm) (Comment fokmmen)
       (Comment fok1i42) (Comment fok10en) (Comment fojxc5l) (Comment fok9hr7)
-      (Comment fok01r0) (Comment fojwlcf) (More_comments fokiubk))) |}])
+      (Comment fok01r0) (Comment fojwlcf) (More_comments fokiubk))) |}];
+      return ())
 ;;

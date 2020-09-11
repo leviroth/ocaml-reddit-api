@@ -18,5 +18,6 @@ let%expect_test _ =
             (String https://www.redditstatic.com/awards2/verified_email-40.png))
            (icon_70
             (String https://www.redditstatic.com/awards2/verified_email-70.png))
-           (id (String 1qr5eq)) (name (String "Verified Email")) (url Null)))) |}])
+           (id (String 1qr5eq)) (name (String "Verified Email")) (url Null)))) |}];
+      return ())
 ;;

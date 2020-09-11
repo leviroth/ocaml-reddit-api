@@ -22,5 +22,6 @@ let%expect_test "hot" =
         ("Link attributes" (id fa5dg9)
          (title "/r/thirdrealm Open Discussion Thread | February 26, 2020")
          (author BernardJOrtcutt) (creation_time (2020-02-27 02:55:31.000000000Z))
-         (is_stickied true)) |}])
+         (is_stickied true)) |}];
+      return ())
 ;;

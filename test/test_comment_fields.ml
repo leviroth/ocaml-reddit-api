@@ -28,19 +28,17 @@ let%expect_test "comment_fields" =
         Set.symmetric_diff keys_from_comment_page keys_from_info_page |> Sequence.to_list
       in
       print_s [%sexp (diff : (string, string) Either.t list)];
-      let%bind () = [%expect {| ((First depth)) |}] in
+      [%expect {| ((First depth)) |}];
       print_s [%sexp (Thing.Comment.depth first_comment : int option)];
-      let%bind () = [%expect {| (0) |}] in
+      [%expect {| (0) |}];
       print_s
         [%sexp
           (Thing.Comment.body first_comment |> String.split ~on:'\n' |> List.hd_exn
             : string)];
-      let%bind () =
-        [%expect
-          {| "- Textual/HTML pretty printing: https://github.com/c-cube/printbox/" |}]
-      in
+      [%expect
+        {| "- Textual/HTML pretty printing: https://github.com/c-cube/printbox/" |}];
       print_s [%sexp (Thing.Comment.score first_comment : Thing.Comment.Score.t)];
-      let%bind () = [%expect {| (Score 11) |}] in
+      [%expect {| (Score 11) |}];
       print_s [%sexp (keys_from_info_page : String.Set.t)];
       [%expect
         {|
@@ -55,5 +53,6 @@ let%expect_test "comment_fields" =
          mod_reports name no_follow num_reports parent_id permalink removal_reason
          replies report_reasons saved score score_hidden send_replies stickied
          subreddit subreddit_id subreddit_name_prefixed subreddit_type
-         top_awarded_type total_awards_received treatment_tags ups user_reports) |}])
+         top_awarded_type total_awards_received treatment_tags ups user_reports) |}];
+      return ())
 ;;

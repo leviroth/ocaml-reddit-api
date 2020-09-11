@@ -8,9 +8,10 @@ let%expect_test "set_subreddit_sticky" =
       let%bind () =
         Api.Exn.set_subreddit_sticky connection ~link ~sticky_state:(Sticky { slot = 2 })
       in
-      let%bind () = [%expect] in
+      [%expect];
       let%bind () =
         Api.Exn.set_subreddit_sticky connection ~link ~sticky_state:Unsticky
       in
-      [%expect])
+      [%expect];
+      return ())
 ;;

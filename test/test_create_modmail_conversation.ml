@@ -51,5 +51,6 @@ let%expect_test "create_modmail_conversation" =
                   (id (Number 71814082)) (isDeleted False))))
                (isInternal False) (date (String 2020-07-26T21:18:43.146061+00:00))
                (bodyMarkdown (String "Test body")) (id (String osvgj))))))))
-         (modActions (Object ()))) |}])
+         (modActions (Object ()))) |}];
+      return ())
 ;;

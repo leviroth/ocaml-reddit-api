@@ -9,7 +9,8 @@ let%expect_test "friends" =
       [%expect
         {|
         (((date (Number 1598656681.0)) (id (String t2_1w72)) (name (String spez))
-          (rel_id (String r9_1voxr1)))) |}])
+          (rel_id (String r9_1voxr1)))) |}];
+      return ())
 ;;
 
 let%expect_test "blocked" =
@@ -19,7 +20,8 @@ let%expect_test "blocked" =
       [%expect
         {|
         (((date (Number 1598788910.0)) (id (String t2_nn0q))
-          (name (String ketralnis)) (rel_id (String r9_1vt16j)))) |}])
+          (name (String ketralnis)) (rel_id (String r9_1vt16j)))) |}];
+      return ())
 ;;
 
 let%expect_test "messaging" =
@@ -29,7 +31,8 @@ let%expect_test "messaging" =
       [%expect
         {|
         (((date (Number 1598789198.0)) (id (String t2_1w72)) (name (String spez))
-          (rel_id (String r9_1vt1em)))) |}])
+          (rel_id (String r9_1vt1em)))) |}];
+      return ())
 ;;
 
 let%expect_test "trusted" =
@@ -39,5 +42,6 @@ let%expect_test "trusted" =
       [%expect
         {|
         (((date (Number 1598789198.0)) (id (String t2_1w72)) (name (String spez))
-          (rel_id (String r9_1vt1em)))) |}])
+          (rel_id (String r9_1vt1em)))) |}];
+      return ())
 ;;

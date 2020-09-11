@@ -7,14 +7,16 @@ let%expect_test "edit" =
       let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
       let%bind comment = Api.Exn.edit connection ~id ~text:"edited text" in
       print_s [%sexp (Thing.Poly.fullname comment : Thing.Fullname.t)];
-      [%expect {| (Comment g3krlj5) |}])
+      [%expect {| (Comment g3krlj5) |}];
+      return ())
 ;;
 
 let%expect_test "save" =
   with_cassette "save" ~f:(fun connection ->
       let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
       let%bind () = Api.Exn.save connection ~id in
-      [%expect {| |}])
+      [%expect {| |}];
+      return ())
 ;;
 
 let%expect_test "unsave" =
@@ -23,16 +25,18 @@ let%expect_test "unsave" =
       let%bind () = Api.Exn.unsave connection ~id in
       (* Unsave is idempotent *)
       let%bind () = Api.Exn.unsave connection ~id in
-      [%expect {| |}])
+      [%expect {| |}];
+      return ())
 ;;
 
 let%expect_test "send_replies" =
   with_cassette "send_replies" ~f:(fun connection ->
       let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
       let%bind () = Api.Exn.send_replies connection ~id ~enabled:true in
-      let%bind () = [%expect] in
+      [%expect];
       let%bind () = Api.Exn.send_replies connection ~id ~enabled:false in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "set_contest_mode" =
@@ -40,21 +44,24 @@ let%expect_test "set_contest_mode" =
       let link = Thing.Link.Id.of_string "hofd3k" in
       let%bind () = Api.Exn.set_contest_mode connection ~link ~enabled:true in
       let%bind () = Api.Exn.set_contest_mode connection ~link ~enabled:false in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "spoiler" =
   with_cassette "spoiler" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hofd3k" in
       let%bind () = Api.Exn.spoiler connection ~link in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "unspoiler" =
   with_cassette "unspoiler" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hofd3k" in
       let%bind () = Api.Exn.unspoiler connection ~link in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "vote" =
@@ -63,5 +70,6 @@ let%expect_test "vote" =
       let%bind () = Api.Exn.vote connection ~target ~direction:Down in
       let%bind () = Api.Exn.vote connection ~target ~direction:Neutral in
       let%bind () = Api.Exn.vote connection ~target ~direction:Up in
-      [%expect])
+      [%expect];
+      return ())
 ;;
