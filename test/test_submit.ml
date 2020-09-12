@@ -19,7 +19,8 @@ let%expect_test "submit" =
       [%expect
         {|
         ("Submission attributes" (id hmjghn)
-         (uri https://www.reddit.com/r/ThirdRealm/comments/hmjghn/test_post_title/)) |}])
+         (uri https://www.reddit.com/r/ThirdRealm/comments/hmjghn/test_post_title/)) |}];
+      return ())
 ;;
 
 let%expect_test "submit__crosspost" =
@@ -39,5 +40,6 @@ let%expect_test "submit__crosspost" =
       [%expect
         {|
         ("Submission attributes" (id ili4vc)
-         (uri https://www.reddit.com/r/ThirdRealm/comments/ili4vc/crosspost/)) |}])
+         (uri https://www.reddit.com/r/ThirdRealm/comments/ili4vc/crosspost/)) |}];
+      return ())
 ;;

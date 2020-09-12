@@ -1,4 +1,5 @@
 open! Core
+open! Async
 open! Import
 
 let%expect_test "roundtrip: int -> string -> int" =
@@ -20,7 +21,8 @@ let%expect_test "roundtrip: int -> string -> int" =
     ((test_case 97946) (id36 23kq) (int 97946))
     ((test_case 78956) (id36 1ox8) (int 78956))
     ((test_case 48802) (id36 11nm) (int 48802))
-    ((test_case 84286) (id36 1t1a) (int 84286)) |}]
+    ((test_case 84286) (id36 1t1a) (int 84286)) |}];
+  return ()
 ;;
 
 let%expect_test "roundtrip: string -> int -> string" =
@@ -56,7 +58,8 @@ let%expect_test "roundtrip: string -> int -> string" =
     ((test_case hqa43) (int 29779635) (id36 hqa43))
     ((test_case 2p0qz) (int 4526603) (id36 2p0qz))
     ((test_case nikcv) (int 39497359) (id36 nikcv))
-    ((test_case 8a93d) (int 13915273) (id36 8a93d)) |}]
+    ((test_case 8a93d) (int 13915273) (id36 8a93d)) |}];
+  return ()
 ;;
 
 let%expect_test "prefixes" =
@@ -68,5 +71,6 @@ let%expect_test "prefixes" =
     aklzj
     0
     a1
-    aklzj |}]
+    aklzj |}];
+  return ()
 ;;

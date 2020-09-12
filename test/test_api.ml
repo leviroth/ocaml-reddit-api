@@ -7,6 +7,6 @@ let%expect_test "me" =
       let%bind me = Api.Exn.me connection in
       let id = Thing.User.id me in
       print_s [%sexp (id : Thing.User.Id.t)];
-      [%expect {|
-    16r83m |}])
+      [%expect {| 16r83m |}];
+      return ())
 ;;

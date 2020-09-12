@@ -26,5 +26,6 @@ let%expect_test "info" =
         {|
         ("Link attributes" (id hmjd8r) (title "This is a title")
          (author BJO_test_user) (creation_time (2020-07-06 23:42:12.000000000Z))
-         (is_stickied false)) |}])
+         (is_stickied false)) |}];
+      return ())
 ;;

@@ -8,35 +8,40 @@ let%expect_test "block_author" =
   with_cassette "block_author" ~f:(fun connection ->
       let id = `Message message_id in
       let%bind () = Api.Exn.block_author connection ~id in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "collapse_message" =
   with_cassette "collapse_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () = Api.Exn.collapse_message connection ~messages in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "uncollapse_message" =
   with_cassette "uncollapse_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () = Api.Exn.uncollapse_message connection ~messages in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "read_message" =
   with_cassette "read_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () = Api.Exn.read_message connection ~messages in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "unread_message" =
   with_cassette "unread_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () = Api.Exn.unread_message connection ~messages in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "compose_message" =
@@ -48,7 +53,8 @@ let%expect_test "compose_message" =
           ~subject:"This is a message"
           ~text:"This is its body"
       in
-      [%expect])
+      [%expect];
+      return ())
 ;;
 
 let%expect_test "inbox" =
@@ -59,7 +65,8 @@ let%expect_test "inbox" =
              print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
       [%expect {|
           (Comment g3u0ce8)
-          (Message rdjz4y) |}])
+          (Message rdjz4y) |}];
+      return ())
 ;;
 
 let%expect_test "unread" =
@@ -68,8 +75,8 @@ let%expect_test "unread" =
       Listing.children listing
       |> List.iter ~f:(fun thing ->
              print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
-      [%expect {|
-          (Comment g3u0ce8) |}])
+      [%expect {| (Comment g3u0ce8) |}];
+      return ())
 ;;
 
 let%expect_test "sent" =
@@ -80,5 +87,6 @@ let%expect_test "sent" =
              print_s [%sexp (Thing.Message.id message : Thing.Message.Id.t)]);
       [%expect {|
           rdkr3p
-          rdk8sp |}])
+          rdk8sp |}];
+      return ())
 ;;

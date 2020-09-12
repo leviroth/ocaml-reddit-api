@@ -8,21 +8,21 @@ let%expect_test "user_fields" =
         Api.Exn.about_user ~username:(Username.of_string "spez") connection
       in
       print_s [%sexp (Thing.User.name user : Username.t)];
-      let%bind () = [%expect {| spez |}] in
+      [%expect {| spez |}];
       print_s [%sexp (Thing.User.creation_time user : Time_ns.t)];
-      let%bind () = [%expect {| (2005-06-06 04:00:00.000000000Z) |}] in
+      [%expect {| (2005-06-06 04:00:00.000000000Z) |}];
       print_s [%sexp (Thing.User.link_karma user : int)];
-      let%bind () = [%expect {| 138988 |}] in
+      [%expect {| 138988 |}];
       print_s [%sexp (Thing.User.comment_karma user : int)];
-      let%bind () = [%expect {| 743899 |}] in
+      [%expect {| 743899 |}];
       print_s [%sexp (Thing.User.awarder_karma user : int)];
-      let%bind () = [%expect {| 625 |}] in
+      [%expect {| 625 |}];
       print_s [%sexp (Thing.User.awardee_karma user : int)];
-      let%bind () = [%expect {| 62329 |}] in
+      [%expect {| 62329 |}];
       print_s [%sexp (Thing.User.total_karma user : int)];
-      let%bind () = [%expect {| 945841 |}] in
+      [%expect {| 945841 |}];
       print_s
         [%sexp (Thing.User.subreddit user |> Thing.Subreddit.name : Subreddit_name.t)];
-      let%bind () = [%expect {| u_spez |}] in
+      [%expect {| u_spez |}];
       return ())
 ;;
