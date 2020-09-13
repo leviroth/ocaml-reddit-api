@@ -13,7 +13,7 @@ module Id = struct
   ;;
 end
 
-type t = Json.t String.Map.t
+include Json_object_utils
 
 let of_json json =
   (match Json.find json ~key:"kind" with
@@ -25,29 +25,12 @@ let of_json json =
 ;;
 
 let to_json t = `Object [ "kind", `String "modaction"; "data", `Object (Map.to_alist t) ]
-let id t = Map.find_exn t "id" |> Json.get_string |> Id.of_json_string
-let action t = Map.find_exn t "action" |> Json.get_string
-let details t = Map.find_exn t "details" |> Json.get_string
-
-let created t =
-  Map.find_exn t "created_utc"
-  |> Json.get_float
-  |> Time_ns.Span.of_sec
-  |> Time_ns.of_span_since_epoch
-;;
-
-let target_title t = Map.find_exn t "target_title" |> Json.get_string
-
-let target_fullname t =
-  Map.find_exn t "target_fullname" |> Json.get_string |> Thing.Fullname.of_string
-;;
-
-let target_permalink t =
-  Map.find_exn t "target_permalink" |> Json.get_string |> Uri.of_string
-;;
-
-let subreddit_name t =
-  Map.find_exn t "subreddit_name" |> Json.get_string |> Subreddit_name.of_string
-;;
-
-let moderator t = Map.find_exn t "moderator" |> Json.get_string |> Username.of_string
+let id = required_field "id" (string >> Id.of_json_string)
+let action = required_field "action" string
+let details = required_field "details" string
+let created = required_field "created_utc" time
+let target_title = required_field "target_title" string
+let target_fullname = required_field "target_fullname" (string >> Thing.Fullname.of_string)
+let target_permalink = required_field "target_permalink" uri
+let subreddit_name = required_field "subreddit_name" subreddit_name
+let moderator = required_field "moderator" username
