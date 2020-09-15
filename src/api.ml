@@ -36,22 +36,7 @@ module Param_dsl = struct
     [ key, [ value ] ]
   ;;
 
-  let fullname_ id =
-    let (kind : Thing_kind.t), id36_string =
-      match id with
-      | `Comment id -> Comment, Comment.Id.to_string id
-      | `User id -> User, User.Id.to_string id
-      | `Link id -> Link, Link.Id.to_string id
-      | `Message id -> Message, Message.Id.to_string id
-      | `Subreddit id -> Subreddit, Subreddit.Id.to_string id
-      | `Award id -> Award, Award.Id.to_string id
-      | `More_comments id -> More_comments, More_comments.Id.to_string id
-      | `Modmail_conversation id ->
-        Modmail_conversation, Modmail_conversation.Id.to_string id
-    in
-    sprintf !"%{Thing_kind}_%s" kind id36_string
-  ;;
-
+  let fullname_ = Thing.Fullname.to_string
   let username_ = Username.to_string
   let json = Json.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc

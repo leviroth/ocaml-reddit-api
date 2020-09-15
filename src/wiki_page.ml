@@ -10,14 +10,13 @@ end
 
 include Json_object_utils
 
-let to_json t = `Object [ "kind", `String "wikipage"; "data", `Object (Map.to_alist t) ]
+include Json_object_utils.Kinded (struct
+  type nonrec t = t
 
-let of_json json =
-  (match Json.find json ~key:"kind" with
-  | `String "wikipage" -> ()
-  | kind -> raise_s [%message "Unexpected kind" (kind : Json.t)]);
-  Json.find json ~key:"data" |> Json.to_map
-;;
+  let kind = "wikipage"
+  let of_data_field = Json.to_map
+  let to_data_field t = `Object (Map.to_alist t)
+end)
 
 let may_revise = required_field "may_revise" bool
 let revision_id = required_field "revision_id" (string >> Uuid.of_string)

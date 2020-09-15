@@ -15,16 +15,14 @@ end
 
 include Json_object_utils
 
-let of_json json =
-  (match Json.find json ~key:"kind" with
-  | `String "modaction" -> ()
-  | _ -> raise_s [%message "Unexpected modaction json" (json : Json.t)]);
-  match Json.find json ~key:"data" with
-  | `Object alist -> String.Map.of_alist_exn alist
-  | _ -> raise_s [%message "Unexpected modaction json" (json : Json.t)]
-;;
+include Json_object_utils.Kinded (struct
+  type nonrec t = t
 
-let to_json t = `Object [ "kind", `String "modaction"; "data", `Object (Map.to_alist t) ]
+  let kind = "modaction"
+  let of_data_field = Json.to_map
+  let to_data_field t = `Object (Map.to_alist t)
+end)
+
 let id = required_field "id" (string >> Id.of_json_string)
 let action = required_field "action" string
 let details = required_field "details" string

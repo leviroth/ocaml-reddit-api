@@ -17,14 +17,15 @@ end
 
 type t = Entry.t list [@@deriving sexp]
 
-let of_json json =
-  match json with
-  | `Object [ ("kind", `String "KarmaList"); ("data", `Array entries) ] ->
-    List.map entries ~f:Entry.of_json
-  | _ -> raise_s [%message "Invalid [Karma_list] JSON" (json : Json.t)]
-;;
+include Json_object_utils.Kinded (struct
+  type nonrec t = t
 
-let to_json entries =
-  `Object
-    [ "kind", `String "Karma_list"; "data", `Array (List.map entries ~f:Entry.to_json) ]
-;;
+  let of_data_field json =
+    match json with
+    | `Array entries -> List.map entries ~f:Entry.of_json
+    | _ -> raise_s [%message "Invalid [Karma_list] JSON" (json : Json.t)]
+  ;;
+
+  let to_data_field t = `Array (List.map t ~f:Entry.to_json)
+  let kind = "KarmaList"
+end)

@@ -27,33 +27,13 @@ struct
     end)
   end
 
-  let of_json_inner = Json.to_map
+  include Json_object_utils.Kinded (struct
+    type t = Json_object_utils.t
 
-  let of_json (json : Json.t) =
-    match json with
-    | `Object alist ->
-      (match List.Assoc.find alist "kind" ~equal:String.equal with
-      | None -> of_json_inner json
-      | Some (`String kind) ->
-        (match Thing_kind.equal Param.kind (Thing_kind.of_string kind) with
-        | true -> of_json_inner (Json.find json ~key:"data")
-        | false ->
-          raise_s
-            [%message
-              "Unexpected thing kind"
-                ~expected:(Param.kind : Thing_kind.t)
-                (json : Json.t)])
-      | Some kind ->
-        raise_s [%message "Thing kind is not a string" (kind : Json.t) (json : Json.t)])
-    | _ -> raise_s [%message "Unexpected thing JSON type" (json : Json.t)]
-  ;;
-
-  let to_json t =
-    `Object
-      [ "kind", `String (Thing_kind.to_string Param.kind)
-      ; "data", `Object (Map.to_alist t)
-      ]
-  ;;
+    let of_data_field = Json.to_map
+    let to_data_field t = `Object (Map.to_alist t)
+    let kind = Thing_kind.to_string Param.kind
+  end)
 
   let id = required_field "id" (string >> Id.of_string)
   let url = optional_field "url" uri
