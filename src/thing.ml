@@ -5,7 +5,7 @@ module Make (Param : sig
   val kind : Thing_kind.t
 end) =
 struct
-  type t = Json.t String.Map.t [@@deriving sexp, bin_io]
+  include Json_object_utils
 
   let field_map = Fn.id
   let module_name = Thing_kind.to_string_long Param.kind
@@ -27,88 +27,25 @@ struct
     end)
   end
 
-  let of_json_inner = Json.to_map
+  include Json_object_utils.Kinded (struct
+    type t = Json_object_utils.t
 
-  let of_json (json : Json.t) =
-    match json with
-    | `Object alist ->
-      (match List.Assoc.find alist "kind" ~equal:String.equal with
-      | None -> of_json_inner json
-      | Some (`String kind) ->
-        (match Thing_kind.equal Param.kind (Thing_kind.of_string kind) with
-        | true -> of_json_inner (Json.find json ~key:"data")
-        | false ->
-          raise_s
-            [%message
-              "Unexpected thing kind"
-                ~expected:(Param.kind : Thing_kind.t)
-                (json : Json.t)])
-      | Some kind ->
-        raise_s [%message "Thing kind is not a string" (kind : Json.t) (json : Json.t)])
-    | _ -> raise_s [%message "Unexpected thing JSON type" (json : Json.t)]
-  ;;
+    let of_data_field = Json.to_map
+    let to_data_field t = `Object (Map.to_alist t)
+    let kind = Thing_kind.to_string Param.kind
+  end)
 
-  let to_json t =
-    `Object
-      [ "kind", `String (Thing_kind.to_string Param.kind)
-      ; "data", `Object (Map.to_alist t)
-      ]
-  ;;
-
-  let get_field = Map.find
-
-  let get_field_exn t field =
-    match Map.find t field with
-    | Some value -> value
-    | None -> raise_s [%message "Field missing in get_field_exn" (t : t) (field : string)]
-  ;;
-
-  let get_string_field_exn field t = get_field_exn t field |> Json.get_string
-  let id t = get_string_field_exn "id" t |> Id.of_string
-
-  let url t =
-    get_field t "url" |> Option.map ~f:(Fn.compose Uri.of_string Json.get_string)
-  ;;
-
-  let username_of_field t ~field_name =
-    let open Option.Monad_infix in
-    get_field t field_name
-    >>= Json.none_if_null
-    >>| Json.get_string
-    >>| Username.of_string
-  ;;
-
-  let time_of_field t ~field_name =
-    let open Option.Monad_infix in
-    get_field t field_name
-    >>= Json.none_if_null
-    >>| Json.get_float
-    >>| Time.Span.of_sec
-    >>| Time.of_span_since_epoch
-  ;;
-
-  let author t =
-    match username_of_field t ~field_name:"author" with
-    | Some author -> author
-    | None -> raise_s [%message "Missing author" (t : t)]
-  ;;
-
-  let title = get_string_field_exn "title"
-  let description = get_string_field_exn "description"
-  let is_stickied t = get_field_exn t "stickied" |> Json.get_bool
-  let active_users t = get_field_exn t "active_user_count" |> Json.get_int
-  let subscribers t = get_field_exn t "subscribers" |> Json.get_int
-
-  let creation_time t =
-    get_field_exn t "created_utc"
-    |> Json.get_float
-    |> Time.Span.of_sec
-    |> Time_ns.Span.of_span_float_round_nearest
-    |> Time_ns.of_span_since_epoch
-  ;;
-
-  let depth t = get_field t "depth" |> Option.map ~f:Json.get_int
-  let karma_field field t = get_field_exn t field |> Json.get_int
+  let id = required_field "id" (string >> Id.of_string)
+  let url = optional_field "url" uri
+  let author = required_field "author" username
+  let title = required_field "title" string
+  let description = required_field "description" string
+  let is_stickied = required_field "stickied" bool
+  let active_users = required_field "active_user_count" int
+  let subscribers = required_field "subscribers" int
+  let creation_time = required_field "created_utc" time
+  let depth = optional_field "depth" int
+  let karma_field name = required_field name int
   let link_karma = karma_field "link_karma"
   let comment_karma = karma_field "comment_karma"
   let awarder_karma = karma_field "awarder_karma"
@@ -129,13 +66,15 @@ module Comment = struct
   end
 
   let score t : Score.t =
-    match get_field_exn t "score_hidden" |> Json.get_bool with
+    let score_hidden = required_field "score_hidden" bool in
+    let score = required_field "score" int in
+    match score_hidden t with
     | true -> Hidden
-    | false -> get_field_exn t "score" |> Json.get_int |> Score
+    | false -> Score (score t)
   ;;
 
-  let body t = get_field_exn t "body" |> Json.get_string
-  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
+  let body = required_field "body" string
+  let subreddit = required_field "subreddit" subreddit_name
 end
 
 module Link = struct
@@ -143,8 +82,8 @@ module Link = struct
     let kind = Thing_kind.Link
   end)
 
-  let score t = get_field_exn t "score" |> Json.get_int
-  let subreddit t = get_string_field_exn "subreddit" t |> Subreddit_name.of_string
+  let score = required_field "score" int
+  let subreddit = required_field "subreddit" subreddit_name
 end
 
 module Message = Make (struct
@@ -156,7 +95,7 @@ module Subreddit = struct
     let kind = Thing_kind.Subreddit
   end)
 
-  let name t = get_string_field_exn "display_name" t |> Subreddit_name.of_string
+  let name = required_field "display_name" subreddit_name
 end
 
 module User = struct
@@ -164,8 +103,8 @@ module User = struct
     let kind = Thing_kind.User
   end)
 
-  let name t = get_string_field_exn "name" t |> Username.of_string
-  let subreddit t = get_field_exn t "subreddit" |> Subreddit.of_json
+  let name = required_field "name" username
+  let subreddit = required_field "subreddit" Subreddit.of_json
 end
 
 module Award = Make (struct
@@ -233,7 +172,6 @@ module Poly = struct
   ;;
 
   let fullname t =
-    let (T : (Comment.Id.t, Link.Id.t) Type_equal.t) = Type_equal.T in
     let kind, data = Thing_kind.of_polymorphic_tag_with_uniform_data t in
     let id = Comment.id data in
     Thing_kind.to_polymorphic_tag_uniform kind ~data:id

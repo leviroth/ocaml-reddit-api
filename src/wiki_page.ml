@@ -8,20 +8,19 @@ module Id = struct
   [@@deriving sexp]
 end
 
-type t = Json.t String.Map.t [@@deriving sexp]
+include Json_object_utils
 
-let to_json t = `Object [ "kind", `String "wikipage"; "data", `Object (Map.to_alist t) ]
+include Json_object_utils.Kinded (struct
+  type nonrec t = t
 
-let of_json json =
-  (match Json.find json ~key:"kind" with
-  | `String "wikipage" -> ()
-  | kind -> raise_s [%message "Unexpected kind" (kind : Json.t)]);
-  Json.find json ~key:"data" |> Json.to_map
-;;
+  let kind = "wikipage"
+  let of_data_field = Json.to_map
+  let to_data_field t = `Object (Map.to_alist t)
+end)
 
-let may_revise t = Map.find_exn t "may_revise" |> Json.get_bool
-let revision_id t = Map.find_exn t "revision_id" |> Json.get_string |> Uuid.of_string
-let revision_by t = Map.find_exn t "revision_by" |> Thing.User.of_json
+let may_revise = required_field "may_revise" bool
+let revision_id = required_field "revision_id" (string >> Uuid.of_string)
+let revision_by = required_field "revision_by" Thing.User.of_json
 
 let content t markup =
   let field =
@@ -29,31 +28,19 @@ let content t markup =
     | `markdown -> "content_md"
     | `HTML -> "content_html"
   in
-  Map.find_exn t field |> Json.get_string
+  required_field field string t
 ;;
 
-let revision_time t =
-  Map.find_exn t "revision_date"
-  |> Json.get_int
-  |> Time_ns.Span.of_int_sec
-  |> Time_ns.of_span_since_epoch
-;;
-
-let revision_reason t =
-  match Map.find_exn t "reason" with
-  | `Null -> None
-  | `String s -> Some s
-  | json -> raise_s [%message "Expected nullable JSON string" (json : Json.t)]
-;;
+let revision_time = required_field "revision_date" time
+let revision_reason = optional_field "reason" string
 
 module Edit_conflict = struct
-  type t = Json.t String.Map.t [@@deriving sexp]
+  include Json_object_utils
 
   let of_json = Json.to_map
-  let get_string_field t ~field = Map.find_exn t field |> Json.get_string
-  let diff = get_string_field ~field:"diffcontent"
-  let message = get_string_field ~field:"message"
-  let new_content = get_string_field ~field:"newcontent"
-  let new_revision t = get_string_field t ~field:"newrevision" |> Uuid.of_string
-  let reason = get_string_field ~field:"reason"
+  let diff = required_field "diffcontent" string
+  let message = required_field "message" string
+  let new_content = required_field "newcontent" string
+  let new_revision = required_field "newrevision" (string >> Uuid.of_string)
+  let reason = required_field "reason" string
 end
