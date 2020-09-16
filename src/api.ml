@@ -112,15 +112,16 @@ module Parameters = struct
 
   module Sticky_state = struct
     type t =
-      | Sticky of { slot : int }
+      | Sticky of { slot : int option }
       | Unsticky
     [@@deriving sexp]
 
     let params_of_t t =
+      let state_field bool = "state", [ Bool.to_string bool ] in
       match t with
-      | Sticky { slot } ->
-        [ "state", [ Bool.to_string true ]; "num", [ Int.to_string slot ] ]
-      | Unsticky -> [ "state", [ Bool.to_string false ] ]
+      | Unsticky -> [ state_field false ]
+      | Sticky { slot = None } -> [ state_field true ]
+      | Sticky { slot = Some slot } -> [ state_field true; "num", [ Int.to_string slot ] ]
     ;;
   end
 

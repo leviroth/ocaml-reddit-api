@@ -30,7 +30,7 @@ module type Parameters = sig
 
   module Sticky_state : sig
     type t =
-      | Sticky of { slot : int }
+      | Sticky of { slot : int option }
       | Unsticky
     [@@deriving sexp]
   end
