@@ -172,7 +172,6 @@ module Poly = struct
   ;;
 
   let fullname t =
-    let (T : (Comment.Id.t, Link.Id.t) Type_equal.t) = Type_equal.T in
     let kind, data = Thing_kind.of_polymorphic_tag_with_uniform_data t in
     let id = Comment.id data in
     Thing_kind.to_polymorphic_tag_uniform kind ~data:id
