@@ -293,7 +293,7 @@ module Parameters = struct
         | Subreddit
         | Link
         | User
-      [@@deriving compare, sexp]
+      [@@deriving compare, sexp, enumerate]
     end
 
     include T
@@ -1451,7 +1451,58 @@ struct
         ; restrict_param
         ]
     in
-    get ~endpoint ~params return
+    get
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           let to_link_opt thing =
+             match thing with
+             | `Link link -> Some link
+             | _ -> None
+           in
+           let to_user_or_subreddit_opt thing =
+             match thing with
+             | (`User _ | `Subreddit _) as v -> Some v
+             | _ -> None
+           in
+           let listings =
+             let jsons =
+               match json with
+               | `Object _ as json -> [ json ]
+               | `Array listings -> listings
+               | _ -> raise_s [%message "Unexpected search response" (json : Json.t)]
+             in
+             List.map jsons ~f:(Listing.of_json Thing.Poly.of_json)
+           in
+           let find_kinded_listing extract_subkind error_message =
+             List.find_map listings ~f:(fun listing ->
+                 (* If the first element belongs in one of the result listings... *)
+                 match
+                   Listing.children listing
+                   |> List.hd
+                   |> Option.bind ~f:extract_subkind
+                   |> Option.is_some
+                 with
+                 | false -> None
+                 | true ->
+                   (* ...then expect them all to be in that listing. *)
+                   Some
+                     (Listing.map listing ~f:(fun thing ->
+                          match extract_subkind thing with
+                          | Some v -> v
+                          | None -> raise_s [%message error_message (json : Json.t)])))
+           in
+           let link_listing =
+             find_kinded_listing
+               to_link_opt
+               "Expected only links in search response listing"
+           in
+           let user_or_subreddit_listing =
+             find_kinded_listing
+               to_user_or_subreddit_opt
+               "Expected only users or subreddits in search response listing"
+           in
+           link_listing, user_or_subreddit_listing))
   ;;
 
   let search = with_listing_params search'

@@ -14,6 +14,8 @@ type 'a t =
   }
 [@@deriving sexp, fields]
 
+let map t ~f = { t with children = List.map t.children ~f }
+
 let of_json convert_element json =
   let fail s = raise_s [%message s (json : Json.t)] in
   let assoc =
