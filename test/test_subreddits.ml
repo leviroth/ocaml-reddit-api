@@ -27,3 +27,22 @@ let%expect_test "banned" =
            (date (2020-09-17 12:49:32.000000000Z))) |}];
       return ())
 ;;
+
+let%expect_test "muted" =
+  with_cassette "muted" ~f:(fun connection ->
+      let%bind mutes = Api.Exn.muted connection ~subreddit >>| Listing.children in
+      List.iter mutes ~f:(fun mute ->
+          print_s
+            [%sexp
+              { relationship_id : string = Mute.relationship_id mute
+              ; username : Username.t = Mute.username mute
+              ; user_id : Thing.User.Id.t = Mute.user_id mute
+              ; date : Time_ns.t = Mute.date mute
+              }]);
+      [%expect
+        {|
+          ((relationship_id Mute_c00caa20-fac7-11ea-a7ae-22f314d2d040)
+           (username BJO_test_user) (user_id xw1ym)
+           (date (2020-09-19 22:30:41.000000000Z))) |}];
+      return ())
+;;

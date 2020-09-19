@@ -1507,7 +1507,7 @@ struct
 
   let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
   let banned = about_endpoint "banned" (get_listing Ban.of_json)
-  let muted = about_endpoint "muted" return
+  let muted = about_endpoint "muted" (get_listing Mute.of_json)
   let wiki_banned = about_endpoint "wikibanned" return
   let contributors = about_endpoint "contributors" return
   let wiki_contributors = about_endpoint "wikicontributors" return
