@@ -1492,7 +1492,7 @@ struct
 
   let search = with_listing_params search'
 
-  let about_endpoint' endpoint ~listing_params ?include_categories ?user ~subreddit =
+  let about_endpoint' endpoint k ~listing_params ?include_categories ?user ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
     let params =
       let open Param_dsl in
@@ -1502,16 +1502,16 @@ struct
         ; optional' username_ "user" user
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params k
   ;;
 
-  let about_endpoint endpoint = with_listing_params (about_endpoint' endpoint)
-  let banned = about_endpoint "banned"
-  let muted = about_endpoint "muted"
-  let wiki_banned = about_endpoint "wikibanned"
-  let contributors = about_endpoint "contributors"
-  let wiki_contributors = about_endpoint "wikicontributors"
-  let moderators = about_endpoint "moderators"
+  let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
+  let banned = about_endpoint "banned" (get_listing Ban.of_json)
+  let muted = about_endpoint "muted" return
+  let wiki_banned = about_endpoint "wikibanned" return
+  let contributors = about_endpoint "contributors" return
+  let wiki_contributors = about_endpoint "wikicontributors" return
+  let moderators = about_endpoint "moderators" return
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
     let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
