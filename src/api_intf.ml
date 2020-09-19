@@ -210,7 +210,7 @@ module type Parameters = sig
       | New
   end
 
-  module Relationship : sig
+  module Relationship_spec : sig
     module Duration : sig
       type t =
         | Permanent
@@ -597,21 +597,21 @@ module type S = sig
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> Ban.t Listing.t call)
+       -> Relationship.Ban.t Listing.t call)
       with_listing_params
 
   val muted
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> Mute.t Listing.t call)
+       -> Relationship.Mute.t Listing.t call)
       with_listing_params
 
   val wiki_banned
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> Ban.t Listing.t call)
+       -> Relationship.Ban.t Listing.t call)
       with_listing_params
 
   val contributors
@@ -811,9 +811,9 @@ module type S = sig
       with_listing_params
 
   val add_relationship
-    :  relationship:Relationship.t
+    :  relationship:Relationship_spec.t
     -> username:Username.t
-    -> duration:Relationship.Duration.t
+    -> duration:Relationship_spec.Duration.t
     -> ?subreddit:Subreddit_name.t
     -> ?note:string
     -> ?ban_reason:string
@@ -822,7 +822,7 @@ module type S = sig
     -> unit call
 
   val remove_relationship
-    :  relationship:Relationship.t
+    :  relationship:Relationship_spec.t
     -> username:Username.t
     -> ?subreddit:Subreddit_name.t
     -> unit call

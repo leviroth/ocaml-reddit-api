@@ -485,7 +485,7 @@ module Parameters = struct
     ;;
   end
 
-  module Relationship = struct
+  module Relationship_spec = struct
     module Duration = struct
       type t =
         | Permanent
@@ -1506,9 +1506,9 @@ struct
   ;;
 
   let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
-  let banned = about_endpoint "banned" (get_listing Ban.of_json)
-  let muted = about_endpoint "muted" (get_listing Mute.of_json)
-  let wiki_banned = about_endpoint "wikibanned" (get_listing Ban.of_json)
+  let banned = about_endpoint "banned" (get_listing Relationship.Ban.of_json)
+  let muted = about_endpoint "muted" (get_listing Relationship.Mute.of_json)
+  let wiki_banned = about_endpoint "wikibanned" (get_listing Relationship.Ban.of_json)
   let contributors = about_endpoint "contributors" return
   let wiki_contributors = about_endpoint "wikicontributors" return
   let moderators = about_endpoint "moderators" return
@@ -1844,13 +1844,13 @@ struct
     =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/friend" in
     let params =
-      Relationship.Duration.params_of_t duration
-      @ Relationship.params_of_t relationship
+      Relationship_spec.Duration.params_of_t duration
+      @ Relationship_spec.params_of_t relationship
       @
       let open Param_dsl in
       combine
-        [ Relationship.Duration.params_of_t duration
-        ; Relationship.params_of_t relationship
+        [ Relationship_spec.Duration.params_of_t duration
+        ; Relationship_spec.params_of_t relationship
         ; api_type
         ; required' username_ "name" username
         ; optional' string "note" note
@@ -1867,7 +1867,7 @@ struct
     let params =
       let open Param_dsl in
       combine
-        [ Relationship.params_of_t relationship
+        [ Relationship_spec.params_of_t relationship
         ; api_type
         ; required' username_ "name" username
         ]

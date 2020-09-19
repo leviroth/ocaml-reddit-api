@@ -1,6 +1,7 @@
 open! Core
 open! Async
 open! Import
+open Relationship
 
 let subreddit = Subreddit_name.of_string "ThirdRealm"
 
@@ -10,7 +11,7 @@ let%expect_test "banned" =
       List.iter bans ~f:(fun ban ->
           print_s
             [%sexp
-              { relationship_id : string = Ban.relationship_id ban
+              { relationship_id : Ban.Id.t = Ban.relationship_id ban
               ; username : Username.t = Ban.username ban
               ; user_id : Thing.User.Id.t = Ban.user_id ban
               ; note : string = Ban.note ban
@@ -34,7 +35,7 @@ let%expect_test "muted" =
       List.iter mutes ~f:(fun mute ->
           print_s
             [%sexp
-              { relationship_id : string = Mute.relationship_id mute
+              { relationship_id : Mute.Id.t = Mute.relationship_id mute
               ; username : Username.t = Mute.username mute
               ; user_id : Thing.User.Id.t = Mute.user_id mute
               ; date : Time_ns.t = Mute.date mute
@@ -53,7 +54,7 @@ let%expect_test "wiki_banned" =
       List.iter bans ~f:(fun ban ->
           print_s
             [%sexp
-              { relationship_id : string = Ban.relationship_id ban
+              { relationship_id : Ban.Id.t = Ban.relationship_id ban
               ; username : Username.t = Ban.username ban
               ; user_id : Thing.User.Id.t = Ban.user_id ban
               ; note : string = Ban.note ban
