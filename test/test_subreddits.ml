@@ -46,3 +46,23 @@ let%expect_test "muted" =
            (date (2020-09-19 22:30:41.000000000Z))) |}];
       return ())
 ;;
+
+let%expect_test "wiki_banned" =
+  with_cassette "wiki_banned" ~f:(fun connection ->
+      let%bind bans = Api.Exn.wiki_banned connection ~subreddit >>| Listing.children in
+      List.iter bans ~f:(fun ban ->
+          print_s
+            [%sexp
+              { relationship_id : string = Ban.relationship_id ban
+              ; username : Username.t = Ban.username ban
+              ; user_id : Thing.User.Id.t = Ban.user_id ban
+              ; note : string = Ban.note ban
+              ; days_left : int option = Ban.days_left ban
+              ; date : Time_ns.t = Ban.date ban
+              }]);
+      [%expect
+        {|
+          ((relationship_id rb_276wzg3) (username BJO_test_user) (user_id xw1ym)
+           (note bar) (days_left (2)) (date (2020-09-19 22:39:05.000000000Z))) |}];
+      return ())
+;;
