@@ -20,6 +20,8 @@ module type S = sig
 end
 
 module type Relationship = sig
+  module Contributor : S
+
   module Mute : sig
     module Id : sig
       include Id

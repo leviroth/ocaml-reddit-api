@@ -12,6 +12,8 @@ module Common = struct
   let date = required_field "date" time
 end
 
+module Contributor = Common
+
 module Mute = struct
   include Common
 

@@ -1509,7 +1509,11 @@ struct
   let banned = about_endpoint "banned" (get_listing Relationship.Ban.of_json)
   let muted = about_endpoint "muted" (get_listing Relationship.Mute.of_json)
   let wiki_banned = about_endpoint "wikibanned" (get_listing Relationship.Ban.of_json)
-  let contributors = about_endpoint "contributors" return
+
+  let contributors =
+    about_endpoint "contributors" (get_listing Relationship.Contributor.of_json)
+  ;;
+
   let wiki_contributors = about_endpoint "wikicontributors" return
   let moderators = about_endpoint "moderators" return
 
