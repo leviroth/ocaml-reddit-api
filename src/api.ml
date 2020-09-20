@@ -1514,7 +1514,10 @@ struct
     about_endpoint "contributors" (get_listing Relationship.Contributor.of_json)
   ;;
 
-  let wiki_contributors = about_endpoint "wikicontributors" return
+  let wiki_contributors =
+    about_endpoint "wikicontributors" (get_listing Relationship.Contributor.of_json)
+  ;;
+
   let moderators = about_endpoint "moderators" return
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =

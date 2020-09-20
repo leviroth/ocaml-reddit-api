@@ -100,3 +100,25 @@ let%expect_test "contributors" =
            (date (2016-06-05 02:12:22.000000000Z))) |}];
       return ())
 ;;
+
+let%expect_test "wiki_contributors" =
+  with_cassette "wiki_contributors" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.wiki_contributors connection ~subreddit
+        >>| Listing.children
+        >>| List.iter ~f:(fun contributor ->
+                print_s
+                  [%sexp
+                    { relationship_id : Contributor.Id.t =
+                        Contributor.relationship_id contributor
+                    ; username : Username.t = Contributor.username contributor
+                    ; user_id : Thing.User.Id.t = Contributor.user_id contributor
+                    ; date : Time_ns.t = Contributor.date contributor
+                    }])
+      in
+      [%expect
+        {|
+          ((relationship_id rb_278zt5u) (username L72_Elite_Kraken) (user_id 16r83m)
+           (date (2020-09-20 16:45:27.000000000Z))) |}];
+      return ())
+;;
