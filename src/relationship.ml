@@ -31,3 +31,11 @@ module Ban = struct
   let note = required_field "note" string
   let days_left = optional_field "days_left" int
 end
+
+module Moderator = struct
+  include Common
+
+  let permissions = required_field "mod_permissions" (Json.get_list string)
+  let flair_text = optional_field "author_flair_text" string
+  let flair_css_class = optional_field "author_css_class" string
+end

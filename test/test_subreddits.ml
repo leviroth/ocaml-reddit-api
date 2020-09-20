@@ -122,3 +122,64 @@ let%expect_test "wiki_contributors" =
            (date (2020-09-20 16:45:27.000000000Z))) |}];
       return ())
 ;;
+
+let%expect_test "moderators" =
+  with_cassette "moderators" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.moderators connection ~subreddit:(Subreddit_name.of_string "redditdev")
+        >>| Listing.children
+        >>| List.iter ~f:(fun moderator ->
+                print_s
+                  [%sexp
+                    { relationship_id : Moderator.Id.t =
+                        Moderator.relationship_id moderator
+                    ; username : Username.t = Moderator.username moderator
+                    ; user_id : Thing.User.Id.t = Moderator.user_id moderator
+                    ; date : Time_ns.t = Moderator.date moderator
+                    ; permissions : string list = Moderator.permissions moderator
+                    ; flair_text : string option = Moderator.flair_text moderator
+                    ; flair_css_class : string option =
+                        Moderator.flair_css_class moderator
+                    }])
+      in
+      [%expect
+        {|
+          ((relationship_id rb_l5k8) (username ketralnis) (user_id nn0q)
+           (date (2008-06-18 15:51:21.000000000Z)) (permissions (all))
+           (flair_text ("reddit admin")) (flair_css_class ()))
+          ((relationship_id rb_l5ka) (username spez) (user_id 1w72)
+           (date (2008-06-18 15:51:23.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_l5kb) (username jedberg) (user_id 1wnj)
+           (date (2008-06-18 15:51:25.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_l5kc) (username kn0thing) (user_id 1wh0)
+           (date (2008-06-18 15:51:27.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_l5kj) (username KeyserSosa) (user_id 1wjm)
+           (date (2008-06-18 15:51:37.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_eb0p7) (username spladug) (user_id 3imtq)
+           (date (2011-04-18 04:56:51.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_ggr26) (username chromakode) (user_id 7onf)
+           (date (2011-06-14 07:24:34.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_59vvph) (username kemitche) (user_id 3jo4g)
+           (date (2014-03-14 21:17:50.000000000Z)) (permissions (all))
+           (flair_text ("Reddit Admin")) (flair_css_class ()))
+          ((relationship_id rb_lue6xm) (username bboe) (user_id 3pz6e)
+           (date (2017-01-31 21:09:49.000000000Z)) (permissions (all))
+           (flair_text ("PRAW Author")) (flair_css_class ()))
+          ((relationship_id rb_os2pwe) (username taylorkline) (user_id 13jrwt)
+           (date (2017-05-25 00:42:54.000000000Z)) (permissions (wiki flair))
+           (flair_text ("Bot Developer")) (flair_css_class ()))
+          ((relationship_id rb_qv0r5h) (username bsimpson) (user_id 3c639)
+           (date (2017-09-07 17:30:32.000000000Z)) (permissions (all)) (flair_text ())
+           (flair_css_class ()))
+          ((relationship_id rb_xovcgy) (username Stuck_In_the_Matrix) (user_id bk1iz)
+           (date (2018-06-22 06:23:11.000000000Z))
+           (permissions (posts access mail config flair))
+           (flair_text ("Pushshift.io data scientist")) (flair_css_class ())) |}];
+      return ())
+;;

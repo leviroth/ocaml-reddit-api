@@ -632,7 +632,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Moderator.t Listing.t call)
       with_listing_params
 
   val delete_subreddit_banner

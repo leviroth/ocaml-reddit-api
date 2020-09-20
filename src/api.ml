@@ -1518,7 +1518,9 @@ struct
     about_endpoint "wikicontributors" (get_listing Relationship.Contributor.of_json)
   ;;
 
-  let moderators = about_endpoint "moderators" return
+  let moderators =
+    about_endpoint "moderators" (get_listing Relationship.Moderator.of_json)
+  ;;
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
     let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in

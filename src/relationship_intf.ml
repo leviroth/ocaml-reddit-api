@@ -39,4 +39,12 @@ module type Relationship = sig
     val note : t -> string
     val days_left : t -> int option
   end
+
+  module Moderator : sig
+    include S
+
+    val permissions : t -> string list
+    val flair_text : t -> string option
+    val flair_css_class : t -> string option
+  end
 end
