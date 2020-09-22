@@ -1525,16 +1525,6 @@ struct
     removal_endpoints ~endpoint ~extra_params ~subreddit
   ;;
 
-  let recommended ?over_18 ~subreddits =
-    let endpoint =
-      List.map subreddits ~f:Subreddit_name.to_string
-      |> String.concat ~sep:","
-      |> sprintf "/api/recommend/sr/%s"
-    in
-    let params = Param_dsl.(optional' bool "over_18" over_18) in
-    get ~endpoint ~params return
-  ;;
-
   let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
     let endpoint = "/api/search_reddit_names" in
     let params =

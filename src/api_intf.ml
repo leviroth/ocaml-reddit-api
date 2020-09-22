@@ -640,11 +640,6 @@ module type S = sig
     -> image:Subreddit_image.t
     -> unit call
 
-  val recommended
-    :  ?over_18:bool
-    -> subreddits:Subreddit_name.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
   val search_subreddit_names
     :  ?exact:bool
     -> ?include_over_18:bool
