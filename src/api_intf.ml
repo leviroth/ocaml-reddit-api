@@ -635,13 +635,6 @@ module type S = sig
        -> Relationship.Moderator.t Listing.t call)
       with_listing_params
 
-  val upload_subreddit_image
-    :  subreddit:Subreddit_name.t
-    -> file_contents:string
-    -> image:Subreddit_image.t
-    -> file_extension:Image_file_extension.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
   val delete_subreddit_image
     :  subreddit:Subreddit_name.t
     -> image:Subreddit_image.t

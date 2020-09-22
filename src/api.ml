@@ -405,12 +405,6 @@ module Parameters = struct
     type t =
       | Png
       | Jpg
-
-    let to_string t =
-      match t with
-      | Png -> "png"
-      | Jpg -> "jpg"
-    ;;
   end
 
   module Subreddit_image = struct
@@ -419,14 +413,6 @@ module Parameters = struct
       | Header
       | Mobile_icon
       | Mobile_banner
-
-    let params_of_t t =
-      match t with
-      | Stylesheet_image { name } -> [ "upload_type", [ "img" ]; "name", [ name ] ]
-      | Header -> [ "upload_type", [ "header" ] ]
-      | Mobile_icon -> [ "upload_type", [ "icon" ] ]
-      | Mobile_banner -> [ "upload_type", [ "banner" ] ]
-    ;;
   end
 
   module Subreddit_search_sort = struct
@@ -1718,19 +1704,6 @@ struct
       combine
         [ required' Subscription_action.to_string "action" action
         ; optional' bool "skip_initial_defaults" skip_initial_defaults
-        ]
-    in
-    post ~endpoint ~params return
-  ;;
-
-  let upload_subreddit_image ~subreddit ~file_contents ~image ~file_extension =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
-    let params =
-      let open Param_dsl in
-      combine
-        [ required' string "file" file_contents
-        ; required' Image_file_extension.to_string "img_type" file_extension
-        ; Subreddit_image.params_of_t image
         ]
     in
     post ~endpoint ~params return
