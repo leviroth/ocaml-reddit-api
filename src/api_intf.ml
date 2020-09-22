@@ -645,7 +645,7 @@ module type S = sig
     -> ?include_over_18:bool
     -> ?include_unadvertisable:bool
     -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit_name.t list call
 
   val create_or_edit_subreddit
     :  ?comment_score_hide_mins:int

@@ -1536,7 +1536,12 @@ struct
         ; optional' bool "include_unadvertisable" include_unadvertisable
         ]
     in
-    get ~endpoint ~params return
+    get
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           Json.find json [ "names" ]
+           |> Json.get_list (Fn.compose Subreddit_name.of_string Json.get_string)))
   ;;
 
   let create_or_edit_subreddit
