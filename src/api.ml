@@ -1523,17 +1523,17 @@ struct
   ;;
 
   let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
-    let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
-    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/%s" subreddit endpoint in
+    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ]) assert_no_errors
   ;;
 
-  let delete_subreddit_banner = removal_endpoints "delete_sr_banner" return
-  let delete_subreddit_header = removal_endpoints "delete_sr_header" return
-  let delete_subreddit_icon = removal_endpoints "delete_sr_icon" return
+  let delete_subreddit_banner = removal_endpoints "delete_sr_banner"
+  let delete_subreddit_header = removal_endpoints "delete_sr_header"
+  let delete_subreddit_icon = removal_endpoints "delete_sr_icon"
 
   let delete_subreddit_image ~image_name =
     let extra_params = Param_dsl.(required' string "img_name" image_name) in
-    removal_endpoints "delete_sr_img" ~extra_params return
+    removal_endpoints "delete_sr_img" ~extra_params
   ;;
 
   let recommended ?over_18 ~subreddits =

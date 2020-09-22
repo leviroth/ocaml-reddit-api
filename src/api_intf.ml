@@ -635,22 +635,14 @@ module type S = sig
        -> Relationship.Moderator.t Listing.t call)
       with_listing_params
 
-  val delete_subreddit_banner
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val delete_subreddit_header
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val delete_subreddit_icon
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val delete_subreddit_banner : subreddit:Subreddit_name.t -> unit call
+  val delete_subreddit_header : subreddit:Subreddit_name.t -> unit call
+  val delete_subreddit_icon : subreddit:Subreddit_name.t -> unit call
 
   val delete_subreddit_image
     :  image_name:string
     -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> unit call
 
   val recommended
     :  ?over_18:bool

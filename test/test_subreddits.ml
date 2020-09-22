@@ -183,3 +183,33 @@ let%expect_test "moderators" =
            (flair_text ("Pushshift.io data scientist")) (flair_css_class ())) |}];
       return ())
 ;;
+
+let%expect_test "delete_subreddit_banner" =
+  with_cassette "delete_subreddit_banner" ~f:(fun connection ->
+      let%bind () = Api.Exn.delete_subreddit_banner connection ~subreddit in
+      [%expect {| |}];
+      return ())
+;;
+
+let%expect_test "delete_subreddit_header" =
+  with_cassette "delete_subreddit_header" ~f:(fun connection ->
+      let%bind () = Api.Exn.delete_subreddit_header connection ~subreddit in
+      [%expect {| |}];
+      return ())
+;;
+
+let%expect_test "delete_subreddit_icon" =
+  with_cassette "delete_subreddit_icon" ~f:(fun connection ->
+      let%bind () = Api.Exn.delete_subreddit_icon connection ~subreddit in
+      [%expect {| |}];
+      return ())
+;;
+
+let%expect_test "delete_subreddit_image" =
+  with_cassette "delete_subreddit_image" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.delete_subreddit_image connection ~image_name:"leviroth" ~subreddit
+      in
+      [%expect {| |}];
+      return ())
+;;
