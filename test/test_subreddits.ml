@@ -186,21 +186,25 @@ let%expect_test "moderators" =
 
 let%expect_test "delete_subreddit_banner" =
   with_cassette "delete_subreddit_banner" ~f:(fun connection ->
-      let%bind () = Api.Exn.delete_subreddit_banner connection ~subreddit in
+      let%bind () =
+        Api.Exn.delete_subreddit_image connection ~subreddit ~image:Mobile_banner
+      in
       [%expect {| |}];
       return ())
 ;;
 
 let%expect_test "delete_subreddit_header" =
   with_cassette "delete_subreddit_header" ~f:(fun connection ->
-      let%bind () = Api.Exn.delete_subreddit_header connection ~subreddit in
+      let%bind () = Api.Exn.delete_subreddit_image connection ~subreddit ~image:Header in
       [%expect {| |}];
       return ())
 ;;
 
 let%expect_test "delete_subreddit_icon" =
   with_cassette "delete_subreddit_icon" ~f:(fun connection ->
-      let%bind () = Api.Exn.delete_subreddit_icon connection ~subreddit in
+      let%bind () =
+        Api.Exn.delete_subreddit_image connection ~subreddit ~image:Mobile_icon
+      in
       [%expect {| |}];
       return ())
 ;;
@@ -208,7 +212,10 @@ let%expect_test "delete_subreddit_icon" =
 let%expect_test "delete_subreddit_image" =
   with_cassette "delete_subreddit_image" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.delete_subreddit_image connection ~image_name:"leviroth" ~subreddit
+        Api.Exn.delete_subreddit_image
+          connection
+          ~subreddit
+          ~image:(Stylesheet_image { name = "leviroth" })
       in
       [%expect {| |}];
       return ())

@@ -168,18 +168,18 @@ module type Parameters = sig
       | Unsubscribe
   end
 
-  module Image_type : sig
+  module Image_file_extension : sig
     type t =
       | Png
       | Jpg
   end
 
-  module Upload_type : sig
+  module Subreddit_image : sig
     type t =
-      | Image
+      | Stylesheet_image of { name : string }
       | Header
-      | Icon
-      | Banner
+      | Mobile_icon
+      | Mobile_banner
   end
 
   module Subreddit_search_sort : sig
@@ -635,13 +635,16 @@ module type S = sig
        -> Relationship.Moderator.t Listing.t call)
       with_listing_params
 
-  val delete_subreddit_banner : subreddit:Subreddit_name.t -> unit call
-  val delete_subreddit_header : subreddit:Subreddit_name.t -> unit call
-  val delete_subreddit_icon : subreddit:Subreddit_name.t -> unit call
+  val upload_subreddit_image
+    :  subreddit:Subreddit_name.t
+    -> file_contents:string
+    -> image:Subreddit_image.t
+    -> file_extension:Image_file_extension.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val delete_subreddit_image
-    :  image_name:string
-    -> subreddit:Subreddit_name.t
+    :  subreddit:Subreddit_name.t
+    -> image:Subreddit_image.t
     -> unit call
 
   val recommended
@@ -729,16 +732,6 @@ module type S = sig
   val subscribe
     :  ?skip_initial_defaults:bool
     -> action:Subscription_action.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val upload_sr_img
-    :  ?form_id:string
-    -> file:string
-    -> header:bool
-    -> image_type:Image_type.t
-    -> name:string
-    -> subreddit:Subreddit_name.t
-    -> upload_type:Upload_type.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val search_profiles

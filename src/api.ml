@@ -401,7 +401,7 @@ module Parameters = struct
     ;;
   end
 
-  module Image_type = struct
+  module Image_file_extension = struct
     type t =
       | Png
       | Jpg
@@ -413,19 +413,19 @@ module Parameters = struct
     ;;
   end
 
-  module Upload_type = struct
+  module Subreddit_image = struct
     type t =
-      | Image
+      | Stylesheet_image of { name : string }
       | Header
-      | Icon
-      | Banner
+      | Mobile_icon
+      | Mobile_banner
 
-    let to_string t =
+    let params_of_t t =
       match t with
-      | Image -> "img"
-      | Header -> "header"
-      | Icon -> "icon"
-      | Banner -> "banner"
+      | Stylesheet_image { name } -> [ "upload_type", [ "img" ]; "name", [ name ] ]
+      | Header -> [ "upload_type", [ "header" ] ]
+      | Mobile_icon -> [ "upload_type", [ "icon" ] ]
+      | Mobile_banner -> [ "upload_type", [ "banner" ] ]
     ;;
   end
 
@@ -1522,18 +1522,21 @@ struct
     about_endpoint "moderators" (get_listing Relationship.Moderator.of_json)
   ;;
 
-  let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
+  let removal_endpoints ~endpoint ~extra_params ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/%s" subreddit endpoint in
     post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ]) assert_no_errors
   ;;
 
-  let delete_subreddit_banner = removal_endpoints "delete_sr_banner"
-  let delete_subreddit_header = removal_endpoints "delete_sr_header"
-  let delete_subreddit_icon = removal_endpoints "delete_sr_icon"
-
-  let delete_subreddit_image ~image_name =
-    let extra_params = Param_dsl.(required' string "img_name" image_name) in
-    removal_endpoints "delete_sr_img" ~extra_params
+  let delete_subreddit_image ~subreddit ~(image : Subreddit_image.t) =
+    let endpoint, extra_params =
+      match image with
+      | Header -> "delete_sr_header", []
+      | Mobile_icon -> "delete_sr_icon", []
+      | Mobile_banner -> "delete_sr_banner", []
+      | Stylesheet_image { name } ->
+        "delete_sr_img", Param_dsl.(required' string "img_name" name)
+    in
+    removal_endpoints ~endpoint ~extra_params ~subreddit
   ;;
 
   let recommended ?over_18 ~subreddits =
@@ -1720,18 +1723,14 @@ struct
     post ~endpoint ~params return
   ;;
 
-  let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
+  let upload_subreddit_image ~subreddit ~file_contents ~image ~file_extension =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
     let params =
-      let header = Bool.to_int header in
       let open Param_dsl in
       combine
-        [ optional' string "formid" form_id
-        ; required' string "file" file
-        ; required' int "header" header
-        ; required' Image_type.to_string "img_type" image_type
-        ; required' string "name" name
-        ; required' Upload_type.to_string "upload_type" upload_type
+        [ required' string "file" file_contents
+        ; required' Image_file_extension.to_string "img_type" file_extension
+        ; Subreddit_image.params_of_t image
         ]
     in
     post ~endpoint ~params return
