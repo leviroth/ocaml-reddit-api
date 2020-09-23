@@ -692,9 +692,7 @@ module type S = sig
     -> wiki_mode:Wiki_mode.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val submit_text
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val submit_text : subreddit:Subreddit_name.t -> Submit_text.t call
 
   val subreddit_autocomplete
     :  ?include_over_18:bool

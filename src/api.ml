@@ -1641,7 +1641,7 @@ struct
 
   let submit_text ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response Submit_text.of_json)
   ;;
 
   let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =

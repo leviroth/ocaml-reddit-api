@@ -231,3 +231,20 @@ let%expect_test "search_subreddit_names" =
            PythonJobs pythoncoding PythonGUI PythonNoobs pythonclass) |}];
       return ())
 ;;
+
+let%expect_test "submit_text" =
+  with_cassette "submit_text" ~f:(fun connection ->
+      let%bind submit_text =
+        Api.Exn.submit_text connection ~subreddit:(Subreddit_name.of_string "philosophy")
+      in
+      List.iter [ `markdown; `HTML ] ~f:(fun markup ->
+          print_s
+            [%sexp
+              (Submit_text.submit_text markup submit_text |> String.sub ~pos:0 ~len:80
+                : string)]);
+      [%expect
+        {|
+          "Please make sure you have read the /r/philosophy posting rules which can be foun"
+          "<!-- SC_OFF --><div class=\"md\"><p>Please make sure you have read the <a href=\"/r" |}];
+      return ())
+;;
