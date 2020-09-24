@@ -1,15 +1,5 @@
 `Reddit_api` is an OCaml client library for Reddit's API.
 
-# Installation
-
-We provide a custom opam repository for a dependency not in the main opam
-repository:
-
-```bash
-$ opam repo add leviroth https://github.com/leviroth/opam-repository.git
-$ opam install reddit_api
-```
-
 # Documentation
 
 [Here](https://leviroth.github.io/ocaml-reddit-api/reddit_api/index.html). I
