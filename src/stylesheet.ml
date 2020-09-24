@@ -5,7 +5,7 @@ module Image = struct
 
   let of_json json =
     match json with
-    | `Object alist -> String.Map.of_alist_exn alist
+    | `O alist -> String.Map.of_alist_exn alist
     | _ -> raise_s [%message "Unexpected stylesheet image json" (json : Json.t)]
   ;;
 
@@ -20,10 +20,10 @@ include Json_object_utils.Kinded (struct
   type nonrec t = t
 
   let kind = "stylesheet"
-  let of_data_field = Json.to_map
-  let to_data_field t = `Object (Map.to_alist t)
+  let of_data_field = Json.get_map
+  let to_data_field t = `O (Map.to_alist t)
 end)
 
-let images = required_field "images" (Json.get_array >> List.map ~f:Image.of_json)
+let images = required_field "images" (Json.get_list Image.of_json)
 let subreddit_id = required_field "subreddit_id" (string >> Thing.Subreddit.Id.of_string)
 let stylesheet_text = required_field "stylesheet" string

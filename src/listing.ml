@@ -20,7 +20,7 @@ let of_json convert_element json =
   let fail s = raise_s [%message s (json : Json.t)] in
   let assoc =
     match json with
-    | `Object list -> list
+    | `O list -> list
     | _ -> fail "Expected JSON map when creating [Listing.t]"
   in
   let data =
@@ -30,7 +30,7 @@ let of_json convert_element json =
   in
   let data =
     match data with
-    | `Object list -> list
+    | `O list -> list
     | _ -> fail "Expected \"data\" to be an object"
   in
   let data =
@@ -40,7 +40,7 @@ let of_json convert_element json =
   in
   let children =
     match Map.find data "children" with
-    | Some (`Array l) -> l
+    | Some (`A l) -> l
     | Some _ -> fail "Expected \"children\" to be a list"
     | None -> fail "Missing key \"children\""
   in

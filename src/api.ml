@@ -38,7 +38,7 @@ module Param_dsl = struct
 
   let fullname_ = Thing.Fullname.to_string
   let username_ = Username.to_string
-  let json = Json.to_string
+  let json = Json.value_to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
@@ -146,7 +146,7 @@ module Parameters = struct
         [ "kind", [ "self" ]
         ; (match body with
           | Markdown markdown -> "text", [ markdown ]
-          | Richtext_json json -> "richtext_json", [ Json.to_string json ])
+          | Richtext_json json -> "richtext_json", [ Json.value_to_string json ])
         ]
       | Crosspost link_id ->
         [ "kind", [ "crosspost" ]
@@ -628,7 +628,7 @@ struct
 
   let assert_no_errors =
     handle_json_response (fun json ->
-        match Json.find json ~key:"json" |> Json.find ~key:"errors" |> Json.get_array with
+        match Json.find json [ "json"; "errors" ] |> Json.get_list ident with
         | [] -> ()
         | errors ->
           raise_s
@@ -647,7 +647,7 @@ struct
   let ignore_empty_object =
     handle_json_response (fun json ->
         match json with
-        | `Object [] -> ()
+        | `O [] -> ()
         | _ -> raise_s [%message "Unexpected JSON response" (json : Json.t)])
   ;;
 
@@ -687,9 +687,9 @@ struct
       ~params:[]
       (handle_json_response (fun json ->
            match json with
-           | `Object
+           | `O
                [ ("kind", `String "TrophyList")
-               ; ("data", `Object [ ("trophies", `Array trophies) ])
+               ; ("data", `O [ ("trophies", `A trophies) ])
                ] -> List.map trophies ~f:Award.of_json
            | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)]))
   ;;
@@ -716,14 +716,11 @@ struct
 
   let userlist json =
     let of_array_item json =
-      Json.find json ~key:"data"
-      |> Json.find ~key:"children"
-      |> Json.get_array
-      |> List.map ~f:User_list.Item.of_json
+      Json.find json [ "data"; "children" ] |> Json.get_list User_list.Item.of_json
     in
     match json with
-    | `Object _ -> of_array_item json
-    | `Array l -> List.concat_map l ~f:of_array_item
+    | `O _ -> of_array_item json
+    | `A l -> List.concat_map l ~f:of_array_item
     | _ -> raise_s [%message "Unexpect User_list.t JSON" (json : Json.t)]
   ;;
 
@@ -758,10 +755,9 @@ struct
 
   let handle_things_response =
     handle_json_response (fun json ->
-        Json.find json ~key:"json"
-        |> Json.find ~key:"data"
-        |> Json.find ~key:"things"
-        |> Json.index ~index:0
+        Json.find json [ "json"; "data"; "things" ]
+        |> Json.get_list ident
+        |> List.hd_exn
         |> Thing.Poly.of_json)
   ;;
 
@@ -1039,9 +1035,9 @@ struct
       ~endpoint
       ~params
       (handle_json_response (fun json ->
-           let json = Json.find json ~key:"json" |> Json.find ~key:"data" in
-           let id = Json.find json ~key:"id" |> Json.get_string |> Link.Id.of_string in
-           let url = Json.find json ~key:"url" |> Json.get_string |> Uri.of_string in
+           let json = Json.find json [ "json"; "data" ] in
+           let id = Json.find json [ "id" ] |> Json.get_string |> Link.Id.of_string in
+           let url = Json.find json [ "url" ] |> Json.get_string |> Uri.of_string in
            id, url))
   ;;
 
@@ -1112,7 +1108,7 @@ struct
       ~endpoint
       ~params
       (handle_json_response (fun json ->
-           match Json.get_array json with
+           match Json.get_list ident json with
            | [ link_json; comment_forest_json ] ->
              let link =
                Listing.of_json Link.of_json link_json |> Listing.children |> List.hd_exn
@@ -1365,10 +1361,9 @@ struct
       ~params
       (handle_json_response (fun json ->
            let thing =
-             Json.find json ~key:"json"
-             |> Json.find ~key:"data"
-             |> Json.find ~key:"things"
-             |> Json.index ~index:0
+             Json.find json [ "json"; "data"; "things" ]
+             |> Json.get_list ident
+             |> List.hd_exn
              |> Thing.Poly.of_json
            in
            match thing with
@@ -1468,8 +1463,8 @@ struct
            let listings =
              let jsons =
                match json with
-               | `Object _ as json -> [ json ]
-               | `Array listings -> listings
+               | `O _ as json -> [ json ]
+               | `A listings -> listings
                | _ -> raise_s [%message "Unexpected search response" (json : Json.t)]
              in
              List.map jsons ~f:(Listing.of_json Thing.Poly.of_json)
@@ -1926,7 +1921,7 @@ struct
     post ~endpoint ~params (fun (response, body) ->
         let%bind json = Cohttp_async.Body.to_string body |> some >>| Json.of_string in
         match Cohttp.Response.status response, json with
-        | #Cohttp.Code.success_status, `Object [] -> return (Ok ())
+        | #Cohttp.Code.success_status, `O [] -> return (Ok ())
         | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
         | _, _ -> none)
   ;;
