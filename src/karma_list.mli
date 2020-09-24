@@ -10,5 +10,4 @@ end
 
 type t = Entry.t list [@@deriving sexp]
 
-val of_json : Json.t -> t
-val to_json : t -> Json.t
+include Jsonable.S with type t := t

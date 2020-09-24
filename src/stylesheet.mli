@@ -10,8 +10,8 @@ end
 
 type t
 
-val of_json : Json.t -> t
-val to_json : t -> Json.t
+include Jsonable.S with type t := t
+
 val images : t -> Image.t list
 val subreddit_id : t -> Thing.Subreddit.Id.t
 val stylesheet_text : t -> string

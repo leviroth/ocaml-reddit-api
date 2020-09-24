@@ -5,8 +5,8 @@ module Item : sig
 
   type t [@@deriving sexp]
 
-  val of_json : Json.t -> t
-  val to_json : t -> Json.t
+  include Jsonable.S with type t := t
+
   val username : t -> Username.t
   val user_id : t -> Thing.User.Id.t
   val relationship_id : t -> Id.t

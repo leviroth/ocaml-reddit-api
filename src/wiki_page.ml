@@ -38,6 +38,7 @@ module Edit_conflict = struct
   include Json_object_utils
 
   let of_json = Json.to_map
+  let to_json t = `Object (Map.to_alist t)
   let diff = required_field "diffcontent" string
   let message = required_field "message" string
   let new_content = required_field "newcontent" string
