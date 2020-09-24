@@ -10,8 +10,8 @@ end
 
 type t [@@deriving sexp]
 
-val of_json : Json.t -> t
-val to_json : t -> Json.t
+include Jsonable.S with type t := t
+
 val may_revise : t -> bool
 val revision_id : t -> Uuid.t
 val revision_by : t -> Thing.User.t
@@ -22,7 +22,8 @@ val revision_reason : t -> string option
 module Edit_conflict : sig
   type t [@@deriving sexp]
 
-  val of_json : Json.t -> t
+  include Jsonable.S with type t := t
+
   val diff : t -> string
   val message : t -> string
   val new_content : t -> string

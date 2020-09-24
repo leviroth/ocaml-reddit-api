@@ -30,8 +30,8 @@ struct
   include Json_object_utils.Kinded (struct
     type t = Json_object_utils.t
 
-    let of_data_field = Json.to_map
-    let to_data_field t = `Object (Map.to_alist t)
+    let of_data_field = Json.get_map
+    let to_data_field t = `O (Map.to_alist t)
     let kind = Thing_kind.to_string Param.kind
   end)
 
@@ -166,8 +166,8 @@ module Poly = struct
   [@@deriving sexp]
 
   let of_json json =
-    let kind = Json.find json ~key:"kind" |> Json.get_string |> Thing_kind.of_string in
-    let data = Json.find json ~key:"data" |> Comment.of_json in
+    let kind = Json.find json [ "kind" ] |> Json.get_string |> Thing_kind.of_string in
+    let data = Json.find json [ "data" ] |> Comment.of_json in
     Thing_kind.to_polymorphic_tag_uniform kind ~data
   ;;
 

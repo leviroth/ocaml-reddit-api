@@ -19,8 +19,8 @@ include Json_object_utils.Kinded (struct
   type nonrec t = t
 
   let kind = "modaction"
-  let of_data_field = Json.to_map
-  let to_data_field t = `Object (Map.to_alist t)
+  let of_data_field = Json.get_map
+  let to_data_field t = `O (Map.to_alist t)
 end)
 
 let id = required_field "id" (string >> Id.of_json_string)

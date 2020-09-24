@@ -14,8 +14,8 @@ include Json_object_utils.Kinded (struct
   type nonrec t = t
 
   let kind = "wikipage"
-  let of_data_field = Json.to_map
-  let to_data_field t = `Object (Map.to_alist t)
+  let of_data_field = Json.get_map
+  let to_data_field t = `O (Map.to_alist t)
 end)
 
 let may_revise = required_field "may_revise" bool
@@ -37,7 +37,8 @@ let revision_reason = optional_field "reason" string
 module Edit_conflict = struct
   include Json_object_utils
 
-  let of_json = Json.to_map
+  let of_json = Json.get_map
+  let to_json t = `O (Map.to_alist t)
   let diff = required_field "diffcontent" string
   let message = required_field "message" string
   let new_content = required_field "newcontent" string

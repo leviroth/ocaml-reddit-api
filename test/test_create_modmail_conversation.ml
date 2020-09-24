@@ -17,40 +17,43 @@ let%expect_test "create_modmail_conversation" =
       [%expect
         {|
         ((conversation
-          (Object
-           ((isAuto False)
-            (objIds (Array ((Object ((id (String osvgj)) (key (String messages)))))))
-            (isRepliable True) (lastUserUpdate Null) (isInternal False)
+          (O
+           ((isAuto (Bool false))
+            (objIds (A ((O ((id (String osvgj)) (key (String messages)))))))
+            (isRepliable (Bool true)) (lastUserUpdate Null) (isInternal (Bool false))
             (lastModUpdate (String 2020-07-26T21:18:43.146061+00:00))
             (lastUpdated (String 2020-07-26T21:18:43.146061+00:00))
             (authors
-             (Array
-              ((Object
-                ((isMod True) (isAdmin False) (name (String L72_Elite_Kraken))
-                 (isOp True) (isParticipant False) (isHidden False)
-                 (id (Number 71814082)) (isDeleted False))))))
+             (A
+              ((O
+                ((isMod (Bool true)) (isAdmin (Bool false))
+                 (name (String L72_Elite_Kraken)) (isOp (Bool true))
+                 (isParticipant (Bool false)) (isHidden (Bool false))
+                 (id (Float 71814082)) (isDeleted (Bool false)))))))
             (owner
-             (Object
+             (O
               ((displayName (String ThirdRealm)) (type (String subreddit))
                (id (String t5_390u2)))))
-            (id (String fsv44)) (isHighlighted False)
-            (subject (String "Test subject")) (participant (Object ()))
-            (state (Number 0)) (lastUnread Null) (numMessages (Number 1)))))
+            (id (String fsv44)) (isHighlighted (Bool false))
+            (subject (String "Test subject")) (participant (O ())) (state (Float 0))
+            (lastUnread Null) (numMessages (Float 1)))))
          (messages
-          (Object
+          (O
            ((osvgj
-             (Object
+             (O
               ((body
                 (String
                   "<!-- SC_OFF --><div class=\"md\"><p>Test body</p>\
                  \n</div><!-- SC_ON -->"))
                (author
-                (Object
-                 ((isMod True) (isAdmin False) (name (String L72_Elite_Kraken))
-                  (isOp True) (isParticipant False) (isHidden False)
-                  (id (Number 71814082)) (isDeleted False))))
-               (isInternal False) (date (String 2020-07-26T21:18:43.146061+00:00))
+                (O
+                 ((isMod (Bool true)) (isAdmin (Bool false))
+                  (name (String L72_Elite_Kraken)) (isOp (Bool true))
+                  (isParticipant (Bool false)) (isHidden (Bool false))
+                  (id (Float 71814082)) (isDeleted (Bool false)))))
+               (isInternal (Bool false))
+               (date (String 2020-07-26T21:18:43.146061+00:00))
                (bodyMarkdown (String "Test body")) (id (String osvgj))))))))
-         (modActions (Object ()))) |}];
+         (modActions (O ()))) |}];
       return ())
 ;;

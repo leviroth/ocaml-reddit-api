@@ -18,5 +18,5 @@
   (async_ssl (= v0.14.0))
   (cohttp-async (>= 2.5.4))
   (core (= v0.14.0))
-  (jsonaf (>= dev))
+  (ezjsonm (>= 1.0))
   (sequencer_table (= v0.14.0))))

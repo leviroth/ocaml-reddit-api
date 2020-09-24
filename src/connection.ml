@@ -114,10 +114,10 @@ module Local = struct
       let%bind response_string = Cohttp_async.Body.to_string body in
       let response_json = Json.of_string response_string in
       let access_token : Access_token.t =
-        let token = Json.find response_json ~key:"access_token" |> Json.get_string in
+        let token = Json.find response_json [ "access_token" ] |> Json.get_string in
         let expiration =
           let additional_seconds =
-            Json.find response_json ~key:"expires_in"
+            Json.find response_json [ "expires_in" ]
             |> Json.get_int
             |> Time_ns.Span.of_int_sec
           in
@@ -624,7 +624,7 @@ module For_testing = struct
               | true ->
                 let _, body = interaction.response in
                 let json = Json.of_string body in
-                let token = Json.find json ~key:"access_token" |> Json.get_string in
+                let token = Json.find json [ "access_token" ] |> Json.get_string in
                 Placeholders.add placeholders ~secret:token ~placeholder:"access_token");
               Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
               |> Interaction.sexp_of_t

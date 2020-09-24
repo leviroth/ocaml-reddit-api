@@ -9,8 +9,8 @@ end
 
 type t
 
-val of_json : Json.t -> t
-val to_json : t -> Json.t
+include Jsonable.S with type t := t
+
 val id : t -> Id.t
 val action : t -> string
 val details : t -> string

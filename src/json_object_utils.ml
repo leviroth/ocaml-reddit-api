@@ -11,7 +11,9 @@ let get_field_exn t field =
 ;;
 
 let optional_field name convert t =
-  Map.find t name |> Option.bind ~f:Json.none_if_null |> Option.map ~f:convert
+  match Map.find t name with
+  | None | Some `Null -> None
+  | Some v -> Some (convert v)
 ;;
 
 let required_field name convert t = convert (get_field_exn t name)
@@ -33,20 +35,23 @@ module Kinded (Param : sig
   val kind : string
 end) =
 struct
-  let of_json (json : Json.t) =
-    match Option.try_with (fun () -> Json.find json ~key:"kind") with
+  let of_json json =
+    match Option.try_with (fun () -> Ezjsonm.find json [ "kind" ]) with
     | None -> Param.of_data_field json
     | Some (`String kind) ->
       (match String.equal Param.kind kind with
-      | true -> Param.of_data_field (Json.find json ~key:"data")
+      | true -> Param.of_data_field (Ezjsonm.find json [ "data" ])
       | false ->
         raise_s
           [%message
-            "Unexpected JSON object kind" ~expected:(Param.kind : string) (json : Json.t)])
+            "Unexpected JSON object kind"
+              ~expected:(Param.kind : string)
+              (json : Json.value)])
     | Some kind ->
       raise_s
-        [%message "JSON object kind is not a string" (kind : Json.t) (json : Json.t)]
+        [%message
+          "JSON object kind is not a string" (kind : Json.value) (json : Json.value)]
   ;;
 
-  let to_json t = `Object [ "kind", `String Param.kind; "data", Param.to_data_field t ]
+  let to_json t = `O [ "kind", `String Param.kind; "data", Param.to_data_field t ]
 end
