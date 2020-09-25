@@ -156,12 +156,6 @@ module type Parameters = sig
       | Anyone
   end
 
-  module Stylesheet_operation : sig
-    type t =
-      | Save
-      | Preview
-  end
-
   module Subscription_action : sig
     type t =
       | Subscribe
@@ -702,12 +696,11 @@ module type S = sig
     -> query:string
     -> Subreddit.t Listing.t call
 
-  val subreddit_stylesheet
+  val set_subreddit_stylesheet
     :  ?reason:string
-    -> operation:Stylesheet_operation.t
-    -> stylesheet_contents:string
     -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> stylesheet_contents:string
+    -> unit call
 
   val subscribe
     :  ?skip_initial_defaults:bool

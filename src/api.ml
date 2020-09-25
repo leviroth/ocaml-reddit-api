@@ -376,19 +376,6 @@ module Parameters = struct
     ;;
   end
 
-  module Stylesheet_operation = struct
-    type t =
-      | Save
-      | Preview
-    [@@deriving sexp]
-
-    let to_string t =
-      match t with
-      | Save -> "save"
-      | Preview -> "preview"
-    ;;
-  end
-
   module Subscription_action = struct
     type t =
       | Subscribe
@@ -1665,18 +1652,19 @@ struct
     get ~endpoint ~params (get_listing Subreddit.of_json)
   ;;
 
-  let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
+  let set_subreddit_stylesheet ?reason ~subreddit ~stylesheet_contents =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
     let params =
       let open Param_dsl in
       combine
         [ api_type
         ; optional' string "reason" reason
-        ; required' Stylesheet_operation.to_string "op" operation
+        ; (* "op" is a required parameter, but the "preview" option does nothing. *)
+          required' string "op" "save"
         ; required' string "stylesheet_contents" stylesheet_contents
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
   let subscribe ?skip_initial_defaults ~action =

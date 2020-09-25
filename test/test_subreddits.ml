@@ -266,3 +266,15 @@ let%expect_test "subreddit_autocomplete" =
           pythonforengineers |}];
       return ())
 ;;
+
+let%expect_test "set_subreddit_stylesheet" =
+  with_cassette "set_subreddit_stylesheet" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.set_subreddit_stylesheet
+          connection
+          ~subreddit
+          ~stylesheet_contents:"body {font-family: monospace}"
+      in
+      [%expect];
+      return ())
+;;
