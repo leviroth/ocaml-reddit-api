@@ -1693,8 +1693,8 @@ struct
     post ~endpoint ~params ignore_empty_object
   ;;
 
-  let search_profiles' ~listing_params ?sort ~query =
-    let endpoint = "/profiles/search" in
+  let search_users' ~listing_params ?sort ~query =
+    let endpoint = "/users/search" in
     let params =
       let open Param_dsl in
       combine
@@ -1703,10 +1703,10 @@ struct
         ; optional' Subreddit_search_sort.to_string "sort" sort
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing User.of_json)
   ;;
 
-  let search_profiles = with_listing_params search_profiles'
+  let search_users = with_listing_params search_users'
 
   let about_subreddit ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in

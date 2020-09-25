@@ -301,3 +301,27 @@ let%expect_test "subscribe" =
       [%expect];
       return ())
 ;;
+
+let%expect_test "search_users" =
+  with_cassette "search_users" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.search_users connection ~query:"python"
+        >>| Listing.children
+        >>| List.iter ~f:(fun user -> print_s [%sexp (Thing.User.name user : Username.t)])
+      in
+      [%expect
+        {|
+          MrAstroThomas
+          python_boti
+          python_js
+          Pythoncurtus88
+          PythonGB
+          Python119
+          python4normies
+          python_engineer
+          python_noob_001
+          PythonTech
+          PythonMaster66677
+          python |}];
+      return ())
+;;

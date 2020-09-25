@@ -714,10 +714,8 @@ module type S = sig
     -> subreddits:Subscription_list.t
     -> unit call
 
-  val search_profiles
-    : (?sort:Subreddit_search_sort.t
-       -> query:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+  val search_users
+    : (?sort:Subreddit_search_sort.t -> query:string -> User.t Listing.t call)
       with_listing_params
 
   val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t call
