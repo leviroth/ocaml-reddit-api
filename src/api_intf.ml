@@ -182,7 +182,7 @@ module type Parameters = sig
       | Mobile_banner
   end
 
-  module Subreddit_search_sort : sig
+  module Relevance_or_activity : sig
     type t =
       | Relevance
       | Activity
@@ -715,7 +715,7 @@ module type S = sig
     -> unit call
 
   val search_users
-    : (?sort:Subreddit_search_sort.t -> query:string -> User.t Listing.t call)
+    : (?sort:Relevance_or_activity.t -> query:string -> User.t Listing.t call)
       with_listing_params
 
   val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t call
@@ -751,7 +751,7 @@ module type S = sig
 
   val search_subreddits_by_title_and_description
     : (?show_users:bool
-       -> ?sort:Subreddit_search_sort.t
+       -> ?sort:Relevance_or_activity.t
        -> query:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params

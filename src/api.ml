@@ -415,7 +415,7 @@ module Parameters = struct
       | Mobile_banner
   end
 
-  module Subreddit_search_sort = struct
+  module Relevance_or_activity = struct
     type t =
       | Relevance
       | Activity
@@ -1700,7 +1700,7 @@ struct
       combine
         [ listing_params
         ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
     get ~endpoint ~params (get_listing User.of_json)
@@ -1759,7 +1759,7 @@ struct
         [ listing_params
         ; optional' bool "show_users" show_users
         ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
     get ~endpoint ~params return
