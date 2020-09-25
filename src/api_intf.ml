@@ -162,6 +162,12 @@ module type Parameters = sig
       | Unsubscribe
   end
 
+  module Subscription_list : sig
+    type t =
+      | By_id of Subreddit.Id.t list
+      | By_name of Subreddit_name.t list
+  end
+
   module Image_file_extension : sig
     type t =
       | Png
@@ -705,7 +711,8 @@ module type S = sig
   val subscribe
     :  ?skip_initial_defaults:bool
     -> action:Subscription_action.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> subreddits:Subscription_list.t
+    -> unit call
 
   val search_profiles
     : (?sort:Subreddit_search_sort.t

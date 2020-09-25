@@ -278,3 +278,26 @@ let%expect_test "set_subreddit_stylesheet" =
       [%expect];
       return ())
 ;;
+
+let%expect_test "subscribe" =
+  let%bind () =
+    with_cassette "subscribe__by_name" ~f:(fun connection ->
+        let%bind () =
+          Api.Exn.subscribe
+            connection
+            ~action:Subscribe
+            ~subreddits:(By_name [ Subreddit_name.of_string "python" ])
+        in
+        [%expect];
+        return ())
+  in
+  with_cassette "subscribe__by_id" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.subscribe
+          connection
+          ~action:Subscribe
+          ~subreddits:(By_id [ Thing.Subreddit.Id.of_string "2qh0y" ])
+      in
+      [%expect];
+      return ())
+;;

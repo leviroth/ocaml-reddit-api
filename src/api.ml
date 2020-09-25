@@ -388,6 +388,19 @@ module Parameters = struct
     ;;
   end
 
+  module Subscription_list = struct
+    type t =
+      | By_id of Subreddit.Id.t list
+      | By_name of Subreddit_name.t list
+
+    let params_of_t t =
+      match t with
+      | By_id ids ->
+        [ "sr", List.map ids ~f:(fun id -> `Subreddit id |> Thing.Fullname.to_string) ]
+      | By_name names -> [ "sr_name", List.map names ~f:Subreddit_name.to_string ]
+    ;;
+  end
+
   module Image_file_extension = struct
     type t =
       | Png
@@ -1667,16 +1680,17 @@ struct
     post ~endpoint ~params assert_no_errors
   ;;
 
-  let subscribe ?skip_initial_defaults ~action =
+  let subscribe ?skip_initial_defaults ~action ~subreddits =
     let endpoint = "/api/subscribe" in
     let params =
       let open Param_dsl in
       combine
         [ required' Subscription_action.to_string "action" action
+        ; Subscription_list.params_of_t subreddits
         ; optional' bool "skip_initial_defaults" skip_initial_defaults
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let search_profiles' ~listing_params ?sort ~query =
