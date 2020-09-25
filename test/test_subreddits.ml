@@ -221,9 +221,11 @@ let%expect_test "delete_subreddit_image" =
       return ())
 ;;
 
-let%expect_test "search_subreddit_names" =
-  with_cassette "search_subreddit_names" ~f:(fun connection ->
-      let%bind subreddits = Api.Exn.search_subreddit_names connection ~query:"python" in
+let%expect_test "search_subreddits_by_name" =
+  with_cassette "search_subreddits_by_name" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.search_subreddits_by_name connection ~query:"python"
+      in
       print_s [%sexp (subreddits : Subreddit_name.t list)];
       [%expect
         {|

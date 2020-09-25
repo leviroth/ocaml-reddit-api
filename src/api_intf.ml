@@ -640,7 +640,7 @@ module type S = sig
     -> image:Subreddit_image.t
     -> unit call
 
-  val search_subreddit_names
+  val search_subreddits_by_name
     :  ?exact:bool
     -> ?include_over_18:bool
     -> ?include_unadvertisable:bool
@@ -749,7 +749,7 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
-  val search_subreddits
+  val search_subreddits_by_title_and_description
     : (?show_users:bool
        -> ?sort:Subreddit_search_sort.t
        -> query:string

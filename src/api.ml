@@ -1525,7 +1525,7 @@ struct
     removal_endpoints ~endpoint ~extra_params ~subreddit
   ;;
 
-  let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
+  let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable ~query =
     let endpoint = "/api/search_reddit_names" in
     let params =
       let open Param_dsl in
@@ -1750,7 +1750,8 @@ struct
 
   let get_subreddits = with_listing_params get_subreddits'
 
-  let search_subreddits' ~listing_params ?show_users ?sort ~query =
+  let search_subreddits_by_title_and_description' ~listing_params ?show_users ?sort ~query
+    =
     let endpoint = "/subreddits/search" in
     let params =
       let open Param_dsl in
@@ -1764,7 +1765,9 @@ struct
     get ~endpoint ~params return
   ;;
 
-  let search_subreddits = with_listing_params search_subreddits'
+  let search_subreddits_by_title_and_description =
+    with_listing_params search_subreddits_by_title_and_description'
+  ;;
 
   let list_subreddits' ~listing_params ?include_categories ?show_users ~sort =
     let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
