@@ -248,3 +248,21 @@ let%expect_test "submit_text" =
           "<!-- SC_OFF --><div class=\"md\"><p>Please make sure you have read the <a href=\"/r" |}];
       return ())
 ;;
+
+let%expect_test "subreddit_autocomplete" =
+  with_cassette "subreddit_autocomplete" ~f:(fun connection ->
+      let%bind () =
+        Api.Exn.subreddit_autocomplete connection ~query:"python"
+        >>| Listing.children
+        >>| List.iter ~f:(fun subreddit ->
+                print_s [%sexp (Thing.Subreddit.name subreddit : Subreddit_name.t)])
+      in
+      [%expect
+        {|
+          Python
+          pythontips
+          pythoncoding
+          PythonProjects2
+          pythonforengineers |}];
+      return ())
+;;

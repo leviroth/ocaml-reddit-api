@@ -695,18 +695,12 @@ module type S = sig
   val submit_text : subreddit:Subreddit_name.t -> Submit_text.t call
 
   val subreddit_autocomplete
-    :  ?include_over_18:bool
-    -> ?include_profiles:bool
-    -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val subreddit_autocomplete_v2
     :  ?limit:int
     -> ?include_categories:bool
     -> ?include_over_18:bool
     -> ?include_profiles:bool
     -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit.t Listing.t call
 
   val subreddit_stylesheet
     :  ?reason:string

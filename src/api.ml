@@ -1644,20 +1644,7 @@ struct
     get ~endpoint ~params:[] (handle_json_response Submit_text.of_json)
   ;;
 
-  let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
-    let endpoint = "/api/subreddit_autocomplete" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ optional' bool "include_over_18" include_over_18
-        ; optional' bool "include_profiles" include_profiles
-        ; required' string "query" query
-        ]
-    in
-    get ~endpoint ~params return
-  ;;
-
-  let subreddit_autocomplete_v2
+  let subreddit_autocomplete
       ?limit
       ?include_categories
       ?include_over_18
@@ -1675,7 +1662,7 @@ struct
         ; required' string "query" query
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing Subreddit.of_json)
   ;;
 
   let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
