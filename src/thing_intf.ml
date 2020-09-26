@@ -4,12 +4,10 @@ module type S = sig
   type t [@@deriving sexp, bin_io]
 
   module Id : Id36.S
-  include Jsonable.S with type t := t
+  include Json_object.S_with_fields with type t := t
+  include Json_object.S_with_kind with type t := t
 
-  val get_field : t -> string -> Json.t option
-  val get_field_exn : t -> string -> Json.t
   val id : t -> Id.t
-  val field_map : t -> Json.t String.Map.t
 end
 
 module type Thing = sig

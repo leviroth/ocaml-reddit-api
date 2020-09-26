@@ -5,7 +5,7 @@ module Item : sig
 
   type t [@@deriving sexp]
 
-  include Jsonable.S with type t := t
+  include Json_object.S_with_fields with type t := t
 
   val username : t -> Username.t
   val user_id : t -> Thing.User.Id.t

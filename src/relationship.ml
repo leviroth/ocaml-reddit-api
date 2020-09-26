@@ -2,7 +2,7 @@ open! Core
 
 module Common = struct
   module Id = String
-  include Json_object_utils
+  include Json_object.Utils
 
   let of_json = Json.get_map
   let to_json t = `O (Map.to_alist t)

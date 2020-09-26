@@ -10,4 +10,4 @@ end
 
 type t = Entry.t list [@@deriving sexp]
 
-include Jsonable.S with type t := t
+include Json_object.S_with_kind with type t := t

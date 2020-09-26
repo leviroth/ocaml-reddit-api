@@ -1,7 +1,7 @@
 open! Core
 
 module Image = struct
-  include Json_object_utils
+  include Json_object.Utils
 
   let of_json json =
     match json with
@@ -14,14 +14,10 @@ module Image = struct
   let name = required_field "name" string
 end
 
-include Json_object_utils
+include Json_object.Utils
 
-include Json_object_utils.Kinded (struct
-  type nonrec t = t
-
+include Json_object.Make_kinded_simple (struct
   let kind = "stylesheet"
-  let of_data_field = Json.get_map
-  let to_data_field t = `O (Map.to_alist t)
 end)
 
 let images = required_field "images" (Json.get_list Image.of_json)

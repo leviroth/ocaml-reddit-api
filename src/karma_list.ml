@@ -1,7 +1,7 @@
 open! Core
 
 module Entry = struct
-  include Json_object_utils
+  include Json_object.Utils
 
   let of_json json =
     match json with
@@ -17,7 +17,7 @@ end
 
 type t = Entry.t list [@@deriving sexp]
 
-include Json_object_utils.Kinded (struct
+include Json_object.Make_kinded (struct
   type nonrec t = t
 
   let of_data_field json =

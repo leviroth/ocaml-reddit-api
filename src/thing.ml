@@ -5,9 +5,14 @@ module Make (Param : sig
   val kind : Thing_kind.t
 end) =
 struct
-  include Json_object_utils
+  include Json_object.Utils
 
-  let field_map = Fn.id
+  include Json_object.Make_kinded_simple (struct
+    let kind = Thing_kind.to_string Param.kind
+  end)
+
+  type t = Json.t String.Map.t [@@deriving sexp, bin_io]
+
   let module_name = Thing_kind.to_string_long Param.kind
 
   module Id = struct
@@ -26,14 +31,6 @@ struct
       let to_string = Id36.to_string
     end)
   end
-
-  include Json_object_utils.Kinded (struct
-    type t = Json_object_utils.t
-
-    let of_data_field = Json.get_map
-    let to_data_field t = `O (Map.to_alist t)
-    let kind = Thing_kind.to_string Param.kind
-  end)
 
   let id = required_field "id" (string >> Id.of_string)
   let url = optional_field "url" uri

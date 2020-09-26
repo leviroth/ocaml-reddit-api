@@ -1,8 +1,5 @@
 open! Core
-include Json_object_utils
-
-let of_json = Json.get_map
-let to_json t = `O (Map.to_alist t)
+include Json_object.Utils
 
 let submit_text markup =
   let field =

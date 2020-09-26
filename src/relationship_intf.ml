@@ -11,7 +11,7 @@ module type S = sig
 
   type t [@@deriving sexp]
 
-  include Jsonable.S with type t := t
+  include Json_object.S_with_fields with type t := t
 
   val relationship_id : t -> Id.t
   val username : t -> Username.t
