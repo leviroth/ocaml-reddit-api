@@ -1723,7 +1723,7 @@ struct
       let open Param_dsl in
       combine [ optional' bool "created" created; optional' string "location" location ]
     in
-    subreddit_about ~params "edit" return
+    subreddit_about ~params "edit" (handle_json_response Subreddit_settings.of_json)
   ;;
 
   let subreddit_rules = subreddit_about "rules" return

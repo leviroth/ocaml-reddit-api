@@ -724,7 +724,7 @@ module type S = sig
     :  ?created:bool
     -> ?location:string
     -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit_settings.t call
 
   val subreddit_rules
     :  subreddit:Subreddit_name.t

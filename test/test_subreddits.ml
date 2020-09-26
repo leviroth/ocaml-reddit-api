@@ -327,3 +327,15 @@ let%expect_test "search_users" =
           python |}];
       return ())
 ;;
+
+let%expect_test "subreddit_settings" =
+  with_cassette "subreddit_settings" ~f:(fun connection ->
+      let%bind subreddit_settings = Api.Exn.subreddit_settings connection ~subreddit in
+      print_s
+        [%sexp
+          (Subreddit_settings.get_field_exn subreddit_settings "restrict_posting"
+           |> Json.get_bool
+            : bool)];
+      [%expect {| true |}];
+      return ())
+;;
