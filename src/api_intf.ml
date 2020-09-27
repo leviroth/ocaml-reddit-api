@@ -235,14 +235,6 @@ module type Parameters = sig
       | Add
       | Remove
   end
-
-  module Comment_response : sig
-    type t =
-      { link : Thing.Link.t
-      ; comment_forest :
-          [ `Comment of Comment.t | `More_comments of More_comments.t ] Listing.t
-      }
-  end
 end
 
 module type S = sig
@@ -308,12 +300,11 @@ module type S = sig
   val unmark_nsfw : link:Link.Id.t -> unit call
 
   val more_children
-    :  ?id:More_comments.Id.t
-    -> ?limit_children:bool
+    :  ?limit_children:bool
     -> link:Link.Id.t
-    -> children:Comment.Id.t list
+    -> more_comments:More_comments.Details.By_children.t
     -> sort:Comment_sort.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> [ `Comment of Comment.t | `More_comments of More_comments.t ] list call
 
   val report
     :  ?from_modmail:bool

@@ -30,6 +30,7 @@ module type Thing = sig
     val subreddit : t -> Subreddit_name.t
     val depth : t -> int option
     val score : t -> Score.t
+    val replies : t -> [ `Comment of t | `More_comments of More_comments.t ] list
   end
 
   and User : sig
@@ -80,6 +81,21 @@ module type Thing = sig
 
   and More_comments : sig
     include S
+
+    module Details : sig
+      module By_children : sig
+        type t
+
+        val children : t -> Comment.Id.t list
+      end
+
+      type t =
+        | By_children of By_children.t
+        | By_parent of Comment.Id.t
+    end
+
+    val count : t -> int
+    val details : t -> Details.t
   end
 
   and Modmail_conversation : sig
