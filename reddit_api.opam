@@ -8,6 +8,7 @@ license: "MIT"
 homepage: "https://github.com/leviroth/reddit_api"
 bug-reports: "https://github.com/leviroth/reddit_api/issues"
 depends: [
+  "odoc" {with-doc}
   "dune" {>= "2.0" & build}
   "async" {= "v0.14.0"}
   "async_ssl" {= "v0.14.0"}

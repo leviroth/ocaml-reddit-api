@@ -34,3 +34,10 @@ jobs:
       - run: opam exec -- dune build
 
       - run: opam exec -- dune runtest
+
+      - run: opam exec -- dune build @doc
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: _build/default/_doc/_html
