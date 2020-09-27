@@ -9,3 +9,5 @@ open! Core
 include Identifiable.S
 
 val user_subreddit : Username.t -> t
+val all : t
+val combine : t list -> t

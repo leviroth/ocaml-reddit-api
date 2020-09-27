@@ -17,3 +17,5 @@ include Identifiable.Make (struct
 end)
 
 let user_subreddit username = of_string ("u_" ^ Username.to_string username)
+let all = "all"
+let combine = String.concat ~sep:"+"
