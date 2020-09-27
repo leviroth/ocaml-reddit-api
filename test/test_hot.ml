@@ -25,3 +25,31 @@ let%expect_test "hot" =
          (is_stickied true)) |}];
       return ())
 ;;
+
+let%expect_test "hot__multiple_subreddits" =
+  with_cassette "hot__multiple_subreddits" ~f:(fun connection ->
+      let subreddit =
+        List.map [ "aww"; "programming" ] ~f:Subreddit_name.of_string
+        |> Subreddit_name.combine
+      in
+      let%bind links = Api.Exn.hot ~limit:10 ~subreddit connection >>| Listing.children in
+      List.iter links ~f:(fun link ->
+          print_s
+            [%sexp
+              { subreddit : Subreddit_name.t = Thing.Link.subreddit link
+              ; id : Thing.Link.Id.t = Thing.Link.id link
+              }]);
+      [%expect
+        {|
+        ((subreddit aww) (id j0q3oj))
+        ((subreddit programming) (id j0oriz))
+        ((subreddit aww) (id j0omwl))
+        ((subreddit programming) (id j06gd7))
+        ((subreddit aww) (id j0mb8j))
+        ((subreddit aww) (id j0n001))
+        ((subreddit aww) (id j0nuzp))
+        ((subreddit aww) (id j0og2d))
+        ((subreddit aww) (id j0li9w))
+        ((subreddit aww) (id j0njcb)) |}];
+      return ())
+;;
