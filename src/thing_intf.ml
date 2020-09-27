@@ -27,6 +27,7 @@ module type Thing = sig
 
     val body : t -> string
     val author : t -> Username.t
+    val link : t -> Link.Id.t
     val subreddit : t -> Subreddit_name.t
     val depth : t -> int option
     val score : t -> Score.t

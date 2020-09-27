@@ -39,6 +39,8 @@ let%expect_test "comment_fields" =
         {| "- Textual/HTML pretty printing: https://github.com/c-cube/printbox/" |}];
       print_s [%sexp (Thing.Comment.score first_comment : Thing.Comment.Score.t)];
       [%expect {| (Score 11) |}];
+      print_s [%sexp (Thing.Comment.link first_comment : Thing.Link.Id.t)];
+      [%expect {| hle3h4 |}];
       print_s [%sexp (keys_from_info_page : String.Set.t)];
       [%expect
         {|

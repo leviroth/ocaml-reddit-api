@@ -53,6 +53,15 @@ struct
   let total_karma = karma_field "total_karma"
 end
 
+module Link = struct
+  include Make (struct
+    let kind = Thing_kind.Link
+  end)
+
+  let score = required_field "score" int
+  let subreddit = required_field "subreddit" subreddit_name
+end
+
 module Comment' = struct
   include Make (struct
     let kind = Thing_kind.Comment
@@ -75,15 +84,7 @@ module Comment' = struct
 
   let body = required_field "body" string
   let subreddit = required_field "subreddit" subreddit_name
-end
-
-module Link = struct
-  include Make (struct
-    let kind = Thing_kind.Link
-  end)
-
-  let score = required_field "score" int
-  let subreddit = required_field "subreddit" subreddit_name
+  let link = required_field "link_id" (string >> Link.Id.of_string)
 end
 
 module Message = Make (struct
