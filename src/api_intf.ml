@@ -215,7 +215,7 @@ module type Parameters = sig
       type t =
         | Permanent
         | Days of int
-      [@@deriving sexp]
+      [@@deriving sexp, compare, equal]
     end
 
     type t =

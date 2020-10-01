@@ -490,7 +490,7 @@ module Parameters = struct
       type t =
         | Permanent
         | Days of int
-      [@@deriving sexp]
+      [@@deriving sexp, compare, equal]
 
       let params_of_t t =
         [ ( "duration"
