@@ -376,19 +376,6 @@ module Parameters = struct
     ;;
   end
 
-  module Stylesheet_operation = struct
-    type t =
-      | Save
-      | Preview
-    [@@deriving sexp]
-
-    let to_string t =
-      match t with
-      | Save -> "save"
-      | Preview -> "preview"
-    ;;
-  end
-
   module Subscription_action = struct
     type t =
       | Subscribe
@@ -401,35 +388,34 @@ module Parameters = struct
     ;;
   end
 
-  module Image_type = struct
+  module Subscription_list = struct
+    type t =
+      | By_id of Subreddit.Id.t list
+      | By_name of Subreddit_name.t list
+
+    let params_of_t t =
+      match t with
+      | By_id ids ->
+        [ "sr", List.map ids ~f:(fun id -> `Subreddit id |> Thing.Fullname.to_string) ]
+      | By_name names -> [ "sr_name", List.map names ~f:Subreddit_name.to_string ]
+    ;;
+  end
+
+  module Image_file_extension = struct
     type t =
       | Png
       | Jpg
-
-    let to_string t =
-      match t with
-      | Png -> "png"
-      | Jpg -> "jpg"
-    ;;
   end
 
-  module Upload_type = struct
+  module Subreddit_image = struct
     type t =
-      | Image
+      | Stylesheet_image of { name : string }
       | Header
-      | Icon
-      | Banner
-
-    let to_string t =
-      match t with
-      | Image -> "img"
-      | Header -> "header"
-      | Icon -> "icon"
-      | Banner -> "banner"
-    ;;
+      | Mobile_icon
+      | Mobile_banner
   end
 
-  module Subreddit_search_sort = struct
+  module Relevance_or_activity = struct
     type t =
       | Relevance
       | Activity
@@ -485,7 +471,7 @@ module Parameters = struct
     ;;
   end
 
-  module Relationship = struct
+  module Relationship_spec = struct
     module Duration = struct
       type t =
         | Permanent
@@ -1492,7 +1478,7 @@ struct
 
   let search = with_listing_params search'
 
-  let about_endpoint' endpoint ~listing_params ?include_categories ?user ~subreddit =
+  let about_endpoint' endpoint k ~listing_params ?include_categories ?user ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
     let params =
       let open Param_dsl in
@@ -1502,42 +1488,44 @@ struct
         ; optional' username_ "user" user
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params k
   ;;
 
-  let about_endpoint endpoint = with_listing_params (about_endpoint' endpoint)
-  let banned = about_endpoint "banned"
-  let muted = about_endpoint "muted"
-  let wiki_banned = about_endpoint "wikibanned"
-  let contributors = about_endpoint "contributors"
-  let wiki_contributors = about_endpoint "wikicontributors"
-  let moderators = about_endpoint "moderators"
+  let about_endpoint endpoint k = with_listing_params (about_endpoint' endpoint k)
+  let banned = about_endpoint "banned" (get_listing Relationship.Ban.of_json)
+  let muted = about_endpoint "muted" (get_listing Relationship.Mute.of_json)
+  let wiki_banned = about_endpoint "wikibanned" (get_listing Relationship.Ban.of_json)
 
-  let removal_endpoints ?(extra_params = []) ~subreddit endpoint =
-    let endpoint = sprintf !"%{Subreddit_name}/api/%s" subreddit endpoint in
-    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ])
+  let contributors =
+    about_endpoint "contributors" (get_listing Relationship.Contributor.of_json)
   ;;
 
-  let delete_subreddit_banner = removal_endpoints "delete_sr_banner" return
-  let delete_subreddit_header = removal_endpoints "delete_sr_header" return
-  let delete_subreddit_icon = removal_endpoints "delete_sr_icon" return
-
-  let delete_subreddit_image ~image_name =
-    let extra_params = Param_dsl.(required' string "img_name" image_name) in
-    removal_endpoints "delete_sr_img" ~extra_params return
+  let wiki_contributors =
+    about_endpoint "wikicontributors" (get_listing Relationship.Contributor.of_json)
   ;;
 
-  let recommended ?over_18 ~subreddits =
-    let endpoint =
-      List.map subreddits ~f:Subreddit_name.to_string
-      |> String.concat ~sep:","
-      |> sprintf "/api/recommend/sr/%s"
+  let moderators =
+    about_endpoint "moderators" (get_listing Relationship.Moderator.of_json)
+  ;;
+
+  let removal_endpoints ~endpoint ~extra_params ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/api/%s" subreddit endpoint in
+    post ~endpoint ~params:(Param_dsl.combine [ api_type; extra_params ]) assert_no_errors
+  ;;
+
+  let delete_subreddit_image ~subreddit ~(image : Subreddit_image.t) =
+    let endpoint, extra_params =
+      match image with
+      | Header -> "delete_sr_header", []
+      | Mobile_icon -> "delete_sr_icon", []
+      | Mobile_banner -> "delete_sr_banner", []
+      | Stylesheet_image { name } ->
+        "delete_sr_img", Param_dsl.(required' string "img_name" name)
     in
-    let params = Param_dsl.(optional' bool "over_18" over_18) in
-    get ~endpoint ~params return
+    removal_endpoints ~endpoint ~extra_params ~subreddit
   ;;
 
-  let search_subreddit_names ?exact ?include_over_18 ?include_unadvertisable ~query =
+  let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable ~query =
     let endpoint = "/api/search_reddit_names" in
     let params =
       let open Param_dsl in
@@ -1548,7 +1536,12 @@ struct
         ; optional' bool "include_unadvertisable" include_unadvertisable
         ]
     in
-    get ~endpoint ~params return
+    get
+      ~endpoint
+      ~params
+      (handle_json_response (fun json ->
+           Json.find json [ "names" ]
+           |> Json.get_list (Fn.compose Subreddit_name.of_string Json.get_string)))
   ;;
 
   let create_or_edit_subreddit
@@ -1648,23 +1641,10 @@ struct
 
   let submit_text ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/submit_text" subreddit in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response Submit_text.of_json)
   ;;
 
-  let subreddit_autocomplete ?include_over_18 ?include_profiles ~query =
-    let endpoint = "/api/subreddit_autocomplete" in
-    let params =
-      let open Param_dsl in
-      combine
-        [ optional' bool "include_over_18" include_over_18
-        ; optional' bool "include_profiles" include_profiles
-        ; required' string "query" query
-        ]
-    in
-    get ~endpoint ~params return
-  ;;
-
-  let subreddit_autocomplete_v2
+  let subreddit_autocomplete
       ?limit
       ?include_categories
       ?include_over_18
@@ -1682,66 +1662,51 @@ struct
         ; required' string "query" query
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing Subreddit.of_json)
   ;;
 
-  let subreddit_stylesheet ?reason ~operation ~stylesheet_contents ~subreddit =
+  let set_subreddit_stylesheet ?reason ~subreddit ~stylesheet_contents =
     let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
     let params =
       let open Param_dsl in
       combine
         [ api_type
         ; optional' string "reason" reason
-        ; required' Stylesheet_operation.to_string "op" operation
+        ; (* "op" is a required parameter, but the "preview" option does nothing. *)
+          required' string "op" "save"
         ; required' string "stylesheet_contents" stylesheet_contents
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params assert_no_errors
   ;;
 
-  let subscribe ?skip_initial_defaults ~action =
+  let subscribe ?skip_initial_defaults ~action ~subreddits =
     let endpoint = "/api/subscribe" in
     let params =
       let open Param_dsl in
       combine
         [ required' Subscription_action.to_string "action" action
+        ; Subscription_list.params_of_t subreddits
         ; optional' bool "skip_initial_defaults" skip_initial_defaults
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
-  let upload_sr_img ?form_id ~file ~header ~image_type ~name ~subreddit ~upload_type =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/api/upload_sr_img" subreddit in
-    let params =
-      let header = Bool.to_int header in
-      let open Param_dsl in
-      combine
-        [ optional' string "formid" form_id
-        ; required' string "file" file
-        ; required' int "header" header
-        ; required' Image_type.to_string "img_type" image_type
-        ; required' string "name" name
-        ; required' Upload_type.to_string "upload_type" upload_type
-        ]
-    in
-    post ~endpoint ~params return
-  ;;
-
-  let search_profiles' ~listing_params ?sort ~query =
-    let endpoint = "/profiles/search" in
+  let search_users' ~listing_params ?sort ~query =
+    let endpoint = "/users/search" in
     let params =
       let open Param_dsl in
       combine
         [ listing_params
         ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params (get_listing User.of_json)
   ;;
 
-  let search_profiles = with_listing_params search_profiles'
+  let search_users = with_listing_params search_users'
 
   let about_subreddit ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/about" subreddit in
@@ -1758,7 +1723,7 @@ struct
       let open Param_dsl in
       combine [ optional' bool "created" created; optional' string "location" location ]
     in
-    subreddit_about ~params "edit" return
+    subreddit_about ~params "edit" (handle_json_response Subreddit_settings.of_json)
   ;;
 
   let subreddit_rules = subreddit_about "rules" return
@@ -1785,7 +1750,8 @@ struct
 
   let get_subreddits = with_listing_params get_subreddits'
 
-  let search_subreddits' ~listing_params ?show_users ?sort ~query =
+  let search_subreddits_by_title_and_description' ~listing_params ?show_users ?sort ~query
+    =
     let endpoint = "/subreddits/search" in
     let params =
       let open Param_dsl in
@@ -1793,13 +1759,15 @@ struct
         [ listing_params
         ; optional' bool "show_users" show_users
         ; required' string "q" query
-        ; optional' Subreddit_search_sort.to_string "sort" sort
+        ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
     get ~endpoint ~params return
   ;;
 
-  let search_subreddits = with_listing_params search_subreddits'
+  let search_subreddits_by_title_and_description =
+    with_listing_params search_subreddits_by_title_and_description'
+  ;;
 
   let list_subreddits' ~listing_params ?include_categories ?show_users ~sort =
     let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
@@ -1844,13 +1812,13 @@ struct
     =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/friend" in
     let params =
-      Relationship.Duration.params_of_t duration
-      @ Relationship.params_of_t relationship
+      Relationship_spec.Duration.params_of_t duration
+      @ Relationship_spec.params_of_t relationship
       @
       let open Param_dsl in
       combine
-        [ Relationship.Duration.params_of_t duration
-        ; Relationship.params_of_t relationship
+        [ Relationship_spec.Duration.params_of_t duration
+        ; Relationship_spec.params_of_t relationship
         ; api_type
         ; required' username_ "name" username
         ; optional' string "note" note
@@ -1867,7 +1835,7 @@ struct
     let params =
       let open Param_dsl in
       combine
-        [ Relationship.params_of_t relationship
+        [ Relationship_spec.params_of_t relationship
         ; api_type
         ; required' username_ "name" username
         ]

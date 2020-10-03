@@ -156,33 +156,33 @@ module type Parameters = sig
       | Anyone
   end
 
-  module Stylesheet_operation : sig
-    type t =
-      | Save
-      | Preview
-  end
-
   module Subscription_action : sig
     type t =
       | Subscribe
       | Unsubscribe
   end
 
-  module Image_type : sig
+  module Subscription_list : sig
+    type t =
+      | By_id of Subreddit.Id.t list
+      | By_name of Subreddit_name.t list
+  end
+
+  module Image_file_extension : sig
     type t =
       | Png
       | Jpg
   end
 
-  module Upload_type : sig
+  module Subreddit_image : sig
     type t =
-      | Image
+      | Stylesheet_image of { name : string }
       | Header
-      | Icon
-      | Banner
+      | Mobile_icon
+      | Mobile_banner
   end
 
-  module Subreddit_search_sort : sig
+  module Relevance_or_activity : sig
     type t =
       | Relevance
       | Activity
@@ -210,7 +210,7 @@ module type Parameters = sig
       | New
   end
 
-  module Relationship : sig
+  module Relationship_spec : sig
     module Duration : sig
       type t =
         | Permanent
@@ -597,72 +597,55 @@ module type S = sig
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Ban.t Listing.t call)
       with_listing_params
 
   val muted
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Mute.t Listing.t call)
       with_listing_params
 
   val wiki_banned
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Ban.t Listing.t call)
       with_listing_params
 
   val contributors
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Contributor.t Listing.t call)
       with_listing_params
 
   val wiki_contributors
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Contributor.t Listing.t call)
       with_listing_params
 
   val moderators
     : (?include_categories:bool
        -> ?user:Username.t
        -> subreddit:Subreddit_name.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Relationship.Moderator.t Listing.t call)
       with_listing_params
 
-  val delete_subreddit_banner
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val delete_subreddit_header
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val delete_subreddit_icon
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
   val delete_subreddit_image
-    :  image_name:string
-    -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    :  subreddit:Subreddit_name.t
+    -> image:Subreddit_image.t
+    -> unit call
 
-  val recommended
-    :  ?over_18:bool
-    -> subreddits:Subreddit_name.t list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val search_subreddit_names
+  val search_subreddits_by_name
     :  ?exact:bool
     -> ?include_over_18:bool
     -> ?include_unadvertisable:bool
     -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit_name.t list call
 
   val create_or_edit_subreddit
     :  ?comment_score_hide_mins:int
@@ -709,50 +692,30 @@ module type S = sig
     -> wiki_mode:Wiki_mode.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
-  val submit_text
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val submit_text : subreddit:Subreddit_name.t -> Submit_text.t call
 
   val subreddit_autocomplete
-    :  ?include_over_18:bool
-    -> ?include_profiles:bool
-    -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val subreddit_autocomplete_v2
     :  ?limit:int
     -> ?include_categories:bool
     -> ?include_over_18:bool
     -> ?include_profiles:bool
     -> query:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit.t Listing.t call
 
-  val subreddit_stylesheet
+  val set_subreddit_stylesheet
     :  ?reason:string
-    -> operation:Stylesheet_operation.t
-    -> stylesheet_contents:string
     -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> stylesheet_contents:string
+    -> unit call
 
   val subscribe
     :  ?skip_initial_defaults:bool
     -> action:Subscription_action.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> subreddits:Subscription_list.t
+    -> unit call
 
-  val upload_sr_img
-    :  ?form_id:string
-    -> file:string
-    -> header:bool
-    -> image_type:Image_type.t
-    -> name:string
-    -> subreddit:Subreddit_name.t
-    -> upload_type:Upload_type.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val search_profiles
-    : (?sort:Subreddit_search_sort.t
-       -> query:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+  val search_users
+    : (?sort:Relevance_or_activity.t -> query:string -> User.t Listing.t call)
       with_listing_params
 
   val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t call
@@ -761,7 +724,7 @@ module type S = sig
     :  ?created:bool
     -> ?location:string
     -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> Subreddit_settings.t call
 
   val subreddit_rules
     :  subreddit:Subreddit_name.t
@@ -786,9 +749,9 @@ module type S = sig
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
 
-  val search_subreddits
+  val search_subreddits_by_title_and_description
     : (?show_users:bool
-       -> ?sort:Subreddit_search_sort.t
+       -> ?sort:Relevance_or_activity.t
        -> query:string
        -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
       with_listing_params
@@ -811,9 +774,9 @@ module type S = sig
       with_listing_params
 
   val add_relationship
-    :  relationship:Relationship.t
+    :  relationship:Relationship_spec.t
     -> username:Username.t
-    -> duration:Relationship.Duration.t
+    -> duration:Relationship_spec.Duration.t
     -> ?subreddit:Subreddit_name.t
     -> ?note:string
     -> ?ban_reason:string
@@ -822,7 +785,7 @@ module type S = sig
     -> unit call
 
   val remove_relationship
-    :  relationship:Relationship.t
+    :  relationship:Relationship_spec.t
     -> username:Username.t
     -> ?subreddit:Subreddit_name.t
     -> unit call

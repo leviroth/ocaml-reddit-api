@@ -13,14 +13,10 @@ module Id = struct
   ;;
 end
 
-include Json_object_utils
+include Json_object.Utils
 
-include Json_object_utils.Kinded (struct
-  type nonrec t = t
-
+include Json_object.Make_kinded_simple (struct
   let kind = "modaction"
-  let of_data_field = Json.get_map
-  let to_data_field t = `O (Map.to_alist t)
 end)
 
 let id = required_field "id" (string >> Id.of_json_string)

@@ -52,8 +52,8 @@ let%expect_test "search" =
       return ())
 ;;
 
-let%expect_test "search_subreddits" =
-  with_cassette "search_subreddits" ~f:(fun connection ->
+let%expect_test "search__subreddits" =
+  with_cassette "search__subreddits" ~f:(fun connection ->
       let%bind links, users_and_subreddits =
         Api.Exn.search
           connection
@@ -93,8 +93,8 @@ let%expect_test "search_subreddits" =
       return ())
 ;;
 
-let%expect_test "search_all" =
-  with_cassette "search_all" ~f:(fun connection ->
+let%expect_test "search__all" =
+  with_cassette "search__all" ~f:(fun connection ->
       let%bind links, users_and_subreddits =
         Api.Exn.search
           connection
