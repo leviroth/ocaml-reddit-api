@@ -10,18 +10,18 @@ let%expect_test "hot" =
         >>| List.hd_exn
       in
       print_s
-        [%message
-          "Link attributes"
-            ~id:(Thing.Link.id link : Thing.Link.Id.t)
-            ~title:(Thing.Link.title link : string)
-            ~author:(Thing.Link.author link : Username.t)
-            ~creation_time:(Thing.Link.creation_time link : Time_ns.t)
-            ~is_stickied:(Thing.Link.is_stickied link : bool)];
+        [%sexp
+          { id : Thing.Link.Id.t = Thing.Link.id link
+          ; title : string = Thing.Link.title link
+          ; author : Username.t option = Thing.Link.author link
+          ; creation_time : Time_ns.t = Thing.Link.creation_time link
+          ; is_stickied : bool = Thing.Link.is_stickied link
+          }];
       [%expect
         {|
-        ("Link attributes" (id fa5dg9)
+        ((id fa5dg9)
          (title "/r/thirdrealm Open Discussion Thread | February 26, 2020")
-         (author BernardJOrtcutt) (creation_time (2020-02-27 02:55:31.000000000Z))
+         (author (BernardJOrtcutt)) (creation_time (2020-02-27 02:55:31.000000000Z))
          (is_stickied true)) |}];
       return ())
 ;;
