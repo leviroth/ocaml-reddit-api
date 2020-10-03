@@ -823,14 +823,14 @@ struct
   let info ?subreddit query =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
     let params = Info_query.params_of_t query in
-    get
-      ~endpoint
-      ~params
-      (get_listing (fun json ->
-           let thing = Thing.Poly.of_json json in
-           match thing with
-           | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
-           | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.Poly.t)]))
+    get ~endpoint ~params (fun response ->
+        let handle_json json =
+          let thing = Thing.Poly.of_json json in
+          match thing with
+          | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
+          | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.Poly.t)]
+        in
+        get_listing handle_json response >>| Listing.children)
   ;;
 
   let lock' ~id = simple_toggle' "lock" id ignore_empty_object
