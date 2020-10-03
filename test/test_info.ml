@@ -14,17 +14,16 @@ let%expect_test "info" =
         | _ -> raise_s [%message "Unexpected response item"]
       in
       print_s
-        [%message
-          "Link attributes"
-            ~id:(Thing.Link.id link : Thing.Link.Id.t)
-            ~title:(Thing.Link.title link : string)
-            ~author:(Thing.Link.author link : Username.t)
-            ~creation_time:(Thing.Link.creation_time link : Time_ns.t)
-            ~is_stickied:(Thing.Link.is_stickied link : bool)];
+        [%sexp
+          { id : Thing.Link.Id.t = Thing.Link.id link
+          ; title : string = Thing.Link.title link
+          ; author : Username.t option = Thing.Link.author link
+          ; creation_time : Time_ns.t = Thing.Link.creation_time link
+          ; is_stickied : bool = Thing.Link.is_stickied link
+          }];
       [%expect
         {|
-        ("Link attributes" (id hmjd8r) (title "This is a title")
-         (author BJO_test_user) (creation_time (2020-07-06 23:42:12.000000000Z))
-         (is_stickied false)) |}];
+        ((id hmjd8r) (title "This is a title") (author (BJO_test_user))
+         (creation_time (2020-07-06 23:42:12.000000000Z)) (is_stickied false)) |}];
       return ())
 ;;

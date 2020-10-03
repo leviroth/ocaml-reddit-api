@@ -41,6 +41,7 @@ module type Json_object = sig
     val optional_field : string -> (Json.t -> 'a) -> t -> 'a option
     val required_field : string -> (Json.t -> 'a) -> t -> 'a
     val ( >> ) : ('a -> 'b) -> ('b -> 'c) -> 'a -> 'c
+    val or_null : (Json.t -> 'a) -> Json.t -> 'a option
     val int : Json.value -> int
     val float : Json.value -> float
     val bool : Json.value -> bool

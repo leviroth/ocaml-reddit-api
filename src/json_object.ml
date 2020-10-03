@@ -23,6 +23,13 @@ module Utils = struct
 
   let required_field name convert t = convert (get_field_exn t name)
   let ( >> ) f g x = g (f x)
+
+  let or_null f json =
+    match json with
+    | `Null -> None
+    | json -> Some (f json)
+  ;;
+
   let int = Json.get_int
   let float = Json.get_float
   let bool = Json.get_bool

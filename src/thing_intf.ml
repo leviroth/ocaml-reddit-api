@@ -24,7 +24,7 @@ module type Thing = sig
     end
 
     val body : t -> string
-    val author : t -> Username.t
+    val author : t -> Username.t option
     val link : t -> Link.Id.t
     val subreddit : t -> Subreddit_name.t
     val depth : t -> int option
@@ -49,7 +49,7 @@ module type Thing = sig
     include S
 
     val title : t -> string
-    val author : t -> Username.t
+    val author : t -> Username.t option
     val url : t -> Uri.t option
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
@@ -60,7 +60,7 @@ module type Thing = sig
   and Message : sig
     include S
 
-    val author : t -> Username.t
+    val author : t -> Username.t option
   end
 
   and Subreddit : sig
