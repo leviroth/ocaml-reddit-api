@@ -6,7 +6,6 @@ let%expect_test "info" =
   with_cassette "info" ~f:(fun connection ->
       let%bind link =
         Api.Exn.info (Id [ `Link (Thing.Link.Id.of_string "hmjd8r") ]) connection
-        >>| Listing.children
         >>| List.hd_exn
       in
       let link =

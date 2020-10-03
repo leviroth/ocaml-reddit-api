@@ -385,7 +385,7 @@ module type S = sig
        | `Link of Thing.Link.t
        | `Subreddit of Thing.Subreddit.t
        ]
-       Listing.t
+       list
        call
 
   (** Listings *)

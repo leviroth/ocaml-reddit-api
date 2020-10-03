@@ -17,9 +17,7 @@ let%expect_test "comment_fields" =
       let comment_id = Thing.Comment.id first_comment in
       let%bind keys_from_info_page =
         match%bind
-          Api.Exn.info (Id [ `Comment comment_id ]) connection
-          >>| Listing.children
-          >>| List.hd_exn
+          Api.Exn.info (Id [ `Comment comment_id ]) connection >>| List.hd_exn
         with
         | `Comment comment -> return (Thing.Comment.field_map comment |> Map.key_set)
         | _ -> assert false
