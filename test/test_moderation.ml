@@ -2,6 +2,14 @@ open! Core
 open! Async
 open! Import
 
+let%expect_test "remove" =
+  with_cassette "remove" ~f:(fun connection ->
+      let id = `Link (Thing.Link.Id.of_string "j4z0ig") in
+      let%bind () = Api.Exn.remove connection ~id ~spam:false in
+      [%expect];
+      return ())
+;;
+
 let%expect_test "log" =
   with_cassette "log" ~f:(fun connection ->
       let%bind listing = Api.Exn.log ~limit:2 connection in

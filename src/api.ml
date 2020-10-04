@@ -1320,7 +1320,15 @@ struct
   ;;
 
   let approve ~id = simple_post_fullname_as_id "approve" id ignore_empty_object
-  let remove ~id = simple_post_fullname_as_id "remove" id ignore_empty_object
+
+  let remove ~id ~spam =
+    let endpoint = "/api/remove" in
+    let params =
+      let open Param_dsl in
+      combine [ required' fullname_ "id" id; required' bool "spam" spam ]
+    in
+    post ~endpoint ~params ignore_empty_object
+  ;;
 
   let distinguish ?sticky ~id ~how =
     let endpoint = "/api/distinguish" in
