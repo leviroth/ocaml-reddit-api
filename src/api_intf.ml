@@ -546,7 +546,11 @@ module type S = sig
     -> (Cohttp.Response.t * Cohttp_async.Body.t) call
 
   val approve : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-  val remove : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+
+  val remove
+    :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+    -> spam:bool
+    -> unit call
 
   val distinguish
     :  ?sticky:bool
