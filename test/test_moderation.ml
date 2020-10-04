@@ -10,6 +10,15 @@ let%expect_test "remove" =
       return ())
 ;;
 
+let%expect_test "distinguish" =
+  with_cassette "distinguish" ~f:(fun connection ->
+      let id = `Comment (Thing.Comment.Id.of_string "g7ol4ce") in
+      let%bind comment = Api.Exn.distinguish connection ~id ~how:Mod in
+      print_s [%sexp (Thing.Poly.fullname comment : Thing.Fullname.t)];
+      [%expect {| (Comment g7ol4ce) |}];
+      return ())
+;;
+
 let%expect_test "log" =
   with_cassette "log" ~f:(fun connection ->
       let%bind listing = Api.Exn.log ~limit:2 connection in

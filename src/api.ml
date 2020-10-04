@@ -1335,7 +1335,8 @@ struct
     let params =
       let open Param_dsl in
       combine
-        [ How_to_distinguish.params_of_t how
+        [ api_type
+        ; How_to_distinguish.params_of_t how
         ; required' fullname_ "id" id
         ; optional' bool "sticky" sticky
         ]
