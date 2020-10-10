@@ -63,6 +63,7 @@ module Link = struct
 
   let score = required_field "score" int
   let subreddit = required_field "subreddit" subreddit_name
+  let domain = required_field "domain" string
 end
 
 module Comment' = struct

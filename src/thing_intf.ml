@@ -54,6 +54,7 @@ module type Thing = sig
     val author : t -> Username.t option
     val url : t -> Uri.t option
     val permalink : t -> Uri.t
+    val domain : t -> string
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t
