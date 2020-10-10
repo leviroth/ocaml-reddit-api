@@ -48,6 +48,10 @@ struct
   let awarder_karma = karma_field "awarder_karma"
   let awardee_karma = karma_field "awardee_karma"
   let total_karma = karma_field "total_karma"
+
+  let moderator_reports =
+    required_field "mod_reports" (Json.get_list Moderator_report.of_json)
+  ;;
 end
 
 module Link = struct

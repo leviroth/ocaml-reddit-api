@@ -30,6 +30,7 @@ module type Thing = sig
     val depth : t -> int option
     val score : t -> Score.t
     val replies : t -> [ `Comment of t | `More_comments of More_comments.t ] list
+    val moderator_reports : t -> Moderator_report.t list
   end
 
   and User : sig
@@ -55,6 +56,7 @@ module type Thing = sig
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t
     val score : t -> int
+    val moderator_reports : t -> Moderator_report.t list
   end
 
   and Message : sig
