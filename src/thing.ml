@@ -48,6 +48,12 @@ struct
   let awarder_karma = karma_field "awarder_karma"
   let awardee_karma = karma_field "awardee_karma"
   let total_karma = karma_field "total_karma"
+
+  let moderator_reports =
+    required_field "mod_reports" (Json.get_list Moderator_report.of_json)
+  ;;
+
+  let permalink = required_field "permalink" (string >> Uri.of_string)
 end
 
 module Link = struct
@@ -57,6 +63,7 @@ module Link = struct
 
   let score = required_field "score" int
   let subreddit = required_field "subreddit" subreddit_name
+  let domain = required_field "domain" string
 end
 
 module Comment' = struct
