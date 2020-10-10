@@ -52,6 +52,8 @@ struct
   let moderator_reports =
     required_field "mod_reports" (Json.get_list Moderator_report.of_json)
   ;;
+
+  let permalink = required_field "permalink" (string >> Uri.of_string)
 end
 
 module Link = struct

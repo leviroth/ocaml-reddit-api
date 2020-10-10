@@ -26,6 +26,7 @@ module type Thing = sig
     val body : t -> string
     val author : t -> Username.t option
     val link : t -> Link.Id.t
+    val permalink : t -> Uri.t
     val subreddit : t -> Subreddit_name.t
     val depth : t -> int option
     val score : t -> Score.t
@@ -52,6 +53,7 @@ module type Thing = sig
     val title : t -> string
     val author : t -> Username.t option
     val url : t -> Uri.t option
+    val permalink : t -> Uri.t
     val subreddit : t -> Subreddit_name.t
     val is_stickied : t -> bool
     val creation_time : t -> Time_ns.t
