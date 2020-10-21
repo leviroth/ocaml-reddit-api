@@ -25,6 +25,7 @@ module type Thing = sig
 
     val body : t -> string
     val author : t -> Username.t option
+    val creation_time : t -> Time_ns.t
     val link : t -> Link.Id.t
     val permalink : t -> Uri.t
     val subreddit : t -> Subreddit_name.t
