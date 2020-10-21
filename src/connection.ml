@@ -378,7 +378,7 @@ module Remote = struct
         include Uri
         module Binable = String
 
-        let to_binable = Uri.to_string
+        let to_binable v = Uri.to_string v
         let of_binable = Uri.of_string
 
         let caller_identity =
