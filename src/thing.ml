@@ -53,7 +53,13 @@ struct
     required_field "mod_reports" (Json.get_list Moderator_report.of_json)
   ;;
 
-  let permalink = required_field "permalink" (string >> Uri.of_string)
+  let permalink =
+    required_field
+      "permalink"
+      (string
+      >> Uri.of_string
+      >> Uri.with_uri ~scheme:(Some "https") ~host:(Some "reddit.com"))
+  ;;
 end
 
 module Link = struct
