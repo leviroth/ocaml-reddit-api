@@ -34,7 +34,7 @@ struct
 
   let id = required_field "id" (string >> Id.of_string)
   let url = optional_field "url" uri
-  let author = required_field "author" (or_null username)
+  let author = required_field "author" (string >> Username.of_string_or_deleted)
   let title = required_field "title" string
   let description = required_field "description" string
   let is_stickied = required_field "stickied" bool

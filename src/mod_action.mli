@@ -20,4 +20,4 @@ val target_title : t -> string
 val target_fullname : t -> Thing.Fullname.t
 val target_permalink : t -> Uri.t
 val subreddit_name : t -> Subreddit_name.t
-val moderator : t -> Username.t
+val moderator : t -> Username.t option

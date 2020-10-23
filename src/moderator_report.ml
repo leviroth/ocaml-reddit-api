@@ -7,7 +7,10 @@ type t =
 
 let of_json json =
   let report, moderator =
-    Json.get_pair Json.get_string Json_object.Utils.(or_null username) json
+    Json.get_pair
+      Json.get_string
+      Json_object.Utils.(string >> Username.of_string_or_deleted)
+      json
   in
   { report; moderator }
 ;;
