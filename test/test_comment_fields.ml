@@ -39,6 +39,8 @@ let%expect_test "comment_fields" =
       [%expect {| (Score 11) |}];
       print_s [%sexp (Thing.Comment.link first_comment : Thing.Link.Id.t)];
       [%expect {| hle3h4 |}];
+      print_s [%sexp (Thing.Comment.permalink first_comment |> Uri.to_string : string)];
+      [%expect {| /r/ocaml/comments/hle3h4/ocaml_is_superbly_suited_to_defining_and/fwzc1p0/ |}];
       print_s [%sexp (keys_from_info_page : String.Set.t)];
       [%expect
         {|
