@@ -13,3 +13,9 @@ include Identifiable.Make (struct
     |> Option.value ~default:string
   ;;
 end)
+
+let of_string_or_deleted string =
+  match string with
+  | "[deleted]" -> None
+  | _ -> Some (of_string string)
+;;

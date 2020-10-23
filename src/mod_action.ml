@@ -27,4 +27,4 @@ let target_title = required_field "target_title" string
 let target_fullname = required_field "target_fullname" (string >> Thing.Fullname.of_string)
 let target_permalink = required_field "target_permalink" uri
 let subreddit_name = required_field "subreddit_name" subreddit_name
-let moderator = required_field "moderator" username
+let moderator = required_field "moderator" (string >> Username.of_string_or_deleted)

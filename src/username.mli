@@ -6,3 +6,5 @@
 
 open! Core
 include Identifiable.S
+
+val of_string_or_deleted : string -> t option
