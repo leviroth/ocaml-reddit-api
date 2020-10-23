@@ -35,6 +35,12 @@ module type Parameters = sig
     [@@deriving sexp]
   end
 
+  module Modmail_recipient : sig
+    type t =
+      | User of Username.t
+      | Internal
+  end
+
   module Link_kind : sig
     module Self_post_body : sig
       type t =
@@ -576,7 +582,7 @@ module type S = sig
     :  subject:string
     -> body:string
     -> subreddit:Subreddit_name.t
-    -> to_:Username.t
+    -> to_:Modmail_recipient.t
     -> hide_author:bool
     -> Modmail.Conversation.t call
 

@@ -125,6 +125,18 @@ module Parameters = struct
     ;;
   end
 
+  module Modmail_recipient = struct
+    type t =
+      | User of Username.t
+      | Internal
+
+    let params_of_t t =
+      match t with
+      | Internal -> []
+      | User user -> [ "to", [ Param_dsl.username_ user ] ]
+    ;;
+  end
+
   module Link_kind = struct
     module Self_post_body = struct
       type t =
@@ -1390,7 +1402,7 @@ struct
       combine
         [ required' string "subject" subject
         ; required' string "body" body
-        ; required' username_ "to" to_
+        ; Modmail_recipient.params_of_t to_
         ; required' Subreddit_name.to_string "srName" subreddit
         ; required' Bool.to_string "isAuthorHidden" hide_author
         ]

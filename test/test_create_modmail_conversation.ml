@@ -9,7 +9,7 @@ let%expect_test "create_modmail_conversation" =
           ~subject:"Test subject"
           ~body:"Test body"
           ~subreddit:(Subreddit_name.of_string "ThirdRealm")
-          ~to_:(Username.of_string "BJO_test_user")
+          ~to_:(User (Username.of_string "BJO_test_user"))
           ~hide_author:false
           connection
       in
