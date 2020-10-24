@@ -743,7 +743,7 @@ module type S = sig
   val get_subreddits
     : (?include_categories:bool
        -> relationship:Subreddit_relationship.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   val search_subreddits_by_title_and_description

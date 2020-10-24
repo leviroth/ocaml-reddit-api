@@ -407,3 +407,15 @@ let%expect_test "subreddit_sticky" =
       [%expect {| jhgtn4 |}];
       return ())
 ;;
+
+let%expect_test "get_subreddits" =
+  with_cassette "get_subreddits" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.get_subreddits connection ~relationship:Moderator
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect {| (ThirdRealm u_BJO_test_user) |}];
+      return ())
+;;

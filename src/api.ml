@@ -1771,7 +1771,7 @@ struct
       let open Param_dsl in
       combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let get_subreddits = with_listing_params get_subreddits'
