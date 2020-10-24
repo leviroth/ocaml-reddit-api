@@ -1755,8 +1755,6 @@ struct
     subreddit_about "traffic" (handle_json_response Subreddit_traffic.of_json)
   ;;
 
-  let subreddit_sidebar = subreddit_about "sidebar" return
-
   let sticky ?number ~subreddit =
     let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
     let params =
