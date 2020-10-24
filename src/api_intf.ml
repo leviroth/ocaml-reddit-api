@@ -757,7 +757,7 @@ module type S = sig
     : (?include_categories:bool
        -> ?show_users:bool
        -> sort:Subreddit_listing_sort.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   (** Users *)

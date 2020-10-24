@@ -437,3 +437,20 @@ let%expect_test "search_subreddits_by_title_and_description" =
            gamedev HowToHack) |}];
       return ())
 ;;
+
+let%expect_test "list_subreddits" =
+  with_cassette "list_subreddits" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.list_subreddits connection ~sort:Popular
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect
+        {|
+          (Home AskReddit PublicFreakout pics politics news worldnews funny
+           NoStupidQuestions nextfuckinglevel leagueoflegends tifu interestingasfuck
+           relationship_advice modernwarfare videos AnimalCrossing gaming aww
+           todayilearned gtaonline Minecraft memes gifs Art) |}];
+      return ())
+;;

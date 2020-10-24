@@ -1805,7 +1805,7 @@ struct
         ; optional' bool "show_users" show_users
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let about_user ~username =
