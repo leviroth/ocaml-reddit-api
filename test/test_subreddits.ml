@@ -419,3 +419,21 @@ let%expect_test "get_subreddits" =
       [%expect {| (ThirdRealm u_BJO_test_user) |}];
       return ())
 ;;
+
+let%expect_test "search_subreddits_by_title_and_description" =
+  with_cassette "search_subreddits_by_title_and_description" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.search_subreddits_by_title_and_description connection ~query:"python"
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect
+        {|
+          (Python algotrading raspberry_pi montypython shittyprogramming vim
+           MachineLearning pythontips learnpython learnprogramming snakes
+           programmingcirclejerk ballpython ProgrammerTIL linux emacs programming
+           datascience WTF EliteDangerous coding coolgithubprojects todayilearned
+           gamedev HowToHack) |}];
+      return ())
+;;

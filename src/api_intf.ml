@@ -750,7 +750,7 @@ module type S = sig
     : (?show_users:bool
        -> ?sort:Relevance_or_activity.t
        -> query:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   val list_subreddits

@@ -1788,7 +1788,7 @@ struct
         ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let search_subreddits_by_title_and_description =
