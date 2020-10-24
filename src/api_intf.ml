@@ -736,41 +736,28 @@ module type S = sig
     -> subreddit:Subreddit_name.t
     -> Subreddit_settings.t call
 
-  val subreddit_rules
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val subreddit_traffic
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val subreddit_sidebar
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
-
-  val sticky
-    :  ?number:int
-    -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val subreddit_rules : subreddit:Subreddit_name.t -> Subreddit_rules.t call
+  val subreddit_traffic : subreddit:Subreddit_name.t -> Subreddit_traffic.t call
+  val get_sticky : ?number:int -> subreddit:Subreddit_name.t -> Link.Id.t call
 
   val get_subreddits
     : (?include_categories:bool
        -> relationship:Subreddit_relationship.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   val search_subreddits_by_title_and_description
     : (?show_users:bool
        -> ?sort:Relevance_or_activity.t
        -> query:string
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   val list_subreddits
     : (?include_categories:bool
        -> ?show_users:bool
        -> sort:Subreddit_listing_sort.t
-       -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+       -> Subreddit.t Listing.t call)
       with_listing_params
 
   (** Users *)

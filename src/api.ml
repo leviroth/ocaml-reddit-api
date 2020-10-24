@@ -1172,30 +1172,31 @@ struct
 
   let controversial = with_listing_params controversial'
 
+  let link_id_from_redirect (response, (_ : Cohttp_async.Body.t)) =
+    let () =
+      match Cohttp.Response.status response with
+      | `Found -> ()
+      | status ->
+        raise_s
+          [%message
+            "Unexpected HTTP response code"
+              (status : Cohttp.Code.status_code)
+              (response : Cohttp.Response.t)]
+    in
+    let uri =
+      Cohttp.Response.headers response |> Cohttp.Header.get_location |> Option.value_exn
+    in
+    let id =
+      match Uri.path uri |> String.split ~on:'/' with
+      | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> Link.Id.of_string id
+      | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
+    in
+    return id
+  ;;
+
   let random ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
-    let get_link_id (response, (_ : Cohttp_async.Body.t)) =
-      let () =
-        match Cohttp.Response.status response with
-        | `Found -> ()
-        | status ->
-          raise_s
-            [%message
-              "Unexpected HTTP response code"
-                (status : Cohttp.Code.status_code)
-                (response : Cohttp.Response.t)]
-      in
-      let uri =
-        Cohttp.Response.headers response |> Cohttp.Header.get_location |> Option.value_exn
-      in
-      let id =
-        match Uri.path uri |> String.split ~on:'/' with
-        | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> Link.Id.of_string id
-        | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
-      in
-      return id
-    in
-    get ~endpoint ~params:[] get_link_id
+    get ~endpoint ~params:[] link_id_from_redirect
   ;;
 
   let block_author ~id = simple_post_fullname_as_id "block" id ignore_empty_object
@@ -1747,17 +1748,21 @@ struct
     subreddit_about ~params "edit" (handle_json_response Subreddit_settings.of_json)
   ;;
 
-  let subreddit_rules = subreddit_about "rules" return
-  let subreddit_traffic = subreddit_about "traffic" return
-  let subreddit_sidebar = subreddit_about "sidebar" return
+  let subreddit_rules =
+    subreddit_about "rules" (handle_json_response Subreddit_rules.of_json)
+  ;;
 
-  let sticky ?number ~subreddit =
-    let endpoint = sprintf !"/r/%{Subreddit_name}/sticky" subreddit in
+  let subreddit_traffic =
+    subreddit_about "traffic" (handle_json_response Subreddit_traffic.of_json)
+  ;;
+
+  let get_sticky ?number ~subreddit =
+    let endpoint = sprintf !"/r/%{Subreddit_name}/about/sticky" subreddit in
     let params =
       let open Param_dsl in
       combine [ optional' int "num" number ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params link_id_from_redirect
   ;;
 
   let get_subreddits' ~listing_params ?include_categories ~relationship =
@@ -1766,7 +1771,7 @@ struct
       let open Param_dsl in
       combine [ listing_params; optional' bool "include_categories" include_categories ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let get_subreddits = with_listing_params get_subreddits'
@@ -1783,7 +1788,7 @@ struct
         ; optional' Relevance_or_activity.to_string "sort" sort
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let search_subreddits_by_title_and_description =
@@ -1800,7 +1805,7 @@ struct
         ; optional' bool "show_users" show_users
         ]
     in
-    get ~endpoint ~params return
+    get ~endpoint ~params get_subreddit_listing
   ;;
 
   let about_user ~username =

@@ -339,3 +339,118 @@ let%expect_test "subreddit_settings" =
       [%expect {| true |}];
       return ())
 ;;
+
+let%expect_test "subreddit_rules" =
+  with_cassette "subreddit_rules" ~f:(fun connection ->
+      let%bind rules = Api.Exn.subreddit_rules connection ~subreddit in
+      List.iter (Subreddit_rules.subreddit_rules rules) ~f:(fun rule ->
+          let open Subreddit_rules.Rule in
+          print_s
+            [%sexp
+              { kind : Kind.t = kind rule
+              ; description : string = description rule `markdown
+              ; short_name : string = short_name rule
+              ; report_reason : string = report_reason rule
+              ; creation_time : Time_ns.t = creation_time rule
+              ; priority : int = priority rule
+              }]);
+      [%expect
+        {|
+          ((kind All) (description "Rule 1 - details") (short_name "Rule 1")
+           (report_reason "Rule 1 - report reason")
+           (creation_time (2016-01-26 06:41:52.000000000Z)) (priority 0))
+          ((kind Link) (description "Rule 2 - details") (short_name "Rule 2")
+           (report_reason "Rule 2 - report reason")
+           (creation_time (2016-06-13 01:38:34.000000000Z)) (priority 1))
+          ((kind Comment) (description "Rule 3 - details - with *markdown*.")
+           (short_name "Rule 3") (report_reason "Rule 3 - report reason")
+           (creation_time (2016-11-15 03:13:28.000000000Z)) (priority 2)) |}];
+      ignore (Subreddit_rules.site_rules rules : Json.t);
+      ignore (Subreddit_rules.site_rules_flow rules : Json.t);
+      return ())
+;;
+
+let%expect_test "subreddit_traffic" =
+  with_cassette "subreddit_traffic" ~f:(fun connection ->
+      let%bind traffic = Api.Exn.subreddit_traffic connection ~subreddit in
+      let by_date = List.take (Subreddit_traffic.by_date traffic) 4 in
+      print_s [%sexp (by_date : Subreddit_traffic.By_date.t list)];
+      [%expect
+        {|
+          (((date 2020-10-24) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-23) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-22) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-21) (uniques 1) (pageviews 7) (subscriptions 0))) |}];
+      let by_month = List.take (Subreddit_traffic.by_month traffic) 4 in
+      print_s [%sexp (by_month : Subreddit_traffic.By_month.t list)];
+      [%expect
+        {|
+          (((year 2020) (month Oct) (uniques 3) (pageviews 215))
+           ((year 2020) (month Sep) (uniques 3) (pageviews 114))
+           ((year 2020) (month Aug) (uniques 2) (pageviews 58))
+           ((year 2020) (month Jul) (uniques 5) (pageviews 154))) |}];
+      let by_hour = List.take (Subreddit_traffic.by_hour traffic) 4 in
+      print_s [%sexp (by_hour : Subreddit_traffic.By_hour.t list)];
+      [%expect
+        {|
+          (((hour (2020-10-24 17:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 16:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 15:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 14:00:00.000000000Z)) (uniques 0) (pageviews 0))) |}];
+      return ())
+;;
+
+let%expect_test "subreddit_sticky" =
+  with_cassette "subreddit_sticky" ~f:(fun connection ->
+      let%bind sticky_id = Api.Exn.get_sticky ~number:2 connection ~subreddit in
+      print_s [%sexp (sticky_id : Thing.Link.Id.t)];
+      [%expect {| jhgtn4 |}];
+      return ())
+;;
+
+let%expect_test "get_subreddits" =
+  with_cassette "get_subreddits" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.get_subreddits connection ~relationship:Moderator
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect {| (ThirdRealm u_BJO_test_user) |}];
+      return ())
+;;
+
+let%expect_test "search_subreddits_by_title_and_description" =
+  with_cassette "search_subreddits_by_title_and_description" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.search_subreddits_by_title_and_description connection ~query:"python"
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect
+        {|
+          (Python algotrading raspberry_pi montypython shittyprogramming vim
+           MachineLearning pythontips learnpython learnprogramming snakes
+           programmingcirclejerk ballpython ProgrammerTIL linux emacs programming
+           datascience WTF EliteDangerous coding coolgithubprojects todayilearned
+           gamedev HowToHack) |}];
+      return ())
+;;
+
+let%expect_test "list_subreddits" =
+  with_cassette "list_subreddits" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.list_subreddits connection ~sort:Popular
+        >>| Listing.children
+        >>| List.map ~f:Thing.Subreddit.name
+      in
+      print_s [%sexp (subreddits : Subreddit_name.t list)];
+      [%expect
+        {|
+          (Home AskReddit PublicFreakout pics politics news worldnews funny
+           NoStupidQuestions nextfuckinglevel leagueoflegends tifu interestingasfuck
+           relationship_advice modernwarfare videos AnimalCrossing gaming aww
+           todayilearned gtaonline Minecraft memes gifs Art) |}];
+      return ())
+;;
