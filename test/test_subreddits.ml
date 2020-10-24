@@ -369,3 +369,33 @@ let%expect_test "subreddit_rules" =
       ignore (Subreddit_rules.site_rules_flow rules : Json.t);
       return ())
 ;;
+
+let%expect_test "subreddit_traffic" =
+  with_cassette "subreddit_traffic" ~f:(fun connection ->
+      let%bind traffic = Api.Exn.subreddit_traffic connection ~subreddit in
+      let by_date = List.take (Subreddit_traffic.by_date traffic) 4 in
+      print_s [%sexp (by_date : Subreddit_traffic.By_date.t list)];
+      [%expect
+        {|
+          (((date 2020-10-24) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-23) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-22) (uniques 0) (pageviews 0) (subscriptions 0))
+           ((date 2020-10-21) (uniques 1) (pageviews 7) (subscriptions 0))) |}];
+      let by_month = List.take (Subreddit_traffic.by_month traffic) 4 in
+      print_s [%sexp (by_month : Subreddit_traffic.By_month.t list)];
+      [%expect
+        {|
+          (((year 2020) (month Oct) (uniques 3) (pageviews 215))
+           ((year 2020) (month Sep) (uniques 3) (pageviews 114))
+           ((year 2020) (month Aug) (uniques 2) (pageviews 58))
+           ((year 2020) (month Jul) (uniques 5) (pageviews 154))) |}];
+      let by_hour = List.take (Subreddit_traffic.by_hour traffic) 4 in
+      print_s [%sexp (by_hour : Subreddit_traffic.By_hour.t list)];
+      [%expect
+        {|
+          (((hour (2020-10-24 17:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 16:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 15:00:00.000000000Z)) (uniques 0) (pageviews 0))
+           ((hour (2020-10-24 14:00:00.000000000Z)) (uniques 0) (pageviews 0))) |}];
+      return ())
+;;

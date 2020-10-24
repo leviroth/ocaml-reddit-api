@@ -1751,7 +1751,10 @@ struct
     subreddit_about "rules" (handle_json_response Subreddit_rules.of_json)
   ;;
 
-  let subreddit_traffic = subreddit_about "traffic" return
+  let subreddit_traffic =
+    subreddit_about "traffic" (handle_json_response Subreddit_traffic.of_json)
+  ;;
+
   let subreddit_sidebar = subreddit_about "sidebar" return
 
   let sticky ?number ~subreddit =

@@ -737,10 +737,7 @@ module type S = sig
     -> Subreddit_settings.t call
 
   val subreddit_rules : subreddit:Subreddit_name.t -> Subreddit_rules.t call
-
-  val subreddit_traffic
-    :  subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val subreddit_traffic : subreddit:Subreddit_name.t -> Subreddit_traffic.t call
 
   val subreddit_sidebar
     :  subreddit:Subreddit_name.t
