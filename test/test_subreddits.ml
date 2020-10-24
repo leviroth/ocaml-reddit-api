@@ -399,3 +399,11 @@ let%expect_test "subreddit_traffic" =
            ((hour (2020-10-24 14:00:00.000000000Z)) (uniques 0) (pageviews 0))) |}];
       return ())
 ;;
+
+let%expect_test "subreddit_sticky" =
+  with_cassette "subreddit_sticky" ~f:(fun connection ->
+      let%bind sticky_id = Api.Exn.get_sticky ~number:2 connection ~subreddit in
+      print_s [%sexp (sticky_id : Thing.Link.Id.t)];
+      [%expect {| jhgtn4 |}];
+      return ())
+;;

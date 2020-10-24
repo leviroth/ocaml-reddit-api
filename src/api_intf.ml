@@ -738,11 +738,7 @@ module type S = sig
 
   val subreddit_rules : subreddit:Subreddit_name.t -> Subreddit_rules.t call
   val subreddit_traffic : subreddit:Subreddit_name.t -> Subreddit_traffic.t call
-
-  val sticky
-    :  ?number:int
-    -> subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val get_sticky : ?number:int -> subreddit:Subreddit_name.t -> Link.Id.t call
 
   val get_subreddits
     : (?include_categories:bool
