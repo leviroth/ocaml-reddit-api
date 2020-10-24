@@ -1747,7 +1747,10 @@ struct
     subreddit_about ~params "edit" (handle_json_response Subreddit_settings.of_json)
   ;;
 
-  let subreddit_rules = subreddit_about "rules" return
+  let subreddit_rules =
+    subreddit_about "rules" (handle_json_response Subreddit_rules.of_json)
+  ;;
+
   let subreddit_traffic = subreddit_about "traffic" return
   let subreddit_sidebar = subreddit_about "sidebar" return
 

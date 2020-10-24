@@ -339,3 +339,33 @@ let%expect_test "subreddit_settings" =
       [%expect {| true |}];
       return ())
 ;;
+
+let%expect_test "subreddit_rules" =
+  with_cassette "subreddit_rules" ~f:(fun connection ->
+      let%bind rules = Api.Exn.subreddit_rules connection ~subreddit in
+      List.iter (Subreddit_rules.subreddit_rules rules) ~f:(fun rule ->
+          let open Subreddit_rules.Rule in
+          print_s
+            [%sexp
+              { kind : Kind.t = kind rule
+              ; description : string = description rule `markdown
+              ; short_name : string = short_name rule
+              ; report_reason : string = report_reason rule
+              ; creation_time : Time_ns.t = creation_time rule
+              ; priority : int = priority rule
+              }]);
+      [%expect
+        {|
+          ((kind All) (description "Rule 1 - details") (short_name "Rule 1")
+           (report_reason "Rule 1 - report reason")
+           (creation_time (2016-01-26 06:41:52.000000000Z)) (priority 0))
+          ((kind Link) (description "Rule 2 - details") (short_name "Rule 2")
+           (report_reason "Rule 2 - report reason")
+           (creation_time (2016-06-13 01:38:34.000000000Z)) (priority 1))
+          ((kind Comment) (description "Rule 3 - details - with *markdown*.")
+           (short_name "Rule 3") (report_reason "Rule 3 - report reason")
+           (creation_time (2016-11-15 03:13:28.000000000Z)) (priority 2)) |}];
+      ignore (Subreddit_rules.site_rules rules : Json.t);
+      ignore (Subreddit_rules.site_rules_flow rules : Json.t);
+      return ())
+;;
