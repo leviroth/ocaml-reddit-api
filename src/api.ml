@@ -1969,7 +1969,7 @@ struct
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
     in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response Wiki_page.Permissions.of_json)
   ;;
 
   let set_wiki_permissions

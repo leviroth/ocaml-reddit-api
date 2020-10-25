@@ -815,9 +815,7 @@ module type S = sig
   val wiki_page_revisions
     : (page:Wiki_page.Id.t -> Wiki_page.Revision.t Listing.t call) with_listing_params
 
-  val wiki_permissions
-    :  page:Wiki_page.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val wiki_permissions : page:Wiki_page.Id.t -> Wiki_page.Permissions.t call
 
   val set_wiki_permissions
     :  listed:bool

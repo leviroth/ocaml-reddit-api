@@ -128,3 +128,22 @@ let%expect_test "subreddit_wiki_revisions" =
            (timestamp (2020-10-25 15:30:02.000000000Z)) (hidden false)) |}];
       return ())
 ;;
+
+let%expect_test "wiki_permissions" =
+  with_cassette "wiki_permissions" ~f:(fun connection ->
+      let%bind permissions = Api.Exn.wiki_permissions connection ~page in
+      print_s
+        [%sexp
+          { level : Wiki_page.Permissions.Level.t =
+              Wiki_page.Permissions.level permissions
+          ; contributors : Username.t list =
+              Wiki_page.Permissions.contributors permissions
+              |> List.map ~f:Thing.User.name
+          ; listed : bool = Wiki_page.Permissions.listed permissions
+          }];
+      [%expect
+        {|
+          ((level Only_approved_contributors_for_this_page)
+           (contributors (L72_Elite_Kraken)) (listed true)) |}];
+      return ())
+;;
