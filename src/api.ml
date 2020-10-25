@@ -524,18 +524,6 @@ module Parameters = struct
 
     let params_of_t t = [ "type", [ to_string t ] ]
   end
-
-  module Add_or_remove = struct
-    type t =
-      | Add
-      | Remove
-
-    let to_string t =
-      match t with
-      | Add -> "add"
-      | Remove -> "del"
-    ;;
-  end
 end
 
 module Api_error = struct
@@ -1869,22 +1857,19 @@ struct
     post ~endpoint ~params ignore_success_response
   ;;
 
-  let add_or_remove_wiki_editor
-      ~add_or_remove
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-      ~user
-    =
-    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/alloweditor/act" in
+  let add_or_remove_wiki_editor ~act ~page:({ subreddit; page } : Wiki_page.Id.t) ~user =
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/api/wiki/alloweditor/%s" act)
+    in
     let params =
       let open Param_dsl in
-      combine
-        [ required' Add_or_remove.to_string "act" add_or_remove
-        ; required' string "page" page
-        ; required' username_ "username" user
-        ]
+      combine [ required' string "page" page; required' username_ "username" user ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
+
+  let add_wiki_editor = add_or_remove_wiki_editor ~act:"add"
+  let remove_wiki_editor = add_or_remove_wiki_editor ~act:"del"
 
   let edit_wiki_page
       ?previous

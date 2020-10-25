@@ -235,12 +235,6 @@ module type Parameters = sig
       | Wiki_contributor
     [@@deriving sexp]
   end
-
-  module Add_or_remove : sig
-    type t =
-      | Add
-      | Remove
-  end
 end
 
 module type S = sig
@@ -789,11 +783,8 @@ module type S = sig
 
   (** Wiki *)
 
-  val add_or_remove_wiki_editor
-    :  add_or_remove:Add_or_remove.t
-    -> page:Wiki_page.Id.t
-    -> user:Username.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
+  val remove_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
 
   val edit_wiki_page
     :  ?previous:Uuid.t
