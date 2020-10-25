@@ -147,3 +147,18 @@ let%expect_test "wiki_permissions" =
            (contributors (L72_Elite_Kraken)) (listed true)) |}];
       return ())
 ;;
+
+let%expect_test "set_wiki_permissions" =
+  with_cassette "set_wiki_permissions" ~f:(fun connection ->
+      let%bind permissions =
+        Api.Exn.set_wiki_permissions ~level:Only_moderators ~listed:true connection ~page
+      in
+      print_s
+        [%sexp
+          { level : Wiki_page.Permissions.Level.t =
+              Wiki_page.Permissions.level permissions
+          ; listed : bool = Wiki_page.Permissions.listed permissions
+          }];
+      [%expect {| ((level Only_moderators) (listed true)) |}];
+      return ())
+;;

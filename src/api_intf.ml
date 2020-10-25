@@ -818,10 +818,10 @@ module type S = sig
   val wiki_permissions : page:Wiki_page.Id.t -> Wiki_page.Permissions.t call
 
   val set_wiki_permissions
-    :  listed:bool
-    -> page:Wiki_page.Id.t
-    -> permission_level:int
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    :  page:Wiki_page.Id.t
+    -> listed:bool
+    -> level:Wiki_page.Permissions.Level.t
+    -> Wiki_page.Permissions.t call
 
   val wiki_page
     :  ?compare_revisions:string option * string option

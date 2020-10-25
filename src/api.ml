@@ -1972,11 +1972,7 @@ struct
     get ~endpoint ~params:[] (handle_json_response Wiki_page.Permissions.of_json)
   ;;
 
-  let set_wiki_permissions
-      ~listed
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-      ~permission_level
-    =
+  let set_wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) ~listed ~level =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
     in
@@ -1985,10 +1981,10 @@ struct
       combine
         [ required' bool "listed" listed
         ; required' string "page" page
-        ; required' int "permlevel" permission_level
+        ; required' (Fn.compose int Wiki_page.Permissions.Level.to_int) "permlevel" level
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params (handle_json_response Wiki_page.Permissions.of_json)
   ;;
 
   let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
