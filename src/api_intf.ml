@@ -235,12 +235,6 @@ module type Parameters = sig
       | Wiki_contributor
     [@@deriving sexp]
   end
-
-  module Add_or_remove : sig
-    type t =
-      | Add
-      | Remove
-  end
 end
 
 module type S = sig
@@ -789,14 +783,11 @@ module type S = sig
 
   (** Wiki *)
 
-  val add_or_remove_wiki_editor
-    :  add_or_remove:Add_or_remove.t
-    -> page:Wiki_page.Id.t
-    -> user:Username.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
+  val remove_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
 
   val edit_wiki_page
-    :  ?previous:Uuid.t
+    :  ?previous:Wiki_page.Revision.Id.t
     -> ?reason:string
     -> content:string
     -> page:Wiki_page.Id.t
@@ -804,39 +795,33 @@ module type S = sig
 
   val toggle_wiki_revision_visibility
     :  page:Wiki_page.Id.t
-    -> revision:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> revision:Wiki_page.Revision.Id.t
+    -> [ `Became_hidden | `Became_visible ] call
 
   val revert_wiki_page
     :  page:Wiki_page.Id.t
-    -> revision:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> revision:Wiki_page.Revision.Id.t
+    -> unit call
 
   val wiki_discussions
-    : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
+    : (page:Wiki_page.Id.t -> Link.t Listing.t call) with_listing_params
 
-  val wiki_pages
-    :  ?subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val wiki_pages : ?subreddit:Subreddit_name.t -> string list call
 
   val subreddit_wiki_revisions
-    : (?subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
+    : (?subreddit:Subreddit_name.t -> Wiki_page.Revision.t Listing.t call)
       with_listing_params
 
   val wiki_page_revisions
-    : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
+    : (page:Wiki_page.Id.t -> Wiki_page.Revision.t Listing.t call) with_listing_params
 
-  val wiki_permissions
-    :  page:Wiki_page.Id.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val wiki_permissions : page:Wiki_page.Id.t -> Wiki_page.Permissions.t call
 
   val set_wiki_permissions
-    :  listed:bool
-    -> page:Wiki_page.Id.t
-    -> permission_level:int
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    :  page:Wiki_page.Id.t
+    -> listed:bool
+    -> level:Wiki_page.Permissions.Level.t
+    -> Wiki_page.Permissions.t call
 
   val wiki_page
     :  ?compare_revisions:string option * string option

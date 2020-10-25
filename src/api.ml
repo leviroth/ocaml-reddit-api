@@ -524,18 +524,6 @@ module Parameters = struct
 
     let params_of_t t = [ "type", [ to_string t ] ]
   end
-
-  module Add_or_remove = struct
-    type t =
-      | Add
-      | Remove
-
-    let to_string t =
-      match t with
-      | Add -> "add"
-      | Remove -> "del"
-    ;;
-  end
 end
 
 module Api_error = struct
@@ -1869,22 +1857,19 @@ struct
     post ~endpoint ~params ignore_success_response
   ;;
 
-  let add_or_remove_wiki_editor
-      ~add_or_remove
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-      ~user
-    =
-    let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/alloweditor/act" in
+  let add_or_remove_wiki_editor ~act ~page:({ subreddit; page } : Wiki_page.Id.t) ~user =
+    let endpoint =
+      optional_subreddit_endpoint ?subreddit (sprintf "/api/wiki/alloweditor/%s" act)
+    in
     let params =
       let open Param_dsl in
-      combine
-        [ required' Add_or_remove.to_string "act" add_or_remove
-        ; required' string "page" page
-        ; required' username_ "username" user
-        ]
+      combine [ required' string "page" page; required' username_ "username" user ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
+
+  let add_wiki_editor = add_or_remove_wiki_editor ~act:"add"
+  let remove_wiki_editor = add_or_remove_wiki_editor ~act:"del"
 
   let edit_wiki_page
       ?previous
@@ -1898,7 +1883,7 @@ struct
       combine
         [ required' string "content" content
         ; required' string "page" page
-        ; optional' Uuid.to_string "previous" previous
+        ; optional' Wiki_page.Revision.Id.to_string "previous" previous
         ; optional' string "reason" reason
         ]
     in
@@ -1917,37 +1902,56 @@ struct
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/hide" in
     let params =
       let open Param_dsl in
-      combine [ required' string "page" page; required' string "revision" revision ]
+      combine
+        [ required' string "page" page
+        ; required' Wiki_page.Revision.Id.to_string "revision" revision
+        ]
     in
-    post ~endpoint ~params return
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (function
+          | `O [ ("status", `Bool true) ] -> `Became_hidden
+          | `O [ ("status", `Bool false) ] -> `Became_visible
+          | json ->
+            raise_s
+              [%message
+                "Unexpected toggle_wiki_revision_visibility response" (json : Json.t)]))
   ;;
 
   let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/revert" in
     let params =
       let open Param_dsl in
-      combine [ required' string "page" page; required' string "revision" revision ]
+      combine
+        [ required' string "page" page
+        ; required' Wiki_page.Revision.Id.to_string "revision" revision
+        ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let wiki_discussions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/discussions/%s" page)
     in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params get_link_listing
   ;;
 
   let wiki_discussions = with_listing_params wiki_discussions'
 
   let wiki_pages ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/pages" in
-    get ~endpoint ~params:[] return
+    get
+      ~endpoint
+      ~params:[]
+      (handle_json_response (fun json ->
+           Json.find json [ "data" ] |> Json.get_list Json.get_string))
   ;;
 
   let subreddit_wiki_revisions' ~listing_params ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params (get_listing Wiki_page.Revision.of_json)
   ;;
 
   let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'
@@ -1956,7 +1960,7 @@ struct
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/revisions/%s" page)
     in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params (get_listing Wiki_page.Revision.of_json)
   ;;
 
   let wiki_page_revisions = with_listing_params wiki_page_revisions'
@@ -1965,14 +1969,10 @@ struct
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
     in
-    get ~endpoint ~params:[] return
+    get ~endpoint ~params:[] (handle_json_response Wiki_page.Permissions.of_json)
   ;;
 
-  let set_wiki_permissions
-      ~listed
-      ~page:({ subreddit; page } : Wiki_page.Id.t)
-      ~permission_level
-    =
+  let set_wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) ~listed ~level =
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/settings/%s" page)
     in
@@ -1981,10 +1981,10 @@ struct
       combine
         [ required' bool "listed" listed
         ; required' string "page" page
-        ; required' int "permlevel" permission_level
+        ; required' (Fn.compose int Wiki_page.Permissions.Level.to_int) "permlevel" level
         ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params (handle_json_response Wiki_page.Permissions.of_json)
   ;;
 
   let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
