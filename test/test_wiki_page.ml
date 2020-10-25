@@ -21,3 +21,16 @@ let%expect_test "remove_wiki_editor" =
         ~page
         ~user:(Username.of_string "L72_Elite_Kraken"))
 ;;
+
+let%expect_test "toggle_wiki_revision_visibility" =
+  with_cassette "toggle_wiki_revision_visibility" ~f:(fun connection ->
+      let%bind result =
+        Api.Exn.toggle_wiki_revision_visibility
+          connection
+          ~page
+          ~revision:(Uuid.of_string "8048c97c-52ba-11e7-ab00-0ad38c20ef7e")
+      in
+      print_s [%sexp (result : [ `Became_hidden | `Became_visible ])];
+      [%expect {| Became_hidden |}];
+      return ())
+;;

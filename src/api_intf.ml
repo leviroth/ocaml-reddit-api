@@ -795,8 +795,8 @@ module type S = sig
 
   val toggle_wiki_revision_visibility
     :  page:Wiki_page.Id.t
-    -> revision:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+    -> revision:Uuid.t
+    -> [ `Became_hidden | `Became_visible ] call
 
   val revert_wiki_page
     :  page:Wiki_page.Id.t

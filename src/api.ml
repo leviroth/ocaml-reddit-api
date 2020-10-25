@@ -1902,9 +1902,19 @@ struct
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/hide" in
     let params =
       let open Param_dsl in
-      combine [ required' string "page" page; required' string "revision" revision ]
+      combine
+        [ required' string "page" page; required' Uuid.to_string "revision" revision ]
     in
-    post ~endpoint ~params return
+    post
+      ~endpoint
+      ~params
+      (handle_json_response (function
+          | `O [ ("status", `Bool true) ] -> `Became_hidden
+          | `O [ ("status", `Bool false) ] -> `Became_visible
+          | json ->
+            raise_s
+              [%message
+                "Unexpected toggle_wiki_revision_visibility response" (json : Json.t)]))
   ;;
 
   let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
