@@ -1951,7 +1951,7 @@ struct
 
   let subreddit_wiki_revisions' ~listing_params ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params (get_listing Wiki_page.Revision.of_json)
   ;;
 
   let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'

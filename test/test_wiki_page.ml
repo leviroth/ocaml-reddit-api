@@ -103,3 +103,28 @@ let%expect_test "wiki_pages" =
          wiki/index) |}];
       return ())
 ;;
+
+let%expect_test "subreddit_wiki_revisions" =
+  with_cassette "subreddit_wiki_revisions" ~f:(fun connection ->
+      let%bind revisions =
+        Api.Exn.subreddit_wiki_revisions ~subreddit ~limit:1 connection
+        >>| Listing.children
+      in
+      List.iter revisions ~f:(fun revision ->
+          print_s
+            [%sexp
+              { author : Username.t option =
+                  Wiki_page.Revision.author revision |> Option.map ~f:Thing.User.name
+              ; page_name : string = Wiki_page.Revision.page_name revision
+              ; id : Wiki_page.Revision.Id.t = Wiki_page.Revision.id revision
+              ; reason : string option = Wiki_page.Revision.reason revision
+              ; timestamp : Time_ns.t = Wiki_page.Revision.timestamp revision
+              ; hidden : bool = Wiki_page.Revision.hidden revision
+              }]);
+      [%expect
+        {|
+          ((author (BJO_test_user)) (page_name index)
+           (id f36c8b31-16d6-11eb-9cbb-0e03a79c97b5) (reason ("reverted back 3 years"))
+           (timestamp (2020-10-25 15:30:02.000000000Z)) (hidden false)) |}];
+      return ())
+;;
