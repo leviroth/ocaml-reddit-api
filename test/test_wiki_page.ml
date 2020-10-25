@@ -81,3 +81,14 @@ let%expect_test "wiki_page_revisions" =
            (timestamp (2017-06-16 16:32:24.000000000Z)) (hidden false)) |}];
       return ())
 ;;
+
+let%expect_test "wiki_discussions" =
+  with_cassette "wiki_discussions" ~f:(fun connection ->
+      let%bind discussions =
+        Api.Exn.wiki_discussions connection ~page >>| Listing.children
+      in
+      List.iter discussions ~f:(fun link ->
+          print_s [%sexp (Thing.Link.id link : Thing.Link.Id.t)]);
+      [%expect {| jhvugk |}];
+      return ())
+;;

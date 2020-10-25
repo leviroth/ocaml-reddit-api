@@ -1935,7 +1935,7 @@ struct
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/discussions/%s" page)
     in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params get_link_listing
   ;;
 
   let wiki_discussions = with_listing_params wiki_discussions'

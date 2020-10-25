@@ -804,8 +804,7 @@ module type S = sig
     -> unit call
 
   val wiki_discussions
-    : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)
-      with_listing_params
+    : (page:Wiki_page.Id.t -> Link.t Listing.t call) with_listing_params
 
   val wiki_pages
     :  ?subreddit:Subreddit_name.t
