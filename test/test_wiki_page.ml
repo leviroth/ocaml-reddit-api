@@ -34,3 +34,11 @@ let%expect_test "toggle_wiki_revision_visibility" =
       [%expect {| Became_hidden |}];
       return ())
 ;;
+
+let%expect_test "revert_wiki_page" =
+  with_cassette "revert_wiki_page" ~f:(fun connection ->
+      Api.Exn.revert_wiki_page
+        connection
+        ~page
+        ~revision:(Uuid.of_string "e4d3d130-52b9-11e7-9d0c-0e1b806ed802"))
+;;

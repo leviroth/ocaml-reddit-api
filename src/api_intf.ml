@@ -798,10 +798,7 @@ module type S = sig
     -> revision:Uuid.t
     -> [ `Became_hidden | `Became_visible ] call
 
-  val revert_wiki_page
-    :  page:Wiki_page.Id.t
-    -> revision:string
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val revert_wiki_page : page:Wiki_page.Id.t -> revision:Uuid.t -> unit call
 
   val wiki_discussions
     : (page:Wiki_page.Id.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)

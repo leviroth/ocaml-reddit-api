@@ -1921,9 +1921,10 @@ struct
     let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/revert" in
     let params =
       let open Param_dsl in
-      combine [ required' string "page" page; required' string "revision" revision ]
+      combine
+        [ required' string "page" page; required' Uuid.to_string "revision" revision ]
     in
-    post ~endpoint ~params return
+    post ~endpoint ~params ignore_empty_object
   ;;
 
   let wiki_discussions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
