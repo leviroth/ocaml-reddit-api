@@ -2,9 +2,8 @@ open! Core
 open! Async
 open! Import
 
-let page : Wiki_page.Id.t =
-  { subreddit = Some (Subreddit_name.of_string "ThirdRealm"); page = "index" }
-;;
+let subreddit = Subreddit_name.of_string "ThirdRealm"
+let page : Wiki_page.Id.t = { subreddit = Some subreddit; page = "index" }
 
 let%expect_test "add_wiki_editor" =
   with_cassette "add_wiki_editor" ~f:(fun connection ->
@@ -90,5 +89,17 @@ let%expect_test "wiki_discussions" =
       List.iter discussions ~f:(fun link ->
           print_s [%sexp (Thing.Link.id link : Thing.Link.Id.t)]);
       [%expect {| jhvugk |}];
+      return ())
+;;
+
+let%expect_test "wiki_pages" =
+  with_cassette "wiki_pages" ~f:(fun connection ->
+      let%bind pages = Api.Exn.wiki_pages ~subreddit connection in
+      print_s [%sexp (pages : string list)];
+      [%expect
+        {|
+        (config/automoderator config/description config/sidebar config/stylesheet
+         config/submit_text index praw_test_page tbsettings toolbox usernotes
+         wiki/index) |}];
       return ())
 ;;

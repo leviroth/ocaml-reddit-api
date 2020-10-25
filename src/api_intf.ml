@@ -806,9 +806,7 @@ module type S = sig
   val wiki_discussions
     : (page:Wiki_page.Id.t -> Link.t Listing.t call) with_listing_params
 
-  val wiki_pages
-    :  ?subreddit:Subreddit_name.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) call
+  val wiki_pages : ?subreddit:Subreddit_name.t -> string list call
 
   val subreddit_wiki_revisions
     : (?subreddit:Subreddit_name.t -> (Cohttp.Response.t * Cohttp_async.Body.t) call)

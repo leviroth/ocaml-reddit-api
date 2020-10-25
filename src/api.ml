@@ -1942,7 +1942,11 @@ struct
 
   let wiki_pages ?subreddit =
     let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/pages" in
-    get ~endpoint ~params:[] return
+    get
+      ~endpoint
+      ~params:[]
+      (handle_json_response (fun json ->
+           Json.find json [ "data" ] |> Json.get_list Json.get_string))
   ;;
 
   let subreddit_wiki_revisions' ~listing_params ?subreddit =
