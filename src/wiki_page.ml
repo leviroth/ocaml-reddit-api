@@ -8,6 +8,25 @@ module Id = struct
   [@@deriving sexp]
 end
 
+module Revision = struct
+  include Json_object.Utils
+
+  module Id = struct
+    include Uuid
+    include Uuid.Unstable
+
+    let of_uuid = ident
+    let to_uuid = ident
+  end
+
+  let page_name = required_field "page" string
+  let id = required_field "id" (string >> Id.of_string)
+  let reason = optional_field "reason" string
+  let timestamp = required_field "timestamp" time
+  let hidden = required_field "revision_hidden" bool
+  let author = optional_field "author" Thing.User.of_json
+end
+
 include Json_object.Utils
 
 include Json_object.Make_kinded_simple (struct
@@ -37,5 +56,5 @@ module Edit_conflict = struct
   let message = required_field "message" string
   let new_content = required_field "newcontent" string
   let new_revision = required_field "newrevision" (string >> Uuid.of_string)
-  let reason = required_field "reason" string
+  let reason = optional_field "reason" string
 end

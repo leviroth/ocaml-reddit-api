@@ -1883,7 +1883,7 @@ struct
       combine
         [ required' string "content" content
         ; required' string "page" page
-        ; optional' Uuid.to_string "previous" previous
+        ; optional' Wiki_page.Revision.Id.to_string "previous" previous
         ; optional' string "reason" reason
         ]
     in
@@ -1903,7 +1903,9 @@ struct
     let params =
       let open Param_dsl in
       combine
-        [ required' string "page" page; required' Uuid.to_string "revision" revision ]
+        [ required' string "page" page
+        ; required' Wiki_page.Revision.Id.to_string "revision" revision
+        ]
     in
     post
       ~endpoint
@@ -1922,7 +1924,9 @@ struct
     let params =
       let open Param_dsl in
       combine
-        [ required' string "page" page; required' Uuid.to_string "revision" revision ]
+        [ required' string "page" page
+        ; required' Wiki_page.Revision.Id.to_string "revision" revision
+        ]
     in
     post ~endpoint ~params ignore_empty_object
   ;;
@@ -1952,7 +1956,7 @@ struct
     let endpoint =
       optional_subreddit_endpoint ?subreddit (sprintf "/wiki/revisions/%s" page)
     in
-    get ~endpoint ~params:listing_params return
+    get ~endpoint ~params:listing_params (get_listing Wiki_page.Revision.of_json)
   ;;
 
   let wiki_page_revisions = with_listing_params wiki_page_revisions'
