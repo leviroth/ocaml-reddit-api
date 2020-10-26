@@ -69,6 +69,7 @@ module type Parameters = sig
       | Id of
           [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
           list
+      | Subreddit_name of Subreddit_name.t list
       | Url of Uri.t
     [@@deriving sexp]
   end

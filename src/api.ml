@@ -189,12 +189,15 @@ module Parameters = struct
       | Id of
           [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
           list
+      | Subreddit_name of Subreddit_name.t list
       | Url of Uri_sexp.t
     [@@deriving sexp]
 
     let params_of_t t =
       match t with
       | Id fullnames -> [ "id", List.map fullnames ~f:Param_dsl.fullname_ ]
+      | Subreddit_name subreddits ->
+        [ "sr_name", List.map subreddits ~f:Subreddit_name.to_string ]
       | Url uri -> [ "url", [ Uri.to_string uri ] ]
     ;;
   end
