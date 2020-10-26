@@ -27,3 +27,20 @@ let%expect_test "info" =
          (creation_time (2020-07-06 23:42:12.000000000Z)) (is_stickied false)) |}];
       return ())
 ;;
+
+let%expect_test "info__by_subreddit_name" =
+  with_cassette "info__by_subreddit_name" ~f:(fun connection ->
+      let%bind subreddits =
+        Api.Exn.info
+          (Subreddit_name
+             (List.map [ "ocaml"; "redditdev"; "python" ] ~f:Subreddit_name.of_string))
+          connection
+        >>| List.map ~f:(function
+                | `Subreddit subreddit -> subreddit
+                | _ -> raise_s [%message "Unexpected response item"])
+      in
+      print_s
+        [%sexp (List.map subreddits ~f:Thing.Subreddit.name : Subreddit_name.t list)];
+      [%expect {| (redditdev ocaml Python) |}];
+      return ())
+;;
