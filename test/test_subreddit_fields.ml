@@ -5,7 +5,9 @@ open! Import
 let%expect_test "subreddit_fields" =
   with_cassette "subreddit_fields" ~f:(fun connection ->
       let%bind subreddit =
-        Api.Exn.about_subreddit ~subreddit:(Subreddit_name.of_string "ocaml") connection
+        Connection.call_exn
+          connection
+          (Api.about_subreddit ~subreddit:(Subreddit_name.of_string "ocaml") ())
       in
       print_s [%sexp (Thing.Subreddit.name subreddit : Subreddit_name.t)];
       [%expect {| ocaml |}];

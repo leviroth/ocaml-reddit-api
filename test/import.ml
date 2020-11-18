@@ -1,7 +1,7 @@
 open! Core
 open! Async
 module Expect_test_config = Expect_test_config_with_unit_expect
-include Reddit_api
+include Reddit_api_async
 
 let () = Time_ns.set_sexp_zone Time_ns.Zone.utc
 

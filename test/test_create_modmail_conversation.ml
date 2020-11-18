@@ -5,13 +5,15 @@ open! Import
 let%expect_test "create_modmail_conversation" =
   with_cassette "create_modmail_conversation" ~f:(fun connection ->
       let%bind conversation =
-        Api.Exn.create_modmail_conversation
-          ~subject:"Test subject"
-          ~body:"Test body"
-          ~subreddit:(Subreddit_name.of_string "ThirdRealm")
-          ~to_:(User (Username.of_string "BJO_test_user"))
-          ~hide_author:false
+        Connection.call_exn
           connection
+          (Api.create_modmail_conversation
+             ~subject:"Test subject"
+             ~body:"Test body"
+             ~subreddit:(Subreddit_name.of_string "ThirdRealm")
+             ~to_:(User (Username.of_string "BJO_test_user"))
+             ~hide_author:false
+             ())
       in
       print_s [%sexp (conversation : Modmail.Conversation.t)];
       [%expect

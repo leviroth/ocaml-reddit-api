@@ -25,9 +25,13 @@ jobs:
         with:
           ocaml-version: ${{ matrix.ocaml-version }}
 
-      - run: opam pin add reddit_api.dev . --no-action
+      - run: opam pin add reddit_api_kernel.dev . --no-action
 
-      - run: opam depext reddit_api --yes --with-doc
+      - run: opam pin add reddit_api_async.dev . --no-action
+
+      - run: opam depext reddit_api_kernel --yes --with-doc
+
+      - run: opam depext reddit_api_async --yes --with-doc
 
       - run: opam install . --deps-only --with-doc --with-test
 

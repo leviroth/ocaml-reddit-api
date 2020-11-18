@@ -5,7 +5,9 @@ open! Import
 let%expect_test "info" =
   with_cassette "info" ~f:(fun connection ->
       let%bind link =
-        Api.Exn.info (Id [ `Link (Thing.Link.Id.of_string "hmjd8r") ]) connection
+        Connection.call_exn
+          connection
+          (Api.info (Id [ `Link (Thing.Link.Id.of_string "hmjd8r") ]) ())
         >>| List.hd_exn
       in
       let link =
@@ -31,10 +33,12 @@ let%expect_test "info" =
 let%expect_test "info__by_subreddit_name" =
   with_cassette "info__by_subreddit_name" ~f:(fun connection ->
       let%bind subreddits =
-        Api.Exn.info
-          (Subreddit_name
-             (List.map [ "ocaml"; "redditdev"; "python" ] ~f:Subreddit_name.of_string))
+        Connection.call_exn
           connection
+          (Api.info
+             (Subreddit_name
+                (List.map [ "ocaml"; "redditdev"; "python" ] ~f:Subreddit_name.of_string))
+             ())
         >>| List.map ~f:(function
                 | `Subreddit subreddit -> subreddit
                 | _ -> raise_s [%message "Unexpected response item"])

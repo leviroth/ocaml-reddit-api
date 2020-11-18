@@ -4,7 +4,7 @@ open! Import
 
 let%expect_test _ =
   with_cassette "trophies" ~f:(fun connection ->
-      let%bind trophies = Api.Exn.trophies connection in
+      let%bind trophies = Connection.call_exn connection (Api.trophies ()) in
       print_s [%message "" (trophies : Thing.Award.t list)];
       [%expect
         {|

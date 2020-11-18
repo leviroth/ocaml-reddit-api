@@ -6,7 +6,7 @@ let%expect_test "comment_fields" =
   with_cassette "comment_fields" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hle3h4" in
       let%bind ({ comment_forest; _ } : Comment_response.t) =
-        Api.Exn.comments connection ~link
+        Connection.call_exn connection (Api.comments () ~link)
       in
       let first_comment =
         match List.hd_exn comment_forest with
@@ -17,7 +17,8 @@ let%expect_test "comment_fields" =
       let comment_id = Thing.Comment.id first_comment in
       let%bind keys_from_info_page =
         match%bind
-          Api.Exn.info (Id [ `Comment comment_id ]) connection >>| List.hd_exn
+          Connection.call_exn connection (Api.info (Id [ `Comment comment_id ]) ())
+          >>| List.hd_exn
         with
         | `Comment comment -> return (Thing.Comment.field_map comment |> Map.key_set)
         | _ -> assert false

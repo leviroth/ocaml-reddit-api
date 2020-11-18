@@ -5,7 +5,9 @@ open! Import
 let%expect_test "hot" =
   with_cassette "hot" ~f:(fun connection ->
       let%bind link =
-        Api.Exn.hot ~limit:1 ~subreddit:(Subreddit_name.of_string "ThirdRealm") connection
+        Connection.call_exn
+          connection
+          (Api.hot ~limit:1 ~subreddit:(Subreddit_name.of_string "ThirdRealm") ())
         >>| Listing.children
         >>| List.hd_exn
       in
@@ -32,7 +34,10 @@ let%expect_test "hot__multiple_subreddits" =
         List.map [ "aww"; "programming" ] ~f:Subreddit_name.of_string
         |> Subreddit_name.combine
       in
-      let%bind links = Api.Exn.hot ~limit:10 ~subreddit connection >>| Listing.children in
+      let%bind links =
+        Connection.call_exn connection (Api.hot ~limit:10 ~subreddit ())
+        >>| Listing.children
+      in
       List.iter links ~f:(fun link ->
           print_s
             [%sexp

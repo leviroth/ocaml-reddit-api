@@ -5,7 +5,9 @@ open! Import
 let%expect_test "user_fields" =
   with_cassette "user_fields" ~f:(fun connection ->
       let%bind user =
-        Api.Exn.about_user ~username:(Username.of_string "spez") connection
+        Connection.call_exn
+          connection
+          (Api.about_user ~username:(Username.of_string "spez") ())
       in
       print_s [%sexp (Thing.User.name user : Username.t)];
       [%expect {| spez |}];
