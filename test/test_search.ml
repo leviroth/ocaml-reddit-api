@@ -18,7 +18,9 @@ let print_users_and_subreddits listing =
 
 let%expect_test "search" =
   with_cassette "search" ~f:(fun connection ->
-      let%bind links, users_and_subreddits = Api.Exn.search connection ~query:"ocaml" in
+      let%bind links, users_and_subreddits =
+        Connection.call_exn connection (Api.search () ~query:"ocaml")
+      in
       print_links links;
       [%expect
         {|
@@ -55,10 +57,12 @@ let%expect_test "search" =
 let%expect_test "search__subreddits" =
   with_cassette "search__subreddits" ~f:(fun connection ->
       let%bind links, users_and_subreddits =
-        Api.Exn.search
+        Connection.call_exn
           connection
-          ~types:(Api.Parameters.Search_type.Set.singleton Subreddit)
-          ~query:"ocaml"
+          (Api.search
+             ()
+             ~types:(Api.Parameters.Search_type.Set.singleton Subreddit)
+             ~query:"ocaml")
       in
       print_links links;
       [%expect];
@@ -96,10 +100,12 @@ let%expect_test "search__subreddits" =
 let%expect_test "search__all" =
   with_cassette "search__all" ~f:(fun connection ->
       let%bind links, users_and_subreddits =
-        Api.Exn.search
+        Connection.call_exn
           connection
-          ~types:Api.Parameters.Search_type.(Set.of_list all)
-          ~query:"spez"
+          (Api.search
+             ()
+             ~types:Api.Parameters.Search_type.(Set.of_list all)
+             ~query:"spez")
       in
       print_links links;
       [%expect

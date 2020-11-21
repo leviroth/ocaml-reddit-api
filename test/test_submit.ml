@@ -7,11 +7,9 @@ let%expect_test "submit" =
       let title = "Test post title" in
       let subreddit = Subreddit_name.of_string "ThirdRealm" in
       let%bind id, uri =
-        Api.Exn.submit
+        Connection.call_exn
           connection
-          ~title
-          ~subreddit
-          ~kind:(Self (Markdown "This is a post body."))
+          (Api.submit () ~title ~subreddit ~kind:(Self (Markdown "This is a post body.")))
       in
       print_s
         [%message
@@ -28,11 +26,13 @@ let%expect_test "submit__crosspost" =
       let title = "Crosspost" in
       let subreddit = Subreddit_name.of_string "ThirdRealm" in
       let%bind id, uri =
-        Api.Exn.submit
+        Connection.call_exn
           connection
-          ~title
-          ~subreddit
-          ~kind:(Crosspost (Thing.Link.Id.of_string "box80e"))
+          (Api.submit
+             ()
+             ~title
+             ~subreddit
+             ~kind:(Crosspost (Thing.Link.Id.of_string "box80e")))
       in
       print_s
         [%message

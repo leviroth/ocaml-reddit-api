@@ -7,28 +7,28 @@ let page : Wiki_page.Id.t = { subreddit = Some subreddit; page = "index" }
 
 let%expect_test "add_wiki_editor" =
   with_cassette "add_wiki_editor" ~f:(fun connection ->
-      Api.Exn.add_wiki_editor
+      Connection.call_exn
         connection
-        ~page
-        ~user:(Username.of_string "L72_Elite_Kraken"))
+        (Api.add_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "remove_wiki_editor" =
   with_cassette "remove_wiki_editor" ~f:(fun connection ->
-      Api.Exn.remove_wiki_editor
+      Connection.call_exn
         connection
-        ~page
-        ~user:(Username.of_string "L72_Elite_Kraken"))
+        (Api.remove_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "toggle_wiki_revision_visibility" =
   with_cassette "toggle_wiki_revision_visibility" ~f:(fun connection ->
       let%bind result =
-        Api.Exn.toggle_wiki_revision_visibility
+        Connection.call_exn
           connection
-          ~page
-          ~revision:
-            (Wiki_page.Revision.Id.of_string "8048c97c-52ba-11e7-ab00-0ad38c20ef7e")
+          (Api.toggle_wiki_revision_visibility
+             ()
+             ~page
+             ~revision:
+               (Wiki_page.Revision.Id.of_string "8048c97c-52ba-11e7-ab00-0ad38c20ef7e"))
       in
       print_s [%sexp (result : [ `Became_hidden | `Became_visible ])];
       [%expect {| Became_hidden |}];
@@ -37,23 +37,28 @@ let%expect_test "toggle_wiki_revision_visibility" =
 
 let%expect_test "revert_wiki_page" =
   with_cassette "revert_wiki_page" ~f:(fun connection ->
-      Api.Exn.revert_wiki_page
+      Connection.call_exn
         connection
-        ~page
-        ~revision:(Wiki_page.Revision.Id.of_string "e4d3d130-52b9-11e7-9d0c-0e1b806ed802"))
+        (Api.revert_wiki_page
+           ()
+           ~page
+           ~revision:
+             (Wiki_page.Revision.Id.of_string "e4d3d130-52b9-11e7-9d0c-0e1b806ed802")))
 ;;
 
 let%expect_test "wiki_page_revisions" =
   with_cassette "wiki_page_revisions" ~f:(fun connection ->
       let%bind revisions =
-        Api.Exn.wiki_page_revisions
-          ~pagination:
-            (After
-               (Listing.Page_id.of_string
-                  "WikiRevision_bde92910-52b1-11e7-bf40-120ea8b0860a"))
-          ~limit:3
+        Connection.call_exn
           connection
-          ~page
+          (Api.wiki_page_revisions
+             ~pagination:
+               (After
+                  (Listing.Page_id.of_string
+                     "WikiRevision_bde92910-52b1-11e7-bf40-120ea8b0860a"))
+             ~limit:3
+             ()
+             ~page)
         >>| Listing.children
       in
       List.iter revisions ~f:(fun revision ->
@@ -84,7 +89,8 @@ let%expect_test "wiki_page_revisions" =
 let%expect_test "wiki_discussions" =
   with_cassette "wiki_discussions" ~f:(fun connection ->
       let%bind discussions =
-        Api.Exn.wiki_discussions connection ~page >>| Listing.children
+        Connection.call_exn connection (Api.wiki_discussions () ~page)
+        >>| Listing.children
       in
       List.iter discussions ~f:(fun link ->
           print_s [%sexp (Thing.Link.id link : Thing.Link.Id.t)]);
@@ -94,7 +100,7 @@ let%expect_test "wiki_discussions" =
 
 let%expect_test "wiki_pages" =
   with_cassette "wiki_pages" ~f:(fun connection ->
-      let%bind pages = Api.Exn.wiki_pages ~subreddit connection in
+      let%bind pages = Connection.call_exn connection (Api.wiki_pages ~subreddit ()) in
       print_s [%sexp (pages : string list)];
       [%expect
         {|
@@ -107,7 +113,9 @@ let%expect_test "wiki_pages" =
 let%expect_test "subreddit_wiki_revisions" =
   with_cassette "subreddit_wiki_revisions" ~f:(fun connection ->
       let%bind revisions =
-        Api.Exn.subreddit_wiki_revisions ~subreddit ~limit:1 connection
+        Connection.call_exn
+          connection
+          (Api.subreddit_wiki_revisions ~subreddit ~limit:1 ())
         >>| Listing.children
       in
       List.iter revisions ~f:(fun revision ->
@@ -131,7 +139,9 @@ let%expect_test "subreddit_wiki_revisions" =
 
 let%expect_test "wiki_permissions" =
   with_cassette "wiki_permissions" ~f:(fun connection ->
-      let%bind permissions = Api.Exn.wiki_permissions connection ~page in
+      let%bind permissions =
+        Connection.call_exn connection (Api.wiki_permissions () ~page)
+      in
       print_s
         [%sexp
           { level : Wiki_page.Permissions.Level.t =
@@ -151,7 +161,9 @@ let%expect_test "wiki_permissions" =
 let%expect_test "set_wiki_permissions" =
   with_cassette "set_wiki_permissions" ~f:(fun connection ->
       let%bind permissions =
-        Api.Exn.set_wiki_permissions ~level:Only_moderators ~listed:true connection ~page
+        Connection.call_exn
+          connection
+          (Api.set_wiki_permissions ~level:Only_moderators ~listed:true () ~page)
       in
       print_s
         [%sexp

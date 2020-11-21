@@ -8,7 +8,7 @@ let subreddit = Subreddit_name.of_string "ThirdRealm"
 let%expect_test "banned" =
   with_cassette "banned" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.banned connection ~subreddit
+        Connection.call_exn connection (Api.banned () ~subreddit)
         >>| Listing.children
         >>| List.iter ~f:(fun ban ->
                 print_s
@@ -35,7 +35,7 @@ let%expect_test "banned" =
 let%expect_test "muted" =
   with_cassette "muted" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.muted connection ~subreddit
+        Connection.call_exn connection (Api.muted () ~subreddit)
         >>| Listing.children
         >>| List.iter ~f:(fun mute ->
                 print_s
@@ -57,7 +57,7 @@ let%expect_test "muted" =
 let%expect_test "wiki_banned" =
   with_cassette "wiki_banned" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.wiki_banned connection ~subreddit
+        Connection.call_exn connection (Api.wiki_banned () ~subreddit)
         >>| Listing.children
         >>| List.iter ~f:(fun ban ->
                 print_s
@@ -80,7 +80,7 @@ let%expect_test "wiki_banned" =
 let%expect_test "contributors" =
   with_cassette "contributors" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.contributors connection ~subreddit
+        Connection.call_exn connection (Api.contributors () ~subreddit)
         >>| Listing.children
         >>| List.iter ~f:(fun contributor ->
                 print_s
@@ -104,7 +104,7 @@ let%expect_test "contributors" =
 let%expect_test "wiki_contributors" =
   with_cassette "wiki_contributors" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.wiki_contributors connection ~subreddit
+        Connection.call_exn connection (Api.wiki_contributors () ~subreddit)
         >>| Listing.children
         >>| List.iter ~f:(fun contributor ->
                 print_s
@@ -126,7 +126,9 @@ let%expect_test "wiki_contributors" =
 let%expect_test "moderators" =
   with_cassette "moderators" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.moderators connection ~subreddit:(Subreddit_name.of_string "redditdev")
+        Connection.call_exn
+          connection
+          (Api.moderators () ~subreddit:(Subreddit_name.of_string "redditdev"))
         >>| Listing.children
         >>| List.iter ~f:(fun moderator ->
                 print_s
@@ -187,7 +189,9 @@ let%expect_test "moderators" =
 let%expect_test "delete_subreddit_banner" =
   with_cassette "delete_subreddit_banner" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.delete_subreddit_image connection ~subreddit ~image:Mobile_banner
+        Connection.call_exn
+          connection
+          (Api.delete_subreddit_image () ~subreddit ~image:Mobile_banner)
       in
       [%expect {| |}];
       return ())
@@ -195,7 +199,11 @@ let%expect_test "delete_subreddit_banner" =
 
 let%expect_test "delete_subreddit_header" =
   with_cassette "delete_subreddit_header" ~f:(fun connection ->
-      let%bind () = Api.Exn.delete_subreddit_image connection ~subreddit ~image:Header in
+      let%bind () =
+        Connection.call_exn
+          connection
+          (Api.delete_subreddit_image () ~subreddit ~image:Header)
+      in
       [%expect {| |}];
       return ())
 ;;
@@ -203,7 +211,9 @@ let%expect_test "delete_subreddit_header" =
 let%expect_test "delete_subreddit_icon" =
   with_cassette "delete_subreddit_icon" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.delete_subreddit_image connection ~subreddit ~image:Mobile_icon
+        Connection.call_exn
+          connection
+          (Api.delete_subreddit_image () ~subreddit ~image:Mobile_icon)
       in
       [%expect {| |}];
       return ())
@@ -212,10 +222,12 @@ let%expect_test "delete_subreddit_icon" =
 let%expect_test "delete_subreddit_image" =
   with_cassette "delete_subreddit_image" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.delete_subreddit_image
+        Connection.call_exn
           connection
-          ~subreddit
-          ~image:(Stylesheet_image { name = "leviroth" })
+          (Api.delete_subreddit_image
+             ()
+             ~subreddit
+             ~image:(Stylesheet_image { name = "leviroth" }))
       in
       [%expect {| |}];
       return ())
@@ -224,7 +236,7 @@ let%expect_test "delete_subreddit_image" =
 let%expect_test "search_subreddits_by_name" =
   with_cassette "search_subreddits_by_name" ~f:(fun connection ->
       let%bind subreddits =
-        Api.Exn.search_subreddits_by_name connection ~query:"python"
+        Connection.call_exn connection (Api.search_subreddits_by_name () ~query:"python")
       in
       print_s [%sexp (subreddits : Subreddit_name.t list)];
       [%expect
@@ -237,7 +249,9 @@ let%expect_test "search_subreddits_by_name" =
 let%expect_test "submit_text" =
   with_cassette "submit_text" ~f:(fun connection ->
       let%bind submit_text =
-        Api.Exn.submit_text connection ~subreddit:(Subreddit_name.of_string "philosophy")
+        Connection.call_exn
+          connection
+          (Api.submit_text () ~subreddit:(Subreddit_name.of_string "philosophy"))
       in
       List.iter [ `markdown; `HTML ] ~f:(fun markup ->
           print_s
@@ -254,7 +268,7 @@ let%expect_test "submit_text" =
 let%expect_test "subreddit_autocomplete" =
   with_cassette "subreddit_autocomplete" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.subreddit_autocomplete connection ~query:"python"
+        Connection.call_exn connection (Api.subreddit_autocomplete () ~query:"python")
         >>| Listing.children
         >>| List.iter ~f:(fun subreddit ->
                 print_s [%sexp (Thing.Subreddit.name subreddit : Subreddit_name.t)])
@@ -272,10 +286,12 @@ let%expect_test "subreddit_autocomplete" =
 let%expect_test "set_subreddit_stylesheet" =
   with_cassette "set_subreddit_stylesheet" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.set_subreddit_stylesheet
+        Connection.call_exn
           connection
-          ~subreddit
-          ~stylesheet_contents:"body {font-family: monospace}"
+          (Api.set_subreddit_stylesheet
+             ()
+             ~subreddit
+             ~stylesheet_contents:"body {font-family: monospace}")
       in
       [%expect];
       return ())
@@ -285,20 +301,24 @@ let%expect_test "subscribe" =
   let%bind () =
     with_cassette "subscribe__by_name" ~f:(fun connection ->
         let%bind () =
-          Api.Exn.subscribe
+          Connection.call_exn
             connection
-            ~action:Subscribe
-            ~subreddits:(By_name [ Subreddit_name.of_string "python" ])
+            (Api.subscribe
+               ()
+               ~action:Subscribe
+               ~subreddits:(By_name [ Subreddit_name.of_string "python" ]))
         in
         [%expect];
         return ())
   in
   with_cassette "subscribe__by_id" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.subscribe
+        Connection.call_exn
           connection
-          ~action:Subscribe
-          ~subreddits:(By_id [ Thing.Subreddit.Id.of_string "2qh0y" ])
+          (Api.subscribe
+             ()
+             ~action:Subscribe
+             ~subreddits:(By_id [ Thing.Subreddit.Id.of_string "2qh0y" ]))
       in
       [%expect];
       return ())
@@ -307,7 +327,7 @@ let%expect_test "subscribe" =
 let%expect_test "search_users" =
   with_cassette "search_users" ~f:(fun connection ->
       let%bind () =
-        Api.Exn.search_users connection ~query:"python"
+        Connection.call_exn connection (Api.search_users () ~query:"python")
         >>| Listing.children
         >>| List.iter ~f:(fun user -> print_s [%sexp (Thing.User.name user : Username.t)])
       in
@@ -330,7 +350,9 @@ let%expect_test "search_users" =
 
 let%expect_test "subreddit_settings" =
   with_cassette "subreddit_settings" ~f:(fun connection ->
-      let%bind subreddit_settings = Api.Exn.subreddit_settings connection ~subreddit in
+      let%bind subreddit_settings =
+        Connection.call_exn connection (Api.subreddit_settings () ~subreddit)
+      in
       print_s
         [%sexp
           (Subreddit_settings.get_field_exn subreddit_settings "restrict_posting"
@@ -342,7 +364,9 @@ let%expect_test "subreddit_settings" =
 
 let%expect_test "subreddit_rules" =
   with_cassette "subreddit_rules" ~f:(fun connection ->
-      let%bind rules = Api.Exn.subreddit_rules connection ~subreddit in
+      let%bind rules =
+        Connection.call_exn connection (Api.subreddit_rules () ~subreddit)
+      in
       List.iter (Subreddit_rules.subreddit_rules rules) ~f:(fun rule ->
           let open Subreddit_rules.Rule in
           print_s
@@ -372,7 +396,9 @@ let%expect_test "subreddit_rules" =
 
 let%expect_test "subreddit_traffic" =
   with_cassette "subreddit_traffic" ~f:(fun connection ->
-      let%bind traffic = Api.Exn.subreddit_traffic connection ~subreddit in
+      let%bind traffic =
+        Connection.call_exn connection (Api.subreddit_traffic () ~subreddit)
+      in
       let by_date = List.take (Subreddit_traffic.by_date traffic) 4 in
       print_s [%sexp (by_date : Subreddit_traffic.By_date.t list)];
       [%expect
@@ -393,16 +419,18 @@ let%expect_test "subreddit_traffic" =
       print_s [%sexp (by_hour : Subreddit_traffic.By_hour.t list)];
       [%expect
         {|
-          (((hour (2020-10-24 17:00:00.000000000Z)) (uniques 0) (pageviews 0))
-           ((hour (2020-10-24 16:00:00.000000000Z)) (uniques 0) (pageviews 0))
-           ((hour (2020-10-24 15:00:00.000000000Z)) (uniques 0) (pageviews 0))
-           ((hour (2020-10-24 14:00:00.000000000Z)) (uniques 0) (pageviews 0))) |}];
+          (((hour "2020-10-24 17:00:00Z") (uniques 0) (pageviews 0))
+           ((hour "2020-10-24 16:00:00Z") (uniques 0) (pageviews 0))
+           ((hour "2020-10-24 15:00:00Z") (uniques 0) (pageviews 0))
+           ((hour "2020-10-24 14:00:00Z") (uniques 0) (pageviews 0))) |}];
       return ())
 ;;
 
 let%expect_test "subreddit_sticky" =
   with_cassette "subreddit_sticky" ~f:(fun connection ->
-      let%bind sticky_id = Api.Exn.get_sticky ~number:2 connection ~subreddit in
+      let%bind sticky_id =
+        Connection.call_exn connection (Api.get_sticky ~number:2 () ~subreddit)
+      in
       print_s [%sexp (sticky_id : Thing.Link.Id.t)];
       [%expect {| jhgtn4 |}];
       return ())
@@ -411,7 +439,7 @@ let%expect_test "subreddit_sticky" =
 let%expect_test "get_subreddits" =
   with_cassette "get_subreddits" ~f:(fun connection ->
       let%bind subreddits =
-        Api.Exn.get_subreddits connection ~relationship:Moderator
+        Connection.call_exn connection (Api.get_subreddits () ~relationship:Moderator)
         >>| Listing.children
         >>| List.map ~f:Thing.Subreddit.name
       in
@@ -423,7 +451,9 @@ let%expect_test "get_subreddits" =
 let%expect_test "search_subreddits_by_title_and_description" =
   with_cassette "search_subreddits_by_title_and_description" ~f:(fun connection ->
       let%bind subreddits =
-        Api.Exn.search_subreddits_by_title_and_description connection ~query:"python"
+        Connection.call_exn
+          connection
+          (Api.search_subreddits_by_title_and_description () ~query:"python")
         >>| Listing.children
         >>| List.map ~f:Thing.Subreddit.name
       in
@@ -441,7 +471,7 @@ let%expect_test "search_subreddits_by_title_and_description" =
 let%expect_test "list_subreddits" =
   with_cassette "list_subreddits" ~f:(fun connection ->
       let%bind subreddits =
-        Api.Exn.list_subreddits connection ~sort:Popular
+        Connection.call_exn connection (Api.list_subreddits () ~sort:Popular)
         >>| Listing.children
         >>| List.map ~f:Thing.Subreddit.name
       in
