@@ -49,7 +49,7 @@ let fold_until_finished
       | Some _ -> 100, cache_busting_counter
       | None -> 100 - cache_busting_counter, (cache_busting_counter + 1) mod 30
     in
-    match%bind get_listing connection ~before ~limit with
+    match%bind Connection.call connection (get_listing ~before ~limit) with
     | Error response ->
       (match%bind on_error state response with
       | Stop result -> return result
