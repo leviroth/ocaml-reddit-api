@@ -273,23 +273,23 @@ type 'a t =
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
-type 'a call :=
+type 'a with_param_override :=
   ?param_list_override:((string * string list) list -> (string * string list) list)
   -> unit
-  -> 'a t
+  -> 'a
 
 type 'a with_listing_params :=
   ?pagination:Listing.Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
 (** Account *)
 
-val me : User.t call
-val karma : Karma_list.t call
-val trophies : Award.t list call
-val friends : User_list.t call with_listing_params
-val blocked : User_list.t call with_listing_params
-val messaging : User_list.t call with_listing_params
-val trusted : User_list.t call with_listing_params
+val me : User.t t with_param_override
+val karma : Karma_list.t t with_param_override
+val trophies : Award.t list t with_param_override
+val friends : User_list.t t with_param_override with_listing_params
+val blocked : User_list.t t with_param_override with_listing_params
+val messaging : User_list.t t with_param_override with_listing_params
+val trusted : User_list.t t with_param_override with_listing_params
 
 (** Flair *)
 
@@ -301,7 +301,7 @@ val select_flair
   -> ?text_color:Color.t
   -> subreddit:Subreddit_name.t
   -> target:Flair_target.t
-  -> unit call
+  -> unit t with_param_override
 
 (** Links and comments *)
 
@@ -310,30 +310,40 @@ val add_comment
   -> ?richtext_json:Json.t
   -> parent:[< `Link of Link.Id.t | `Comment of Comment.Id.t | `Message of Message.Id.t ]
   -> text:string
-  -> Thing.Comment.t call
+  -> Thing.Comment.t t with_param_override
 
-val delete : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+val delete
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
 
 val edit
   :  ?return_rtjson:bool
   -> ?richtext_json:Json.t
   -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> text:string
-  -> [> `Link of Link.t | `Comment of Comment.t ] call
+  -> [> `Link of Link.t | `Comment of Comment.t ] t with_param_override
 
-val hide : links:Link.Id.t list -> unit call
-val unhide : links:Link.Id.t list -> unit call
-val lock : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-val unlock : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-val mark_nsfw : link:Link.Id.t -> unit call
-val unmark_nsfw : link:Link.Id.t -> unit call
+val hide : links:Link.Id.t list -> unit t with_param_override
+val unhide : links:Link.Id.t list -> unit t with_param_override
+
+val lock
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
+
+val unlock
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
+
+val mark_nsfw : link:Link.Id.t -> unit t with_param_override
+val unmark_nsfw : link:Link.Id.t -> unit t with_param_override
 
 val more_children
   :  ?limit_children:bool
   -> link:Link.Id.t
   -> more_comments:More_comments.Details.By_children.t
   -> sort:Comment_sort.t
-  -> [ `Comment of Comment.t | `More_comments of More_comments.t ] list call
+  -> [ `Comment of Comment.t | `More_comments of More_comments.t ] list t
+     with_param_override
 
 val report
   :  ?from_modmail:bool
@@ -351,35 +361,47 @@ val report
        | `Modmail_conversation of Modmail_conversation.Id.t
        ]
   -> reason:string
-  -> unit call
+  -> unit t with_param_override
 
-val report_award : award_id:string -> (Cohttp.Response.t * Cohttp.Body.t) call
+val report_award
+  :  award_id:string
+  -> (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
 
 val save
   :  ?category:string
   -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-  -> unit call
+  -> unit t with_param_override
 
-val unsave : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-val saved_categories : (Cohttp.Response.t * Cohttp.Body.t) call
+val unsave
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
+
+val saved_categories : (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
 
 val send_replies
   :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> enabled:bool
-  -> unit call
+  -> unit t with_param_override
 
-val set_contest_mode : link:Link.Id.t -> enabled:bool -> unit call
+val set_contest_mode : link:Link.Id.t -> enabled:bool -> unit t with_param_override
 
 val set_subreddit_sticky
   :  ?to_profile:bool
   -> link:Link.Id.t
   -> sticky_state:Sticky_state.t
-  -> unit call
+  -> unit t with_param_override
 
-val set_suggested_sort : link:Link.Id.t -> sort:Comment_sort.t option -> unit call
-val spoiler : link:Link.Id.t -> unit call
-val unspoiler : link:Link.Id.t -> unit call
-val store_visits : links:Link.Id.t list -> (Cohttp.Response.t * Cohttp.Body.t) call
+val set_suggested_sort
+  :  link:Link.Id.t
+  -> sort:Comment_sort.t option
+  -> unit t with_param_override
+
+val spoiler : link:Link.Id.t -> unit t with_param_override
+val unspoiler : link:Link.Id.t -> unit t with_param_override
+
+val store_visits
+  :  links:Link.Id.t list
+  -> (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
 
 val submit
   :  ?ad:bool
@@ -396,13 +418,13 @@ val submit
   -> subreddit:Subreddit_name.t
   -> title:string
   -> kind:Link_kind.t
-  -> (Link.Id.t * Uri.t) call
+  -> (Link.Id.t * Uri.t) t with_param_override
 
 val vote
   :  ?rank:int
   -> direction:Vote_direction.t
   -> target:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
-  -> unit call
+  -> unit t with_param_override
 
 val info
   :  ?subreddit:Subreddit_name.t
@@ -412,12 +434,16 @@ val info
      | `Subreddit of Thing.Subreddit.t
      ]
      list
-     call
+     t
+     with_param_override
 
 (** Listings *)
 
-val best : (?include_categories:bool -> Link.t Listing.t call) with_listing_params
-val links_by_id : links:Link.Id.t list -> Link.t Listing.t call
+val best
+  : (?include_categories:bool -> Link.t Listing.t t with_param_override)
+    with_listing_params
+
+val links_by_id : links:Link.Id.t list -> Link.t Listing.t t with_param_override
 
 val comments
   :  ?subreddit:Subreddit_name.t
@@ -431,54 +457,58 @@ val comments
   -> ?threaded:bool
   -> ?truncate:int
   -> link:Link.Id.t
-  -> Comment_response.t call
+  -> Comment_response.t t with_param_override
 
 val duplicates
   : (?crossposts_only:bool
      -> ?sort:Duplicate_sort.t
      -> link:Link.Id.t
-     -> Link.t Listing.t call)
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
 val hot
   : (?location:string
      -> ?include_categories:bool
      -> ?subreddit:Subreddit_name.t
-     -> Link.t Listing.t call)
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
 val new_
-  : (?include_categories:bool -> ?subreddit:Subreddit_name.t -> Link.t Listing.t call)
+  : (?include_categories:bool
+     -> ?subreddit:Subreddit_name.t
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
 val rising
-  : (?include_categories:bool -> ?subreddit:Subreddit_name.t -> Link.t Listing.t call)
+  : (?include_categories:bool
+     -> ?subreddit:Subreddit_name.t
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
 val top
   : (?since:Historical_span.t
      -> ?include_categories:bool
      -> ?subreddit:Subreddit_name.t
-     -> Link.t Listing.t call)
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
 val controversial
   : (?since:Historical_span.t
      -> ?include_categories:bool
      -> ?subreddit:Subreddit_name.t
-     -> Link.t Listing.t call)
+     -> Link.t Listing.t t with_param_override)
     with_listing_params
 
-val random : ?subreddit:Subreddit_name.t -> Link.Id.t call
+val random : ?subreddit:Subreddit_name.t -> Link.Id.t t with_param_override
 
 (** Private messages *)
 
 val block_author
   :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
-  -> unit call
+  -> unit t with_param_override
 
-val collapse_message : messages:Message.Id.t list -> unit call
-val uncollapse_message : messages:Message.Id.t list -> unit call
+val collapse_message : messages:Message.Id.t list -> unit t with_param_override
+val uncollapse_message : messages:Message.Id.t list -> unit t with_param_override
 
 val compose_message
   :  ?g_recaptcha_response:string
@@ -486,39 +516,43 @@ val compose_message
   -> to_:Username.t
   -> subject:string
   -> text:string
-  -> unit call
+  -> unit t with_param_override
 
-val delete_message : message:Message.Id.t -> (Cohttp.Response.t * Cohttp.Body.t) call
-val read_message : messages:Message.Id.t list -> unit call
-val unread_message : messages:Message.Id.t list -> unit call
+val delete_message
+  :  message:Message.Id.t
+  -> (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
+
+val read_message : messages:Message.Id.t list -> unit t with_param_override
+val unread_message : messages:Message.Id.t list -> unit t with_param_override
 
 val inbox
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
+     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t t with_param_override)
     with_listing_params
 
 val unread
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t call)
+     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t t with_param_override)
     with_listing_params
 
 val sent
-  : (?include_categories:bool -> ?mid:string -> Message.t Listing.t call)
+  : (?include_categories:bool -> ?mid:string -> Message.t Listing.t t with_param_override)
     with_listing_params
 
 val comment_replies
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> Comment.t Listing.t call)
+     -> Comment.t Listing.t t with_param_override)
     with_listing_params
 
 val subreddit_comments
-  : (subreddit:Subreddit_name.t -> Comment.t Listing.t call) with_listing_params
+  : (subreddit:Subreddit_name.t -> Comment.t Listing.t t with_param_override)
+    with_listing_params
 
 (** Moderation *)
 
@@ -526,68 +560,76 @@ val log
   : (?mod_filter:Mod_filter.t
      -> ?subreddit:Subreddit_name.t
      -> ?type_:string
-     -> Mod_action.t Listing.t call)
+     -> Mod_action.t Listing.t t with_param_override)
     with_listing_params
 
 val reports
   : (?location:string
      -> ?only:Links_or_comments.t
      -> ?subreddit:Subreddit_name.t
-     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t with_param_override)
     with_listing_params
 
 val spam
   : (?location:string
      -> ?only:Links_or_comments.t
      -> ?subreddit:Subreddit_name.t
-     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t with_param_override)
     with_listing_params
 
 val modqueue
   : (?location:string
      -> ?only:Links_or_comments.t
      -> ?subreddit:Subreddit_name.t
-     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t with_param_override)
     with_listing_params
 
 val unmoderated
   : (?location:string
      -> ?only:Links_or_comments.t
      -> ?subreddit:Subreddit_name.t
-     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t with_param_override)
     with_listing_params
 
 val edited
   : (?location:string
      -> ?only:Links_or_comments.t
      -> ?subreddit:Subreddit_name.t
-     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t call)
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t with_param_override)
     with_listing_params
 
 val accept_moderator_invite
   :  subreddit:Subreddit_name.t
-  -> (Cohttp.Response.t * Cohttp.Body.t) call
+  -> (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
 
-val approve : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
+val approve
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
 
 val remove
   :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> spam:bool
-  -> unit call
+  -> unit t with_param_override
 
 val distinguish
   :  ?sticky:bool
   -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> how:How_to_distinguish.t
-  -> [> `Link of Link.t | `Comment of Comment.t ] call
+  -> [> `Link of Link.t | `Comment of Comment.t ] t with_param_override
 
-val ignore_reports : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-val unignore_reports : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit call
-val leavecontributor : subreddit:Subreddit.Id.t -> unit call
-val leavemoderator : subreddit:Subreddit.Id.t -> unit call
-val mute_message_author : message:Message.Id.t -> unit call
-val unmute_message_author : message:Message.Id.t -> unit call
-val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t call
+val ignore_reports
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
+
+val unignore_reports
+  :  id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
+  -> unit t with_param_override
+
+val leavecontributor : subreddit:Subreddit.Id.t -> unit t with_param_override
+val leavemoderator : subreddit:Subreddit.Id.t -> unit t with_param_override
+val mute_message_author : message:Message.Id.t -> unit t with_param_override
+val unmute_message_author : message:Message.Id.t -> unit t with_param_override
+val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t t with_param_override
 
 (** New modmail *)
 
@@ -597,7 +639,7 @@ val create_modmail_conversation
   -> subreddit:Subreddit_name.t
   -> to_:Modmail_recipient.t
   -> hide_author:bool
-  -> Modmail.Conversation.t call
+  -> Modmail.Conversation.t t with_param_override
 
 (** Search *)
 
@@ -611,7 +653,8 @@ val search
      -> query:string
      -> (Thing.Link.t Listing.t option
         * [ `Subreddit of Thing.Subreddit.t | `User of Thing.User.t ] Listing.t option)
-        call)
+        t
+        with_param_override)
     with_listing_params
 
 (** Subreddits *)
@@ -620,55 +663,55 @@ val banned
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Ban.t Listing.t call)
+     -> Relationship.Ban.t Listing.t t with_param_override)
     with_listing_params
 
 val muted
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Mute.t Listing.t call)
+     -> Relationship.Mute.t Listing.t t with_param_override)
     with_listing_params
 
 val wiki_banned
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Ban.t Listing.t call)
+     -> Relationship.Ban.t Listing.t t with_param_override)
     with_listing_params
 
 val contributors
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Contributor.t Listing.t call)
+     -> Relationship.Contributor.t Listing.t t with_param_override)
     with_listing_params
 
 val wiki_contributors
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Contributor.t Listing.t call)
+     -> Relationship.Contributor.t Listing.t t with_param_override)
     with_listing_params
 
 val moderators
   : (?include_categories:bool
      -> ?user:Username.t
      -> subreddit:Subreddit_name.t
-     -> Relationship.Moderator.t Listing.t call)
+     -> Relationship.Moderator.t Listing.t t with_param_override)
     with_listing_params
 
 val delete_subreddit_image
   :  subreddit:Subreddit_name.t
   -> image:Subreddit_image.t
-  -> unit call
+  -> unit t with_param_override
 
 val search_subreddits_by_name
   :  ?exact:bool
   -> ?include_over_18:bool
   -> ?include_unadvertisable:bool
   -> query:string
-  -> Subreddit_name.t list call
+  -> Subreddit_name.t list t with_param_override
 
 val create_or_edit_subreddit
   :  ?comment_score_hide_mins:int
@@ -713,9 +756,9 @@ val create_or_edit_subreddit
   -> title:string
   -> type_:Subreddit_type.t
   -> wiki_mode:Wiki_mode.t
-  -> (Cohttp.Response.t * Cohttp.Body.t) call
+  -> (Cohttp.Response.t * Cohttp.Body.t) t with_param_override
 
-val submit_text : subreddit:Subreddit_name.t -> Submit_text.t call
+val submit_text : subreddit:Subreddit_name.t -> Submit_text.t t with_param_override
 
 val subreddit_autocomplete
   :  ?limit:int
@@ -723,62 +766,75 @@ val subreddit_autocomplete
   -> ?include_over_18:bool
   -> ?include_profiles:bool
   -> query:string
-  -> Subreddit.t Listing.t call
+  -> Subreddit.t Listing.t t with_param_override
 
 val set_subreddit_stylesheet
   :  ?reason:string
   -> subreddit:Subreddit_name.t
   -> stylesheet_contents:string
-  -> unit call
+  -> unit t with_param_override
 
 val subscribe
   :  ?skip_initial_defaults:bool
   -> action:Subscription_action.t
   -> subreddits:Subscription_list.t
-  -> unit call
+  -> unit t with_param_override
 
 val search_users
-  : (?sort:Relevance_or_activity.t -> query:string -> User.t Listing.t call)
+  : (?sort:Relevance_or_activity.t
+     -> query:string
+     -> User.t Listing.t t with_param_override)
     with_listing_params
 
-val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t call
+val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t t with_param_override
 
 val subreddit_settings
   :  ?created:bool
   -> ?location:string
   -> subreddit:Subreddit_name.t
-  -> Subreddit_settings.t call
+  -> Subreddit_settings.t t with_param_override
 
-val subreddit_rules : subreddit:Subreddit_name.t -> Subreddit_rules.t call
-val subreddit_traffic : subreddit:Subreddit_name.t -> Subreddit_traffic.t call
-val get_sticky : ?number:int -> subreddit:Subreddit_name.t -> Link.Id.t call
+val subreddit_rules
+  :  subreddit:Subreddit_name.t
+  -> Subreddit_rules.t t with_param_override
+
+val subreddit_traffic
+  :  subreddit:Subreddit_name.t
+  -> Subreddit_traffic.t t with_param_override
+
+val get_sticky
+  :  ?number:int
+  -> subreddit:Subreddit_name.t
+  -> Link.Id.t t with_param_override
 
 val get_subreddits
   : (?include_categories:bool
      -> relationship:Subreddit_relationship.t
-     -> Subreddit.t Listing.t call)
+     -> Subreddit.t Listing.t t with_param_override)
     with_listing_params
 
 val search_subreddits_by_title_and_description
   : (?show_users:bool
      -> ?sort:Relevance_or_activity.t
      -> query:string
-     -> Subreddit.t Listing.t call)
+     -> Subreddit.t Listing.t t with_param_override)
     with_listing_params
 
 val list_subreddits
   : (?include_categories:bool
      -> ?show_users:bool
      -> sort:Subreddit_listing_sort.t
-     -> Subreddit.t Listing.t call)
+     -> Subreddit.t Listing.t t with_param_override)
     with_listing_params
 
 (** Users *)
 
-val about_user : username:Username.t -> User.t call
+val about_user : username:Username.t -> User.t t with_param_override
 
 val list_user_subreddits
-  : (?include_categories:bool -> sort:User_subreddit_sort.t -> Subreddit.t Listing.t call)
+  : (?include_categories:bool
+     -> sort:User_subreddit_sort.t
+     -> Subreddit.t Listing.t t with_param_override)
     with_listing_params
 
 val add_relationship
@@ -790,55 +846,64 @@ val add_relationship
   -> ?ban_reason:string
   -> ?ban_message:string
   -> ?ban_context:string
-  -> unit call
+  -> unit t with_param_override
 
 val remove_relationship
   :  relationship:Relationship_spec.t
   -> username:Username.t
   -> ?subreddit:Subreddit_name.t
-  -> unit call
+  -> unit t with_param_override
 
 (** Wiki *)
 
-val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
-val remove_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit call
+val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit t with_param_override
+
+val remove_wiki_editor
+  :  page:Wiki_page.Id.t
+  -> user:Username.t
+  -> unit t with_param_override
 
 val edit_wiki_page
   :  ?previous:Wiki_page.Revision.Id.t
   -> ?reason:string
   -> content:string
   -> page:Wiki_page.Id.t
-  -> (unit, Wiki_page.Edit_conflict.t) Result.t call
+  -> (unit, Wiki_page.Edit_conflict.t) Result.t t with_param_override
 
 val toggle_wiki_revision_visibility
   :  page:Wiki_page.Id.t
   -> revision:Wiki_page.Revision.Id.t
-  -> [ `Became_hidden | `Became_visible ] call
+  -> [ `Became_hidden | `Became_visible ] t with_param_override
 
 val revert_wiki_page
   :  page:Wiki_page.Id.t
   -> revision:Wiki_page.Revision.Id.t
-  -> unit call
+  -> unit t with_param_override
 
-val wiki_discussions : (page:Wiki_page.Id.t -> Link.t Listing.t call) with_listing_params
-val wiki_pages : ?subreddit:Subreddit_name.t -> string list call
+val wiki_discussions
+  : (page:Wiki_page.Id.t -> Link.t Listing.t t with_param_override) with_listing_params
+
+val wiki_pages : ?subreddit:Subreddit_name.t -> string list t with_param_override
 
 val subreddit_wiki_revisions
-  : (?subreddit:Subreddit_name.t -> Wiki_page.Revision.t Listing.t call)
+  : (?subreddit:Subreddit_name.t -> Wiki_page.Revision.t Listing.t t with_param_override)
     with_listing_params
 
 val wiki_page_revisions
-  : (page:Wiki_page.Id.t -> Wiki_page.Revision.t Listing.t call) with_listing_params
+  : (page:Wiki_page.Id.t -> Wiki_page.Revision.t Listing.t t with_param_override)
+    with_listing_params
 
-val wiki_permissions : page:Wiki_page.Id.t -> Wiki_page.Permissions.t call
+val wiki_permissions
+  :  page:Wiki_page.Id.t
+  -> Wiki_page.Permissions.t t with_param_override
 
 val set_wiki_permissions
   :  page:Wiki_page.Id.t
   -> listed:bool
   -> level:Wiki_page.Permissions.Level.t
-  -> Wiki_page.Permissions.t call
+  -> Wiki_page.Permissions.t t with_param_override
 
 val wiki_page
   :  ?compare_revisions:string option * string option
   -> page:Wiki_page.Id.t
-  -> Wiki_page.t call
+  -> Wiki_page.t t with_param_override
