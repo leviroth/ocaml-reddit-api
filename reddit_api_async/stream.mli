@@ -5,11 +5,7 @@ open Reddit_api_kernel
 val iter
   :  (module Hashable.S with type t = 'id)
   -> Connection.t
-  -> get_listing:
-       (Connection.t
-        -> before:'id option
-        -> limit:int
-        -> ('thing list, Api.Api_error.t) result Deferred.t)
+  -> get_listing:(before:'id option -> limit:int -> 'thing list Api.t)
   -> get_before_parameter:('thing -> 'id)
   -> f:('thing -> unit Deferred.t)
   -> _ Deferred.t
@@ -17,11 +13,7 @@ val iter
 val fold
   :  (module Hashable.S with type t = 'id)
   -> Connection.t
-  -> get_listing:
-       (Connection.t
-        -> before:'id option
-        -> limit:int
-        -> ('thing list, Api.Api_error.t) result Deferred.t)
+  -> get_listing:(before:'id option -> limit:int -> 'thing list Api.t)
   -> get_before_parameter:('thing -> 'id)
   -> init:'state
   -> f:('state -> 'thing -> 'state Deferred.t)
@@ -31,11 +23,7 @@ val fold
 val fold_until_finished
   :  (module Hashable.S with type t = 'id)
   -> Connection.t
-  -> get_listing:
-       (Connection.t
-        -> before:'id option
-        -> limit:int
-        -> ('thing list, Api.Api_error.t) result Deferred.t)
+  -> get_listing:(before:'id option -> limit:int -> 'thing list Api.t)
   -> get_before_parameter:('thing -> 'id)
   -> init:'state
   -> f:('state -> 'thing -> ('state, 'result) Continue_or_stop.t Deferred.t)

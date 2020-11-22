@@ -271,6 +271,8 @@ type 'a t =
   ; sequencer : Sequencer.t option
   }
 
+val map : 'a t -> f:('a -> 'b) -> 'b t
+
 type 'a call :=
   ?param_list_override:((string * string list) list -> (string * string list) list)
   -> unit

@@ -566,6 +566,10 @@ type 'a t =
   ; sequencer : Sequencer.t option
   }
 
+let map t ~f =
+  { t with handle_response = (fun v -> t.handle_response v |> Result.map ~f) }
+;;
+
 let call_api
     ?sequencer
     handle_response
