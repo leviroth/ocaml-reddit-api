@@ -1,11 +1,22 @@
-`Reddit_api` is an OCaml client library for Reddit's API.
+`Reddit_api` is a set OCaml client libraries for Reddit's API.
+
+`reddit_api_kernel` provides:
+
+* Types for representing Reddit's API parameters and responses
+* Functions for building HTTP requests and handling the associated responses
+  for Reddit's API endpoints.
+
+`reddit_api_async` provides a client for sending these requests to Reddit and
+some utilities for common usage patterns. It handles authentication and
+Reddit's rate-limiting headers.
 
 # Documentation
 
-[Here](https://leviroth.github.io/ocaml-reddit-api/reddit_api/index.html). I
-recommend the [`Api`
-module](https://leviroth.github.io/ocaml-reddit-api/reddit_api/Reddit_api/Api/index.html)
-as an entry point.
+[Here](https://leviroth.github.io/ocaml-reddit-api/). I recommend the
+[`Reddit_api_kernel.Api`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_kernel/Reddit_api_kernel/Api/index.html)
+and
+[`Reddit_api_async.Connection`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_async/Reddit_api_async/Connection/index.html)
+modules as entry points.
 
 # Design philosophy and caveats
 
@@ -33,8 +44,8 @@ facilitate workarounds, we also provide:
    list) list)` option on each API endpoint that allows the HTTP parameters to
    be manipulated directly.
 
-2. An `Api.Raw` module that provides all the same functions but does not
-   parsing of the responses.
+2. A `Connection.call_raw` function that allows users to access HTTP responses
+   directly.
 
 # Credits
 
