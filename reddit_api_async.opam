@@ -15,6 +15,7 @@ depends: [
   "cohttp-async" {>= "2.5.4"}
   "core" {= "v0.14.0"}
   "ezjsonm" {>= "1.0"}
+  "reddit_api_kernel" {= version}
   "sequencer_table" {= "v0.14.0"}
 ]
 build: [
