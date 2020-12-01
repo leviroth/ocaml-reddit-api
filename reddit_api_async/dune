@@ -2,5 +2,6 @@
  (name reddit_api_async)
  (public_name reddit_api_async)
  (libraries async core cohttp-async ezjsonm reddit_api_kernel sequencer_table)
+ (inline_tests)
  (preprocess
   (pps ppx_jane)))
