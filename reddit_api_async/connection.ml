@@ -158,20 +158,26 @@ module Local = struct
       [@@deriving sexp, fields]
 
       let t_of_headers headers ~time_source =
-        let open Option.Let_syntax in
-        let%bind remaining_api_calls =
-          Cohttp.Header.get headers "X-Ratelimit-Remaining"
-          >>| Float.of_string
-          >>| Int.of_float
-        and reset_time =
-          let%bind relative_reset_time =
-            Cohttp.Header.get headers "X-Ratelimit-Reset"
-            >>| Int.of_string
-            >>| Time_ns.Span.of_int_sec
-          in
-          return (Time_ns.add (Time_source.now time_source) relative_reset_time)
+        let get_header header =
+          match Cohttp.Header.get headers header with
+          | Some v -> v
+          | None ->
+            raise_s
+              [%message
+                "Missing expected X-Ratelimit header"
+                  (header : string)
+                  (headers : Cohttp.Header.t)]
         in
-        return { remaining_api_calls; reset_time }
+        let remaining_api_calls =
+          get_header "X-Ratelimit-Remaining" |> Float.of_string |> Int.of_float
+        in
+        let reset_time =
+          let relative_reset_time =
+            get_header "X-Ratelimit-Reset" |> Int.of_string |> Time_ns.Span.of_int_sec
+          in
+          Time_ns.add (Time_source.now time_source) relative_reset_time
+        in
+        { remaining_api_calls; reset_time }
       ;;
 
       let compare_approximate_reset_times time1 time2 =
@@ -258,19 +264,20 @@ module Local = struct
       Queue.enqueue t.jobs (fun () ->
           upon (f ()) (fun ((response, _body) as result) ->
               let headers = Cohttp.Response.headers response in
-              Server_side_info.t_of_headers headers ~time_source
-              |> Option.iter ~f:(fun new_server_side_info ->
-                     (match t.server_side_info with
-                     | None -> t.waiting_for_reset <- false
-                     | Some old_server_side_info ->
-                       (match
-                          Server_side_info.demonstrates_reset
-                            old_server_side_info
-                            new_server_side_info
-                        with
-                       | false -> ()
-                       | true -> t.waiting_for_reset <- false));
-                     update_server_side_info t new_server_side_info);
+              let new_server_side_info =
+                Server_side_info.t_of_headers headers ~time_source
+              in
+              (match t.server_side_info with
+              | None -> t.waiting_for_reset <- false
+              | Some old_server_side_info ->
+                (match
+                   Server_side_info.demonstrates_reset
+                     old_server_side_info
+                     new_server_side_info
+                 with
+                | false -> ()
+                | true -> t.waiting_for_reset <- false));
+              update_server_side_info t new_server_side_info;
               Ivar.fill ivar result;
               clear_queue t ~time_source));
       clear_queue t ~time_source;
