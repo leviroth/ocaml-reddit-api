@@ -18,6 +18,28 @@ type t = T : (module S with type t = 't) * 't -> t
 let sexp_of_t (T ((module S), t)) : Sexp.t = List [ Atom S.kind; [%sexp_of: S.t] t ]
 let with_t (T ((module S), t)) = S.with_t t
 
+module With_minimum_delay = struct
+  type t =
+    { ready : (unit, read_write) Mvar.t
+    ; delay : Time_ns.Span.t
+    }
+  [@@deriving sexp_of]
+
+  let kind = "With_minimum_delay"
+
+  let create ~delay =
+    let ready = Mvar.create () in
+    Mvar.set ready ();
+    { ready; delay }
+  ;;
+
+  let with_t { ready; delay } ~f ~time_source =
+    let%bind () = Mvar.take ready in
+    Deferred.upon (Time_source.after time_source delay) (fun () -> Mvar.set ready ());
+    f ()
+  ;;
+end
+
 module By_headers = struct
   let kind = "By_headers"
 
@@ -190,3 +212,7 @@ module By_headers = struct
 end
 
 let by_headers () = T ((module By_headers), By_headers.create ())
+
+let with_minimum_delay ~delay =
+  T ((module With_minimum_delay), With_minimum_delay.create ~delay)
+;;

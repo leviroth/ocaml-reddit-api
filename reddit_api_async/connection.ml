@@ -203,7 +203,12 @@ end
 type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
-let online_rate_limiters = [ Rate_limiter.by_headers () ]
+
+let online_rate_limiters =
+  [ Rate_limiter.by_headers ()
+  ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 10)
+  ]
+;;
 
 let create credentials ~user_agent =
   T
