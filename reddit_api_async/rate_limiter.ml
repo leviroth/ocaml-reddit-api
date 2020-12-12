@@ -47,6 +47,7 @@ module By_headers = struct
     type t =
       { remaining_api_calls : int
       ; reset_time : Time_ns.t
+      ; server_time : Time_ns.t
       }
     [@@deriving sexp, fields]
 
@@ -118,29 +119,22 @@ module By_headers = struct
       let remaining_api_calls =
         get_header "X-Ratelimit-Remaining" |> Float.of_string |> Int.of_float
       in
+      let server_time = parse_http_header_date (get_header "Date") in
       let reset_time =
-        let absolute_time = parse_http_header_date (get_header "Date") in
         let relative_reset_time =
           get_header "X-Ratelimit-Reset" |> Int.of_string |> Time_ns.Span.of_int_sec
         in
-        snap_to_nearest_minute (Time_ns.add absolute_time relative_reset_time)
+        snap_to_nearest_minute (Time_ns.add server_time relative_reset_time)
       in
-      { remaining_api_calls; reset_time }
+      { remaining_api_calls; reset_time; server_time }
     ;;
 
     let demonstrates_reset old_t new_t = Time_ns.( < ) old_t.reset_time new_t.reset_time
 
-    let compare_by_inferred_time_on_server =
-      Comparable.lexicographic
-        [ Comparable.lift Time_ns.compare ~f:reset_time
-        ; Comparable.reverse (Comparable.lift compare ~f:remaining_api_calls)
-        ]
-    ;;
-
     let update t t' =
-      match compare_by_inferred_time_on_server t t' |> Ordering.of_int with
-      | Less | Equal -> t'
-      | Greater -> t
+      match Time_ns.( <= ) t.server_time t'.server_time with
+      | true -> t'
+      | false -> t
     ;;
   end
 
@@ -167,7 +161,9 @@ module By_headers = struct
              | None ->
                t.waiting_for_reset <- true;
                job ()
-             | Some ({ reset_time; remaining_api_calls } as server_side_info) ->
+             | Some
+                 ({ reset_time; remaining_api_calls; server_time = _ } as
+                 server_side_info) ->
                (match remaining_api_calls with
                | 0 ->
                  t.waiting_for_reset <- true;
