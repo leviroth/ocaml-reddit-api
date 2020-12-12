@@ -4,8 +4,6 @@
 
 (version 0.1.0)
 
-(generate_opam_files true)
-
 (source (github leviroth/reddit_api))
 
 (license MIT)
@@ -30,9 +28,10 @@
   (depends
     (odoc :with-doc)
     (dune (and (>= 2.0) :build))
-    (async           (=  v0.14.0))
-    (async_ssl       (=  v0.14.0))
-    (cohttp-async    (>= 2.5.4))
-    (core            (=  v0.14.0))
-    (ezjsonm         (>= 1.0))
-    (sequencer_table (=  v0.14.0))))
+    (async             (=  v0.14.0))
+    (async_ssl         (=  v0.14.0))
+    (cohttp-async      (>= 2.5.4))
+    (core              (=  v0.14.0))
+    (ezjsonm           (>= 1.0))
+    (reddit_api_kernel (=  :version))
+    (sequencer_table   (=  v0.14.0))))
