@@ -294,26 +294,25 @@ module Local = struct
     ;;
 
     let with_t t ~f ~time_source =
-      let ivar = Ivar.create () in
-      Queue.enqueue t.jobs (fun () ->
-          upon (f ()) (fun ((response, _body) as result) ->
-              let headers = Cohttp.Response.headers response in
-              let new_server_side_info = Server_side_info.t_of_headers headers in
-              (match t.server_side_info with
-              | None -> t.waiting_for_reset <- false
-              | Some old_server_side_info ->
-                (match
-                   Server_side_info.demonstrates_reset
-                     old_server_side_info
-                     new_server_side_info
-                 with
-                | false -> ()
-                | true -> t.waiting_for_reset <- false));
-              update_server_side_info t new_server_side_info;
-              Ivar.fill ivar result;
-              clear_queue t ~time_source));
-      clear_queue t ~time_source;
-      Ivar.read ivar
+      Deferred.create (fun ivar ->
+          Queue.enqueue t.jobs (fun () ->
+              upon (f ()) (fun ((response, _body) as result) ->
+                  let headers = Cohttp.Response.headers response in
+                  let new_server_side_info = Server_side_info.t_of_headers headers in
+                  (match t.server_side_info with
+                  | None -> t.waiting_for_reset <- false
+                  | Some old_server_side_info ->
+                    (match
+                       Server_side_info.demonstrates_reset
+                         old_server_side_info
+                         new_server_side_info
+                     with
+                    | false -> ()
+                    | true -> t.waiting_for_reset <- false));
+                  update_server_side_info t new_server_side_info;
+                  Ivar.fill ivar result;
+                  clear_queue t ~time_source));
+          clear_queue t ~time_source)
     ;;
   end
 
