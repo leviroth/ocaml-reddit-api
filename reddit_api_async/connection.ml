@@ -157,7 +157,61 @@ module Local = struct
         }
       [@@deriving sexp, fields]
 
-      let t_of_headers headers ~time_source =
+      let snap_to_nearest_minute time =
+        let interval = Time_ns.Span.minute in
+        let base = Time_ns.epoch in
+        let candidates =
+          [ Time_ns.prev_multiple ~can_equal_before:true ~interval ~base ~before:time ()
+          ; Time_ns.next_multiple ~can_equal_after:false ~interval ~base ~after:time ()
+          ]
+        in
+        List.min_elt
+          candidates
+          ~compare:
+            (Comparable.lift Time_ns.Span.compare ~f:(fun time' ->
+                 Time_ns.abs_diff time time'))
+        |> Option.value_exn
+      ;;
+
+      let%expect_test _ =
+        List.iter [ "2020-11-30 18:48:01.02Z"; "2020-11-30 18:47:59.02Z" ] ~f:(fun time ->
+            let time = Time_ns.of_string time in
+            print_s [%sexp (snap_to_nearest_minute time : Time_ns.Alternate_sexp.t)]);
+        [%expect {|
+          "2020-11-30 18:48:00Z"
+          "2020-11-30 18:48:00Z" |}]
+      ;;
+
+      let parse_http_header_date date_string =
+        Scanf.sscanf
+          date_string
+          "%3s, %2d %3s %4d %2d:%2d:%2d GMT"
+          (fun day_of_week d month y hr min sec ->
+            let day_of_week = Day_of_week.of_string day_of_week in
+            let month = Month.of_string month in
+            let date = Date.create_exn ~y ~m:month ~d in
+            (match Day_of_week.equal day_of_week (Date.day_of_week date) with
+            | true -> ()
+            | false ->
+              raise_s
+                [%message
+                  "HTTP response: Day of week did not match parsed date"
+                    (day_of_week : Day_of_week.t)
+                    (date : Date.t)
+                    (date_string : string)]);
+            let ofday = Time_ns.Ofday.create ~hr ~min ~sec () in
+            Time_ns.of_date_ofday date ofday ~zone:Time_ns.Zone.utc)
+      ;;
+
+      let%expect_test _ =
+        print_s
+          [%sexp
+            (parse_http_header_date "Wed, 21 Oct 2015 07:28:00 GMT"
+              : Time_ns.Alternate_sexp.t)];
+        [%expect {| "2015-10-21 07:28:00Z" |}]
+      ;;
+
+      let t_of_headers headers =
         let get_header header =
           match Cohttp.Header.get headers header with
           | Some v -> v
@@ -172,42 +226,22 @@ module Local = struct
           get_header "X-Ratelimit-Remaining" |> Float.of_string |> Int.of_float
         in
         let reset_time =
+          let absolute_time = parse_http_header_date (get_header "Date") in
           let relative_reset_time =
             get_header "X-Ratelimit-Reset" |> Int.of_string |> Time_ns.Span.of_int_sec
           in
-          Time_ns.add (Time_source.now time_source) relative_reset_time
+          snap_to_nearest_minute (Time_ns.add absolute_time relative_reset_time)
         in
         { remaining_api_calls; reset_time }
       ;;
 
-      let compare_approximate_reset_times time1 time2 =
-        let tolerance = Time_ns.Span.of_int_sec 60 in
-        let lower = Maybe_bound.Incl (Time_ns.sub time2 tolerance) in
-        let upper = Maybe_bound.Incl (Time_ns.add time2 tolerance) in
-        match
-          Maybe_bound.compare_to_interval_exn time1 ~lower ~upper ~compare:Time_ns.compare
-        with
-        | Below_lower_bound -> -1
-        | In_range -> 0
-        | Above_upper_bound -> 1
-      ;;
+      let demonstrates_reset old_t new_t = Time_ns.( < ) old_t.reset_time new_t.reset_time
 
-      let demonstrates_reset old_t new_t =
-        match
-          compare_approximate_reset_times old_t.reset_time new_t.reset_time
-          |> Ordering.of_int
-        with
-        | Less -> true
-        | Greater | Equal -> false
-      ;;
-
-      let compare_by_inferred_time_on_server t t' =
+      let compare_by_inferred_time_on_server =
         Comparable.lexicographic
-          [ Comparable.lift compare_approximate_reset_times ~f:reset_time
-          ; Fn.flip (Comparable.lift compare ~f:remaining_api_calls)
+          [ Comparable.lift Time_ns.compare ~f:reset_time
+          ; Comparable.reverse (Comparable.lift compare ~f:remaining_api_calls)
           ]
-          t
-          t'
       ;;
 
       let update t t' =
@@ -264,9 +298,7 @@ module Local = struct
       Queue.enqueue t.jobs (fun () ->
           upon (f ()) (fun ((response, _body) as result) ->
               let headers = Cohttp.Response.headers response in
-              let new_server_side_info =
-                Server_side_info.t_of_headers headers ~time_source
-              in
+              let new_server_side_info = Server_side_info.t_of_headers headers in
               (match t.server_side_info with
               | None -> t.waiting_for_reset <- false
               | Some old_server_side_info ->
