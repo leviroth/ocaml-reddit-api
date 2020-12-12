@@ -575,8 +575,7 @@ module For_testing = struct
       include Cohttp_client_wrapper
 
       val seal : unit -> unit
-      val read_only_time_source : Time_source.t
-      val read_write_time_source : Time_source.Read_write.t option
+      val time_source : Time_source.t
     end
 
     module Interaction = struct
@@ -688,8 +687,7 @@ module For_testing = struct
           printf "\n\nPlease move the above to test/%s" filename
         ;;
 
-        let read_only_time_source = Time_source.wall_clock ()
-        let read_write_time_source = None
+        let time_source = Time_source.wall_clock ()
       end)
     ;;
 
@@ -756,9 +754,7 @@ module For_testing = struct
         ;;
 
         let seal () = assert (Queue.is_empty queue)
-        let time_source = Time_source.create ~now:Time_ns.epoch ()
-        let read_write_time_source = Some time_source
-        let read_only_time_source = Time_source.read_only time_source
+        let time_source = Time_source.read_only (Time_source.create ~now:Time_ns.epoch ())
       end)
     ;;
 
@@ -799,7 +795,7 @@ module For_testing = struct
             , Local.create_internal
                 (module Cassette)
                 credentials
-                ~time_source:Cassette.read_only_time_source )
+                ~time_source:Cassette.time_source )
         in
         f connection)
   ;;
