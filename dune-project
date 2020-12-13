@@ -4,7 +4,7 @@
 
 (version 0.1.0)
 
-(source (github leviroth/reddit_api))
+(source (github leviroth/ocaml-reddit-api))
 
 (license MIT)
 

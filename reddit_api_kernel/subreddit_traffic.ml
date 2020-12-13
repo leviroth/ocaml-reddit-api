@@ -27,7 +27,7 @@ module By_date = struct
     let module_name = "By_date" in
     match get_time_and_rest json ~module_name with
     | time, [ uniques; pageviews; subscriptions ] ->
-      let date = Time_ns.to_date time ~zone:Timezone.utc in
+      let date = Time_ns.to_date time ~zone:Time.Zone.utc in
       { date; uniques; pageviews; subscriptions }
     | _ -> bail_on_json json ~module_name
   ;;
@@ -46,7 +46,7 @@ module By_month = struct
     let module_name = "By_month" in
     match get_time_and_rest json ~module_name with
     | time, [ uniques; pageviews ] ->
-      let date = Time_ns.to_date time ~zone:Timezone.utc in
+      let date = Time_ns.to_date time ~zone:Time.Zone.utc in
       let month = Date.month date in
       let year = Date.year date in
       { year; month; uniques; pageviews }

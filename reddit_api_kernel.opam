@@ -4,8 +4,8 @@ synopsis: "OCaml types for Reddit's API"
 maintainer: ["levimroth@gmail.com"]
 authors: ["Levi Roth"]
 license: "MIT"
-homepage: "https://github.com/leviroth/reddit_api"
-bug-reports: "https://github.com/leviroth/reddit_api/issues"
+homepage: "https://github.com/leviroth/ocaml-reddit-api"
+bug-reports: "https://github.com/leviroth/ocaml-reddit-api/issues"
 depends: [
   "odoc" {with-doc}
   "dune" {>= "2.0" & build}
@@ -26,4 +26,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/leviroth/reddit_api.git"
+dev-repo: "git+https://github.com/leviroth/ocaml-reddit-api.git"
