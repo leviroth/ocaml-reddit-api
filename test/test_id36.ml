@@ -4,10 +4,13 @@ open! Import
 
 let%expect_test "roundtrip: int -> string -> int" =
   Quickcheck.test
-    Int.quickcheck_generator
-    ~f:(fun n -> assert (Id36.to_int (Id36.of_int n) = n))
-    ~examples:[ 85562; 18527; 61915; 6302; 60590; 2723; 97946; 78956; 48802; 84286 ]
-    ~sexp_of:[%sexp_of: int];
+    Bigint.quickcheck_generator
+    ~f:(fun n -> assert (Bigint.equal (Id36.to_bigint (Id36.of_bigint n)) n))
+    ~examples:
+      (List.map
+         [ 85562; 18527; 61915; 6302; 60590; 2723; 97946; 78956; 48802; 84286 ]
+         ~f:Bigint.of_int)
+    ~sexp_of:[%sexp_of: Bigint.t];
   return ()
 ;;
 

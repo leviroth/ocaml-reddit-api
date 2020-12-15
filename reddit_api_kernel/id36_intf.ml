@@ -5,8 +5,8 @@ module type S = sig
 
   include Identifiable.S with type t := t
 
-  val of_int : int -> t
-  val to_int : t -> int
+  val of_bigint : Bigint.t -> t
+  val to_bigint : t -> Bigint.t
 end
 
 module type Id36 = sig
