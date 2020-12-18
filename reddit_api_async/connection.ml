@@ -110,8 +110,8 @@ module Local = struct
         let expiration =
           let additional_seconds =
             Json.find response_json [ "expires_in" ]
-            |> Json.get_int
-            |> Time_ns.Span.of_int_sec
+            |> Json.get_float
+            |> Time_ns.Span.of_sec
           in
           Time_ns.add (Time_source.now time_source) additional_seconds
         in
