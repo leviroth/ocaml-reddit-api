@@ -7,9 +7,10 @@ let bail_on_json json ~module_name =
 ;;
 
 let get_time_and_rest json ~module_name =
-  match Json.get_list Json.get_int json with
-  | time :: rest ->
-    let time = Time_ns.Span.of_int_sec time |> Time_ns.of_span_since_epoch in
+  match Json.get_list ident json with
+  | time_json :: rest ->
+    let time = time time_json in
+    let rest = List.map rest ~f:int in
     time, rest
   | _ -> bail_on_json json ~module_name
 ;;
