@@ -146,8 +146,6 @@ module By_headers = struct
   [@@deriving sexp_of]
 
   let create () =
-    let short_timer_ready = Mvar.create () in
-    Mvar.set short_timer_ready ();
     { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
   ;;
 
