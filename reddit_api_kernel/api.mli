@@ -427,8 +427,7 @@ val vote
   -> unit t with_param_override
 
 val info
-  :  ?subreddit:Subreddit_name.t
-  -> Info_query.t
+  :  Info_query.t
   -> [ `Comment of Thing.Comment.t
      | `Link of Thing.Link.t
      | `Subreddit of Thing.Subreddit.t
