@@ -1,4 +1,4 @@
-`Reddit_api` is a set OCaml client libraries for Reddit's API.
+`reddit_api` is a set OCaml client libraries for Reddit's API.
 
 `reddit_api_kernel` provides:
 
@@ -18,34 +18,60 @@ and
 [`Reddit_api_async.Connection`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_async/Reddit_api_async/Connection/index.html)
 modules as entry points.
 
-# Design philosophy and caveats
+# Example
 
-`Reddit_api` aims to help users navigate the Reddit API via OCaml types. For
-example, many HTTP endpoints have parameters that cannot be used in conjunction
-with each other. In such cases, we wrap these parameters in variant types so
-that users don't have to discover the conflict for themselves. For another
-example, we try to wrap outputs in types that express the full range of
-possible responses from Reddit. If `Reddit_api` ever raises, we regard this as
-a bug and prefer to express this possibility via a type rather than forcing
-users to anticipate exceptions. Conversely, if some Response type `t` always
-has a value of type `v`, we try to provide a function `t -> v` rather than
-providing `t -> v option` and forcing users to guess when the result might be
-`None`.
+```ocaml
+let print_links credentials =
+  let connection = Connection.create credentials ~user_agent:"Link printer" in
+  let subreddit =
+    Subreddit_name.combine (List.map ~f:Subreddit_name.of_string [ "ocaml"; "redditdev" ])
+  in
+  let%bind link_listing =
+    Connection.call_exn connection (Api.top ~since:Year ~subreddit ())
+  in
+  let links = Listing.children link_listing in
+  List.iter links ~f:(fun link ->
+      print_s
+        [%sexp
+          { title : string = Thing.Link.title link
+          ; url : string option = Option.map (Thing.Link.url link) ~f:Uri.to_string
+          ; author : Username.t option = Thing.Link.author link
+          ; score : int = Thing.Link.score link
+          }]);
+  return ()
+```
 
-The caveat is that this is hard. Reddit's API is not very well documented.
-Determining which inputs and outputs are legal is largely a matter of trial and
-error. At any given time, it's likely that we allow some invalid combination of
-inputs, or forbid a valid combination, or fail to handle some valid response.
+# Goals and non-goals
 
-If this caveat bites you, reports and pull requests are certainly welcome. To
-facilitate workarounds, we also provide:
+## Goals
 
-1. A `?param_list_override:((string * string list) list -> (string * string
-   list) list)` option on each API endpoint that allows the HTTP parameters to
-   be manipulated directly.
+- Provide a typed interface to Reddit's API endpoints and responses.
+- Encode knowledge, documented or otherwise, about correct usage of the API via
+  the type system.
+  - Don't raise exceptions if Reddit is behaving "as expected."
+  - Express corner cases in response types. For example, are there surprising
+    cases where a field might not be present? Make the field optional instead
+    of making each user discover this on their own.
+  - Handle common Reddit server issues such as 503 errors automatically, or
+    else warn about them via the response type.
+- Provide workarounds when we get the above wrong:
+  - A `?param_list_override:((string * string list) list -> (string * string
+    list) list)` option on each API endpoint that allows the HTTP parameters to
+    be manipulated directly.
+  - A `Connection.call_raw` function that allows users to access HTTP responses
+    directly.
 
-2. A `Connection.call_raw` function that allows users to access HTTP responses
-   directly.
+## Non-goals
+
+- Be perfect
+  - Reddit's API is not very well documented.  Determining which inputs and
+    outputs are legal is largely a matter of trial and error. At any given
+    time, it's likely that we allow some invalid combination of inputs, or
+    forbid a valid combination, or fail to handle some valid response.
+- Express "unexpected" Reddit behavior in the type system.
+  - If we get something from Reddit that we don't understand, we'll just raise.
+    We don't make every function return a ``(_, [`couldn't_parse_response])
+    Result.t)``.
 
 # Credits
 
