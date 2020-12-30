@@ -6,4 +6,5 @@
 
 ## Removed
 
-- Unused optional `subreddit` parameter from `Api.info`.
+- Remove unused optional `subreddit` parameter from `Api.info`.
+- Remove `Bounded_set` from the public interface of `reddit_api_async`.
