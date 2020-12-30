@@ -825,8 +825,8 @@ let hide' ~links =
 let hide = hide' `Do
 let unhide = hide' `Undo
 
-let info ?subreddit query =
-  let endpoint = optional_subreddit_endpoint ?subreddit "/api/info" in
+let info query =
+  let endpoint = optional_subreddit_endpoint "/api/info" in
   let params = Info_query.params_of_t query in
   get ~endpoint ~params (fun response ->
       let handle_json json =
