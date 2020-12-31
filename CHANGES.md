@@ -1,12 +1,12 @@
-# Unreleased
+# 0.1.1 (2020-12-30)
 
 ## Added
 
-- Add lots of documentation
+- Add lots of documentation.
 
 ## Changed
 
-- Increase the minumum delay between HTTP requests from 10ms to 100ms.
+- Increase the minimum delay between HTTP requests from 10ms to 100ms.
 - Return a special `Inbox_item.Comment.t` value instead of a `Thing.Comment.t`
   for inbox endpoints.
 
