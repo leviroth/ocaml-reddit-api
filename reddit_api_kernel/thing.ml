@@ -67,6 +67,16 @@ module Link = struct
     let kind = Thing_kind.Link
   end)
 
+  module Id = struct
+    include (Id : module type of Id)
+
+    let of_uri uri =
+      match Uri.path uri |> String.split ~on:'/' with
+      | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> of_string id
+      | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
+    ;;
+  end
+
   let score = required_field "score" int
   let subreddit = required_field "subreddit" subreddit_name
   let domain = required_field "domain" string

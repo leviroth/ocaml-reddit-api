@@ -49,7 +49,13 @@ module type Thing = sig
   end
 
   and Link : sig
-    include S
+    module Id : sig
+      include Id36.S
+
+      val of_uri : Uri.t -> t
+    end
+
+    include S with module Id := Id
 
     val title : t -> string
     val author : t -> Username.t option

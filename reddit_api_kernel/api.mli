@@ -549,14 +549,14 @@ val inbox
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t t with_param_override)
+     -> Inbox_item.t Listing.t t with_param_override)
     with_listing_params
 
 val unread
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> [ `Comment of Comment.t | `Message of Message.t ] Listing.t t with_param_override)
+     -> Inbox_item.t Listing.t t with_param_override)
     with_listing_params
 
 val sent
@@ -567,7 +567,7 @@ val comment_replies
   : (?include_categories:bool
      -> ?mid:string
      -> mark_read:bool
-     -> Comment.t Listing.t t with_param_override)
+     -> Inbox_item.Comment.t Listing.t t with_param_override)
     with_listing_params
 
 val subreddit_comments
