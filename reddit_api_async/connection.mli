@@ -4,6 +4,10 @@
     It is responsible for taking the endpoint specifications in
     {!module:Reddit_api_kernel.Api} and actually performing HTTP requests.
 
+    Consider wrapping your [Connection] in a {!module:Retry_manager} if you are
+    writing a long-running process and want to just retry forever on transient
+    errors.
+
     {1 Authentication }
 
     [Connection] currently only supports the "script" app type. See 
