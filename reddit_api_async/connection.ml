@@ -50,7 +50,7 @@ end
 
 let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper) =
   (module struct
-    let user_agent = library_client_user_agent ^ " ocaml-reddit-api/0.1"
+    let user_agent = library_client_user_agent ^ " ocaml-reddit-api/0.1.1"
     let add_user_agent headers = Cohttp.Header.add headers "User-Agent" user_agent
     let get uri ~headers = Cohttp_async.Client.get uri ~headers:(add_user_agent headers)
 
