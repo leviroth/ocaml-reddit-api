@@ -664,13 +664,6 @@ let comment_or_more_of_json json =
   | _ -> raise_s [%message "Expected comment or more_comments" (thing : Thing.Poly.t)]
 ;;
 
-let comment_or_message_of_json json =
-  let thing = Thing.Poly.of_json json in
-  match thing with
-  | (`Comment _ | `Message _) as thing -> thing
-  | _ -> raise_s [%message "Expected comment or message" (thing : Thing.Poly.t)]
-;;
-
 let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
 let get_link_listing = get_listing Link.of_json
 let get_subreddit_listing = get_listing Subreddit.of_json
@@ -1189,12 +1182,7 @@ let link_id_from_redirect (response, (_ : Cohttp.Body.t)) =
   let uri =
     Cohttp.Response.headers response |> Cohttp.Header.get_location |> Option.value_exn
   in
-  let id =
-    match Uri.path uri |> String.split ~on:'/' with
-    | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> Link.Id.of_string id
-    | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
-  in
-  return id
+  return (Thing.Link.Id.of_uri uri)
 ;;
 
 let random ?subreddit =
@@ -1261,15 +1249,11 @@ let message_listing' k endpoint ~listing_params ?include_categories ?mid ~mark_r
 let message_listing endpoint k = with_listing_params (message_listing' k endpoint)
 
 let inbox =
-  message_listing
-    "inbox"
-    (handle_json_response (Listing.of_json comment_or_message_of_json))
+  message_listing "inbox" (handle_json_response (Listing.of_json Inbox_item.of_json))
 ;;
 
 let unread =
-  message_listing
-    "unread"
-    (handle_json_response (Listing.of_json comment_or_message_of_json))
+  message_listing "unread" (handle_json_response (Listing.of_json Inbox_item.of_json))
 ;;
 
 let sent =
@@ -1280,7 +1264,9 @@ let sent =
 ;;
 
 let comment_replies =
-  message_listing "comments" (handle_json_response (Listing.of_json Comment.of_json))
+  message_listing
+    "comments"
+    (handle_json_response (Listing.of_json Inbox_item.Comment.of_json))
 ;;
 
 let subreddit_comments' ~listing_params ~subreddit =

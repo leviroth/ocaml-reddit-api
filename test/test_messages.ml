@@ -61,6 +61,12 @@ let%expect_test "compose_message" =
       return ())
 ;;
 
+let inbox_item_fullname (item : Inbox_item.t) =
+  match item with
+  | Comment comment -> `Comment (Inbox_item.Comment.id comment)
+  | Message message -> `Message (Thing.Message.id message)
+;;
+
 let%expect_test "inbox" =
   with_cassette "inbox" ~f:(fun connection ->
       let%bind listing =
@@ -68,10 +74,46 @@ let%expect_test "inbox" =
       in
       Listing.children listing
       |> List.iter ~f:(fun thing ->
-             print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
+             print_s [%sexp (inbox_item_fullname thing : Thing.Fullname.t)]);
       [%expect {|
           (Comment g3u0ce8)
           (Message rdjz4y) |}];
+      return ())
+;;
+
+let%expect_test "inbox" =
+  with_cassette "comment_replies" ~f:(fun connection ->
+      let%bind listing =
+        Connection.call_exn connection (Api.comment_replies ~limit:1 () ~mark_read:false)
+      in
+      let comment = List.hd_exn (Listing.children listing) in
+      print_s
+        [%sexp
+          { id : Thing.Comment.Id.t = Inbox_item.Comment.id comment
+          ; body : string = Inbox_item.Comment.body comment `markdown
+          ; author : Username.t option = Inbox_item.Comment.author comment
+          ; subreddit : Subreddit_name.t = Inbox_item.Comment.subreddit comment
+          ; creation_time : Time_ns.t = Inbox_item.Comment.creation_time comment
+          ; score : int = Inbox_item.Comment.score comment
+          ; parent_id : Thing.Fullname.t =
+              (Inbox_item.Comment.parent_id comment :> Thing.Fullname.t)
+          ; new_ : bool = Inbox_item.Comment.new_ comment
+          ; type_ : Inbox_item.Comment.Type.t = Inbox_item.Comment.type_ comment
+          ; link_id : Thing.Link.Id.t = Inbox_item.Comment.link_id comment
+          ; link_title : string = Inbox_item.Comment.link_title comment
+          ; num_comments_in_thread : int =
+              Inbox_item.Comment.num_comments_in_thread comment
+          }];
+      [%expect
+        {|
+        ((id daaiwot)
+         (body
+          "Your comment was not up to our subreddit's standards. Please read [our posting guidelines](https://www.reddit.com/r/askphilosophy/comments/47egl3/dont_answer_questions_unless_you_have_the/) before answering questions.")
+         (author (BernardJOrtcutt)) (subreddit askphilosophy)
+         (creation_time (2016-11-22 03:42:47.000000000Z)) (score 2)
+         (parent_id (Comment daaivi7)) (new_ false) (type_ Comment_reply)
+         (link_id 5dtzvo) (link_title "What would Nietzsche think of Donald Trump?")
+         (num_comments_in_thread 58)) |}];
       return ())
 ;;
 
@@ -82,7 +124,7 @@ let%expect_test "unread" =
       in
       Listing.children listing
       |> List.iter ~f:(fun thing ->
-             print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)]);
+             print_s [%sexp (inbox_item_fullname thing : Thing.Fullname.t)]);
       [%expect {| (Comment g3u0ce8) |}];
       return ())
 ;;
