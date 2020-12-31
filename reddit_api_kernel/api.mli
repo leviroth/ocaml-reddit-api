@@ -239,6 +239,8 @@ end
 
 open Parameters
 
+(** A [Sequencer.t] represents an endpoint that cannot have multiple requests
+    in flight simultaneously. *)
 module Sequencer : sig
   type t = More_children [@@deriving sexp, bin_io]
 
@@ -258,6 +260,15 @@ module Request : sig
   include Comparable.S with type t := t
 end
 
+(** An [Api_error.t] represents a "normal" error when making an API request.
+ 
+    "Normal" includes transient errors such as a loss of connectivity or HTTP
+    responses representing temporary server issues. It also includes HTTP
+    responses indicating an illegal operation, such as permission errors.
+
+    It does not include programming errors within [Reddit_api_kernel]; if we
+    can't parse a response, we raise instead of returning an error value.
+*)
 module Api_error : sig
   type t =
     | Cohttp_raised of Exn.t
@@ -265,6 +276,9 @@ module Api_error : sig
   [@@deriving sexp_of]
 end
 
+(** A [t] represents the combinaton of an HTTP request to Reddit and a function
+    for turning the HTTP response into a typed representation.
+*)
 type 'a t =
   { request : Request.t
   ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Api_error.t) Result.t
@@ -278,10 +292,17 @@ type 'a with_param_override :=
   -> unit
   -> 'a
 
+(** A value of type [_ with_listing_params] is a function with optional
+    arguments representing Reddit's "listing" pagination protocol.
+
+    @see <https://www.reddit.com/dev/api#listings> Reddit's listing docs
+*)
 type 'a with_listing_params :=
   ?pagination:Listing.Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
-(** Account *)
+(** {1 Endpoints } *)
+
+(** {2 Account } *)
 
 val me : User.t t with_param_override
 val karma : Karma_list.t t with_param_override
@@ -291,7 +312,7 @@ val blocked : User_list.t t with_param_override with_listing_params
 val messaging : User_list.t t with_param_override with_listing_params
 val trusted : User_list.t t with_param_override with_listing_params
 
-(** Flair *)
+(** {2 Flair } *)
 
 val select_flair
   :  ?background_color:Color.t
@@ -303,7 +324,7 @@ val select_flair
   -> target:Flair_target.t
   -> unit t with_param_override
 
-(** Links and comments *)
+(** {2 Links and comments } *)
 
 val add_comment
   :  ?return_rtjson:bool
@@ -436,7 +457,7 @@ val info
      t
      with_param_override
 
-(** Listings *)
+(** {2 Listings } *)
 
 val best
   : (?include_categories:bool -> Link.t Listing.t t with_param_override)
@@ -500,7 +521,7 @@ val controversial
 
 val random : ?subreddit:Subreddit_name.t -> Link.Id.t t with_param_override
 
-(** Private messages *)
+(** {2 Private messages } *)
 
 val block_author
   :  id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ]
@@ -553,7 +574,7 @@ val subreddit_comments
   : (subreddit:Subreddit_name.t -> Comment.t Listing.t t with_param_override)
     with_listing_params
 
-(** Moderation *)
+(** {2 Moderation } *)
 
 val log
   : (?mod_filter:Mod_filter.t
@@ -630,7 +651,7 @@ val mute_message_author : message:Message.Id.t -> unit t with_param_override
 val unmute_message_author : message:Message.Id.t -> unit t with_param_override
 val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t t with_param_override
 
-(** New modmail *)
+(** {2 New modmail } *)
 
 val create_modmail_conversation
   :  subject:string
@@ -640,7 +661,7 @@ val create_modmail_conversation
   -> hide_author:bool
   -> Modmail.Conversation.t t with_param_override
 
-(** Search *)
+(** {2 Search } *)
 
 val search
   : (?category:string
@@ -656,7 +677,7 @@ val search
         with_param_override)
     with_listing_params
 
-(** Subreddits *)
+(** {2 Subreddits } *)
 
 val banned
   : (?include_categories:bool
@@ -826,7 +847,7 @@ val list_subreddits
      -> Subreddit.t Listing.t t with_param_override)
     with_listing_params
 
-(** Users *)
+(** {2 Users } *)
 
 val about_user : username:Username.t -> User.t t with_param_override
 
@@ -853,7 +874,7 @@ val remove_relationship
   -> ?subreddit:Subreddit_name.t
   -> unit t with_param_override
 
-(** Wiki *)
+(** {2 Wiki } *)
 
 val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit t with_param_override
 
