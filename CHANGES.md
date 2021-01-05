@@ -1,3 +1,9 @@
+# Unreleased
+
+## Changed
+
+- Add a case to `Api.Api_errors` representing Reddit's JSON error responses.
+
 # 0.1.1 (2020-12-30)
 
 ## Added

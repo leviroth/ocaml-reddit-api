@@ -3,18 +3,15 @@ open! Async
 open Reddit_api_kernel
 open Thing
 
-let cohttp_error_sexp (response, body) =
-  [%sexp { response : Cohttp.Response.t; body : Cohttp.Body.t }]
-;;
-
 let retry_or_log_unexpected retry_manager here endpoint =
   match%bind Retry_manager.call retry_manager endpoint with
   | Ok v -> return (Some v)
   | Error error ->
-    let error = cohttp_error_sexp error in
     Log.Global.error_s
       [%message
-        "Unexpected response from Reddit" (here : Source_code_position.t) (error : Sexp.t)];
+        "Unexpected response from Reddit"
+          (here : Source_code_position.t)
+          (error : Retry_manager.Non_transient_error.t)];
     return None
 ;;
 

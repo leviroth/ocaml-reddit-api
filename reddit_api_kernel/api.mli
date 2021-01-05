@@ -260,6 +260,18 @@ module Request : sig
   include Comparable.S with type t := t
 end
 
+module Json_response_error : sig
+  type t =
+    { error : string (** An all-caps string acting as an identifier for the error. *)
+    ; error_type : string option
+          (** An all-caps string identifying a category of errors. May
+              encompass many different [error] values. *)
+    ; details : string (** A human-readable explanation of the error. *)
+    ; fields : string list (** A list of HTTP parameters with erroneous values. *)
+    }
+  [@@deriving sexp]
+end
+
 (** An [Api_error.t] represents a "normal" error when making an API request.
  
     "Normal" includes transient errors such as a loss of connectivity or HTTP
@@ -272,7 +284,17 @@ end
 module Api_error : sig
   type t =
     | Cohttp_raised of Exn.t
-    | Reddit_reported_error of Cohttp.Response.t * Cohttp.Body.t
+    | Http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+        (** An [Http_error] represents an HTTP response with an error status for
+            which we have not parsed details from the JSON body.
+
+            [400 Bad Request] responses come with parseable JSON details, so
+            they are included under [Json_response_errors] instead.
+        *)
+    | Json_response_errors of Json_response_error.t list
   [@@deriving sexp_of]
 end
 
