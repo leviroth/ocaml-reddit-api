@@ -9,11 +9,17 @@ let%expect_test _ =
       [%expect
         {|
         (trophies
-         (((award_id Null) (description Null)
+         (((award_id (String v)) (description (String "Since January 2021"))
+           (granted_at (Float 1609678143))
+           (icon_40 (String https://www.redditstatic.com/awards2/reddit_gold-40.png))
+           (icon_70 (String https://www.redditstatic.com/awards2/reddit_gold-70.png))
+           (id (String 2pgty2)) (name (String "Reddit Premium"))
+           (url (String /premium)))
+          ((award_id Null) (description Null) (granted_at (Float 1585935110))
            (icon_40 (String https://www.redditstatic.com/awards2/3_year_club-40.png))
            (icon_70 (String https://www.redditstatic.com/awards2/3_year_club-70.png))
            (id Null) (name (String "Three-Year Club")) (url Null))
-          ((award_id (String o)) (description Null)
+          ((award_id (String o)) (description Null) (granted_at Null)
            (icon_40
             (String https://www.redditstatic.com/awards2/verified_email-40.png))
            (icon_70
