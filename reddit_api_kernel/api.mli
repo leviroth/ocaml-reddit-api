@@ -850,6 +850,7 @@ val list_subreddits
 (** {2 Users } *)
 
 val about_user : username:Username.t -> User.t t with_param_override
+val user_trophies : username:Username.t -> Award.t list t with_param_override
 
 val list_user_subreddits
   : (?include_categories:bool

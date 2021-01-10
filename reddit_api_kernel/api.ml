@@ -667,24 +667,22 @@ let comment_or_more_of_json json =
 let get_listing child_of_json = handle_json_response (Listing.of_json child_of_json)
 let get_link_listing = get_listing Link.of_json
 let get_subreddit_listing = get_listing Subreddit.of_json
+
+let get_tropy_list =
+  handle_json_response (fun json ->
+      match json with
+      | `O [ ("kind", `String "TrophyList"); ("data", `O [ ("trophies", `A trophies) ]) ]
+        -> List.map trophies ~f:Award.of_json
+      | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)])
+;;
+
 let me = get ~endpoint:"/api/v1/me" ~params:[] (handle_json_response User.of_json)
 
 let karma =
   get ~endpoint:"/api/v1/me/karma" ~params:[] (handle_json_response Karma_list.of_json)
 ;;
 
-let trophies =
-  get
-    ~endpoint:"/api/v1/me/trophies"
-    ~params:[]
-    (handle_json_response (fun json ->
-         match json with
-         | `O
-             [ ("kind", `String "TrophyList")
-             ; ("data", `O [ ("trophies", `A trophies) ])
-             ] -> List.map trophies ~f:Award.of_json
-         | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)]))
-;;
+let trophies = get ~endpoint:"/api/v1/me/trophies" ~params:[] get_tropy_list
 
 let with_listing_params k ?pagination ?count ?limit ?show_all =
   let listing_params =
@@ -1794,6 +1792,11 @@ let list_subreddits' ~listing_params ?include_categories ?show_users ~sort =
 let about_user ~username =
   let endpoint = sprintf !"/user/%{Username}/about" username in
   get ~endpoint ~params:[] (handle_json_response User.of_json)
+;;
+
+let user_trophies ~username =
+  let endpoint = sprintf !"/api/v1/user/%{Username}/trophies" username in
+  get ~endpoint ~params:[] get_tropy_list
 ;;
 
 let list_subreddits = with_listing_params list_subreddits'
