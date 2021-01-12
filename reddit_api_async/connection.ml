@@ -240,9 +240,7 @@ let call t api =
 let call_exn t api =
   match%bind call t api with
   | Ok v -> return v
-  | Error (Cohttp_raised exn) -> raise exn
-  | Error (Reddit_reported_error (response, body)) ->
-    raise_s [%message "HTTP error" (response : Cohttp.Response.t) (body : Cohttp.Body.t)]
+  | Error error -> raise_s ([%sexp_of: Api.Api_error.t] error)
 ;;
 
 module Remote = struct

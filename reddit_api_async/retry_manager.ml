@@ -2,14 +2,26 @@ open! Core
 open! Async
 open Reddit_api_kernel
 
+module Non_transient_error = struct
+  type t =
+    | Http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+    | Json_response_errors of Api.Json_response_error.t list
+  [@@deriving sexp_of]
+end
+
 let is_good (result : (_, Api.Api_error.t) Result.t) =
   match result with
   | Ok result -> `Yes (Ok result)
   | Error (Cohttp_raised _) -> `No
-  | Error (Reddit_reported_error (response, body)) ->
+  | Error (Json_response_errors errors) ->
+    `Yes (Error (Non_transient_error.Json_response_errors errors))
+  | Error (Http_error { response; body }) ->
     (match Cohttp.Response.status response with
     | #Cohttp.Code.server_error_status -> `No
-    | _ -> `Yes (Error (response, body)))
+    | _ -> `Yes (Error (Http_error { response; body })))
 ;;
 
 type state =

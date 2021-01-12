@@ -553,10 +553,35 @@ module Parameters = struct
   end
 end
 
+module Json_response_error = struct
+  type t =
+    { error : string
+    ; error_type : string option
+    ; details : string
+    ; fields : string list
+    }
+  [@@deriving sexp]
+
+  let of_json_http_success json =
+    let error, details, field =
+      Json.(
+        get_triple get_string get_string (function
+            | `Null -> None
+            | v -> Some (get_string v)))
+        json
+    in
+    { error; details; fields = Option.to_list field; error_type = None }
+  ;;
+end
+
 module Api_error = struct
   type t =
     | Cohttp_raised of Exn.t
-    | Reddit_reported_error of Cohttp.Response.t * Cohttp.Body.t
+    | Http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+    | Json_response_errors of Json_response_error.t list
   [@@deriving sexp_of]
 end
 
@@ -616,32 +641,47 @@ let api_type : Param_dsl.t = [ "api_type", [ "json" ] ]
 open Parameters
 open Result.Let_syntax
 
-let result_of_response (response, body) =
-  match Cohttp.Response.status response with
-  | #Cohttp.Code.success_status -> Ok (response, body)
-  | _ -> Error (Api_error.Reddit_reported_error (response, body))
-;;
-
-let handle_json_response f response =
-  let%bind _response, body = result_of_response response in
+let handle_json_response f (response, body) =
+  let%bind status =
+    match Cohttp.Response.status response with
+    | #Cohttp.Code.success_status -> Ok `Success
+    | `Bad_request -> Ok `Bad_request
+    | _ -> Error (Api_error.Http_error { response; body })
+  in
   let body_string = Cohttp.Body.to_string body in
-  Json.of_string body_string |> f |> Ok
+  let json = Json.of_string body_string in
+  match status with
+  | `Success ->
+    let errors =
+      match Json.find_opt json [ "json"; "errors" ] with
+      | None -> None
+      | Some list ->
+        (match Json.get_list ident list with
+         | [] -> None
+         | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
+          : Json_response_error.t list option)
+    in
+    (match errors with
+    | Some errors -> Error (Api_error.Json_response_errors errors)
+    | None -> Ok (f json))
+  | `Bad_request ->
+    (match Json.find_opt json [ "reason" ] with
+    | None -> Error (Http_error { response; body })
+    | Some reason ->
+      let error = Json.get_string reason in
+      let error_type =
+        Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
+      in
+      let details = Json.get_string (Json.find json [ "explanation" ]) in
+      let fields =
+        match Json.find_opt json [ "fields" ] with
+        | None -> []
+        | Some json -> Json.get_list Json.get_string json
+      in
+      Error (Json_response_errors [ { error_type; error; details; fields } ]))
 ;;
 
-let assert_no_errors =
-  handle_json_response (fun json ->
-      match Json.find json [ "json"; "errors" ] |> Json.get_list ident with
-      | [] -> ()
-      | errors ->
-        raise_s
-          [%message
-            "Unexpected errors in body of non-error HTTP response" (errors : Json.t list)])
-;;
-
-let ignore_success_response response =
-  let%bind (_ : Cohttp.Response.t * Cohttp.Body.t) = result_of_response response in
-  return ()
-;;
+let assert_no_errors = handle_json_response (const ())
 
 let ignore_empty_object =
   handle_json_response (fun json ->
@@ -740,7 +780,7 @@ let select_flair
       ; optional' string "text_color" text_color
       ]
   in
-  post ~endpoint ~params ignore_success_response
+  post ~endpoint ~params assert_no_errors
 ;;
 
 let handle_things_response =
@@ -1839,7 +1879,7 @@ let add_relationship
       ; optional' string "ban_context" ban_context
       ]
   in
-  post ~endpoint ~params ignore_success_response
+  post ~endpoint ~params assert_no_errors
 ;;
 
 let remove_relationship ~relationship ~username ?subreddit =
@@ -1852,7 +1892,7 @@ let remove_relationship ~relationship ~username ?subreddit =
       ; required' username_ "name" username
       ]
   in
-  post ~endpoint ~params ignore_success_response
+  post ~endpoint ~params assert_no_errors
 ;;
 
 let add_or_remove_wiki_editor ~act ~page:({ subreddit; page } : Wiki_page.Id.t) ~user =
@@ -1886,7 +1926,7 @@ let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_
       match Cohttp.Response.status response, json with
       | #Cohttp.Code.success_status, `O [] -> return (Ok ())
       | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
-      | _, _ -> Error (Api_error.Reddit_reported_error (response, body)))
+      | _, _ -> Error (Api_error.Http_error { response; body }))
 ;;
 
 let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision
