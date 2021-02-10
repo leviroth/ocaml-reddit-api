@@ -57,9 +57,19 @@ module type Thing = sig
 
     include S with module Id := Id
 
+    module Contents : sig
+      type t =
+        | Url of Uri_sexp.t
+        | Self_text of string
+      [@@deriving sexp]
+    end
+
+    val contents : t -> Contents.t
     val title : t -> string
     val author : t -> Username.t option
-    val url : t -> Uri.t option
+    val url : t -> Uri.t
+    val self_text : t -> string
+    val is_self : t -> bool
     val permalink : t -> Uri.t
     val domain : t -> string
     val subreddit : t -> Subreddit_name.t

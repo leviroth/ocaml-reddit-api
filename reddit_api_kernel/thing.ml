@@ -33,7 +33,7 @@ struct
   end
 
   let id = required_field "id" (string >> Id.of_string)
-  let url = optional_field "url" uri
+  let url = required_field "url" uri
   let author = required_field "author" (string >> Username.of_string_or_deleted)
   let title = required_field "title" string
   let description = required_field "description" string
@@ -80,6 +80,21 @@ module Link = struct
   let score = required_field "score" int
   let subreddit = required_field "subreddit" subreddit_name
   let domain = required_field "domain" string
+  let self_text = required_field "selftext" string
+  let is_self = required_field "is_self" bool
+
+  module Contents = struct
+    type t =
+      | Url of Uri_sexp.t
+      | Self_text of string
+    [@@deriving sexp]
+  end
+
+  let contents t : Contents.t =
+    match is_self t with
+    | true -> Self_text (self_text t)
+    | false -> Url (url t)
+  ;;
 end
 
 module Comment' = struct
