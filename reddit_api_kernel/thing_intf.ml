@@ -33,6 +33,9 @@ module type Thing = sig
     val score : t -> Score.t
     val replies : t -> [ `Comment of t | `More_comments of More_comments.t ] list
     val moderator_reports : t -> Moderator_report.t list
+
+    (** [link_title] is populated on modqueue items. *)
+    val link_title : t -> string option
   end
 
   and User : sig
