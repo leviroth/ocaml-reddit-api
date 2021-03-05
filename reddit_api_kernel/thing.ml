@@ -120,6 +120,7 @@ module Comment' = struct
   let body = required_field "body" string
   let subreddit = required_field "subreddit" subreddit_name
   let link = required_field "link_id" (string >> Link.Id.of_string)
+  let link_title = optional_field "link_title" string
 end
 
 module Message = Make (struct
