@@ -1,5 +1,13 @@
 # Unreleased
 
+## Added
+
+- Add `Api.user_trophies` to view trophies by user.
+- Add `Thing.Link.Contents.t` variant for distinguishing self and link
+  submissions.
+- Add `Thing.Comment.link_title` to view the title of the link for a comment in
+  the modqueue.
+
 ## Changed
 
 - Add a case to `Api.Api_errors` representing Reddit's JSON error responses.
