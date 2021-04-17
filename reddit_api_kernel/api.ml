@@ -649,7 +649,17 @@ let handle_json_response f (response, body) =
     | _ -> Error (Api_error.Http_error { response; body })
   in
   let body_string = Cohttp.Body.to_string body in
-  let json = Json.of_string body_string in
+  let json =
+    match Json.of_string body_string with
+    | v -> v
+    | exception exn ->
+      raise_s
+        [%message
+          "Exception parsing JSON"
+            (exn : Exn.t)
+            (response : Cohttp.Response.t)
+            (body_string : string)]
+  in
   match status with
   | `Success ->
     let errors =
