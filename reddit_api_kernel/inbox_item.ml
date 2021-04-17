@@ -43,13 +43,11 @@ module Comment = struct
   let new_ = required_field "new" bool
 
   let type_ =
-    required_field "type" (fun json ->
-        (match string json with
-         | "post_reply" -> Link_reply
-         | "comment_reply" -> Comment_reply
-         | type_ ->
-           raise_s [%message "Unrecognized Inbox.Comment.t type" (type_ : string)]
-          : Type.t))
+    required_field "type" (fun json : Type.t ->
+        match string json with
+        | "post_reply" -> Link_reply
+        | "comment_reply" -> Comment_reply
+        | type_ -> raise_s [%message "Unrecognized Inbox.Comment.t type" (type_ : string)])
   ;;
 
   let link_id = required_field "context" (uri >> Thing.Link.Id.of_uri)
