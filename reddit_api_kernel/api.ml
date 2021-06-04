@@ -577,6 +577,11 @@ end
 module Api_error = struct
   type t =
     | Cohttp_raised of Exn.t
+    | Json_parsing_error of
+        { exn : Exn.t
+        ; response : Cohttp.Response.t
+        ; body_string : string
+        }
     | Http_error of
         { response : Cohttp.Response.t
         ; body : Cohttp.Body.t
@@ -649,46 +654,41 @@ let handle_json_response f (response, body) =
     | _ -> Error (Api_error.Http_error { response; body })
   in
   let body_string = Cohttp.Body.to_string body in
-  let json =
-    match Json.of_string body_string with
-    | v -> v
-    | exception exn ->
-      raise_s
-        [%message
-          "Exception parsing JSON"
-            (exn : Exn.t)
-            (response : Cohttp.Response.t)
-            (body_string : string)]
-  in
-  match status with
-  | `Success ->
-    let errors =
-      match Json.find_opt json [ "json"; "errors" ] with
-      | None -> None
-      | Some list ->
-        (match Json.get_list ident list with
-         | [] -> None
-         | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
-          : Json_response_error.t list option)
-    in
-    (match errors with
-    | Some errors -> Error (Api_error.Json_response_errors errors)
-    | None -> Ok (f json))
-  | `Bad_request ->
-    (match Json.find_opt json [ "reason" ] with
-    | None -> Error (Http_error { response; body })
-    | Some reason ->
-      let error = Json.get_string reason in
-      let error_type =
-        Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
+  match Json.of_string body_string with
+  | exception exn ->
+    Error
+      (Api_error.Json_parsing_error
+         { exn : Exn.t; response : Cohttp.Response.t; body_string : string })
+  | json ->
+    (match status with
+    | `Success ->
+      let errors =
+        match Json.find_opt json [ "json"; "errors" ] with
+        | None -> None
+        | Some list ->
+          (match Json.get_list ident list with
+           | [] -> None
+           | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
+            : Json_response_error.t list option)
       in
-      let details = Json.get_string (Json.find json [ "explanation" ]) in
-      let fields =
-        match Json.find_opt json [ "fields" ] with
-        | None -> []
-        | Some json -> Json.get_list Json.get_string json
-      in
-      Error (Json_response_errors [ { error_type; error; details; fields } ]))
+      (match errors with
+      | Some errors -> Error (Api_error.Json_response_errors errors)
+      | None -> Ok (f json))
+    | `Bad_request ->
+      (match Json.find_opt json [ "reason" ] with
+      | None -> Error (Http_error { response; body })
+      | Some reason ->
+        let error = Json.get_string reason in
+        let error_type =
+          Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
+        in
+        let details = Json.get_string (Json.find json [ "explanation" ]) in
+        let fields =
+          match Json.find_opt json [ "fields" ] with
+          | None -> []
+          | Some json -> Json.get_list Json.get_string json
+        in
+        Error (Json_response_errors [ { error_type; error; details; fields } ])))
 ;;
 
 let assert_no_errors = handle_json_response (const ())

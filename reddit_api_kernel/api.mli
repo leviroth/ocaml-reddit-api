@@ -284,6 +284,11 @@ end
 module Api_error : sig
   type t =
     | Cohttp_raised of Exn.t
+    | Json_parsing_error of
+        { exn : Exn.t
+        ; response : Cohttp.Response.t
+        ; body_string : string
+        }
     | Http_error of
         { response : Cohttp.Response.t
         ; body : Cohttp.Body.t

@@ -15,7 +15,7 @@ end
 let is_good (result : (_, Api.Api_error.t) Result.t) =
   match result with
   | Ok result -> `Yes (Ok result)
-  | Error (Cohttp_raised _) -> `No
+  | Error (Cohttp_raised _ | Json_parsing_error _) -> `No
   | Error (Json_response_errors errors) ->
     `Yes (Error (Non_transient_error.Json_response_errors errors))
   | Error (Http_error { response; body }) ->
