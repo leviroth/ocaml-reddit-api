@@ -3,16 +3,51 @@ open! Async
 open Reddit_api_kernel
 
 module Credentials = struct
+  module Password = struct
+    type t =
+      { client_id : string
+      ; client_secret : string
+      ; password : string
+      ; username : string
+      }
+    [@@deriving sexp]
+  end
+
+  module Userless_confidential = struct
+    type t =
+      { client_id : string
+      ; client_secret : string
+      }
+    [@@deriving sexp]
+  end
+
+  module Userless_public = struct
+    type t =
+      { client_id : string
+      ; device_id : string option [@sexp.option]
+      }
+    [@@deriving sexp]
+
+    let device_id_or_default t =
+      Option.value t.device_id ~default:"DO_NOT_TRACK_THIS_DEVICE"
+    ;;
+  end
+
   type t =
-    { client_id : string
-    ; client_secret : string
-    ; password : string
-    ; username : string
-    }
+    | Password of Password.t
+    | Userless_confidential of Userless_confidential.t
+    | Userless_public of Userless_public.t
   [@@deriving sexp]
 
   let basic_auth_string t =
-    Cohttp.Auth.string_of_credential (`Basic (t.client_id, t.client_secret))
+    let credentials =
+      match t with
+      | Password { client_id; client_secret; _ } -> `Basic (client_id, client_secret)
+      | Userless_confidential { client_id; client_secret; _ } ->
+        `Basic (client_id, client_secret)
+      | Userless_public { client_id; _ } -> `Basic (client_id, "")
+    in
+    Cohttp.Auth.string_of_credential credentials
   ;;
 end
 
@@ -94,14 +129,21 @@ module Local = struct
             "Authorization"
             (Credentials.basic_auth_string t.credentials)
         in
-        Cohttp_client_wrapper.post_form
-          ~headers
-          uri
-          ~params:
+        let params =
+          match t.credentials with
+          | Password { username; password; _ } ->
             [ "grant_type", [ "password" ]
-            ; "username", [ t.credentials.username ]
-            ; "password", [ t.credentials.password ]
+            ; "username", [ username ]
+            ; "password", [ password ]
             ]
+          | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
+          | Userless_public public_credentials ->
+            [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
+            ; ( "device_id"
+              , [ Credentials.Userless_public.device_id_or_default public_credentials ] )
+            ]
+        in
+        Cohttp_client_wrapper.post_form ~headers uri ~params
       in
       let%bind response_string = Cohttp_async.Body.to_string body in
       let response_json = Json.of_string response_string in
@@ -593,13 +635,21 @@ module For_testing = struct
 
     let with_t filename ~credentials ~f =
       let placeholders = Placeholders.create () in
-      let ({ client_id; client_secret; password; username } : Credentials.t) =
-        credentials
-      in
-      Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
-      Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
-      Placeholders.add placeholders ~secret:password ~placeholder:"password";
-      Placeholders.add placeholders ~secret:username ~placeholder:"username";
+      (match (credentials : Credentials.t) with
+      | Password { client_id; client_secret; username; password } ->
+        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+        Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
+        Placeholders.add placeholders ~secret:password ~placeholder:"password";
+        Placeholders.add placeholders ~secret:username ~placeholder:"username"
+      | Userless_confidential { client_id; client_secret } ->
+        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+        Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret"
+      | Userless_public ({ client_id; device_id = _ } as public_credentials) ->
+        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+        Placeholders.add
+          placeholders
+          ~secret:(Credentials.Userless_public.device_id_or_default public_credentials)
+          ~placeholder:"device_id");
       Placeholders.add
         placeholders
         ~secret:(Credentials.basic_auth_string credentials)

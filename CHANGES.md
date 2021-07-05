@@ -7,10 +7,15 @@
   submissions.
 - Add `Thing.Comment.link_title` to view the title of the link for a comment in
   the modqueue.
+- Add support for OAuth2 userless (app-only) flow. Both public clients and
+  confidential clients are supported. See `Connection.Credentials.t`.
 
 ## Changed
 
 - Add a case to `Api.Api_errors` representing Reddit's JSON error responses.
+- Change `Connection.Credentials.t` from record to variant that supports
+  OAuth2 userless (app-only) flow, so if you serialize the variant,
+  a constructor name will be prepended to the sexp.
 
 # 0.1.1 (2020-12-30)
 
