@@ -43,12 +43,36 @@ open! Async
 open Reddit_api_kernel
 
 module Credentials : sig
+  module Password : sig
+    type t =
+      { client_id : string
+      ; client_secret : string
+      ; password : string
+      ; username : string
+      }
+    [@@deriving sexp]
+  end
+
+  module Userless_confidential : sig
+    type t =
+      { client_id : string
+      ; client_secret : string
+      }
+    [@@deriving sexp]
+  end
+
+  module Userless_public : sig
+    type t =
+      { client_id : string
+      ; device_id : string option [@sexp.option]
+      }
+    [@@deriving sexp]
+  end
+
   type t =
-    { client_id : string
-    ; client_secret : string
-    ; password : string
-    ; username : string
-    }
+    | Password of Password.t
+    | Userless_confidential of Userless_confidential.t
+    | Userless_public of Userless_public.t
   [@@deriving sexp]
 end
 
