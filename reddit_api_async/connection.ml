@@ -13,6 +13,15 @@ module Credentials = struct
     [@@deriving sexp]
   end
 
+  module Refresh_token = struct
+    type t =
+      { client_id : string
+      ; client_secret : string option
+      ; refresh_token : string
+      }
+    [@@deriving sexp]
+  end
+
   module Userless_confidential = struct
     type t =
       { client_id : string
@@ -35,20 +44,34 @@ module Credentials = struct
 
   type t =
     | Password of Password.t
+    | Refresh_token of Refresh_token.t
     | Userless_confidential of Userless_confidential.t
     | Userless_public of Userless_public.t
   [@@deriving sexp]
 
-  let basic_auth_string t =
-    let credentials =
-      match t with
-      | Password { client_id; client_secret; _ } -> `Basic (client_id, client_secret)
-      | Userless_confidential { client_id; client_secret; _ } ->
-        `Basic (client_id, client_secret)
-      | Userless_public { client_id; _ } -> `Basic (client_id, "")
-    in
-    Cohttp.Auth.string_of_credential credentials
+  let client_id t =
+    match t with
+    | Password { client_id; _ }
+    | Refresh_token { client_id; _ }
+    | Userless_confidential { client_id; _ }
+    | Userless_public { client_id; _ } -> client_id
   ;;
+
+  let client_secret t =
+    match t with
+    | Refresh_token { client_secret = None; _ } | Userless_public _ -> None
+    | Password { client_secret; _ }
+    | Refresh_token { client_secret = Some client_secret; _ }
+    | Userless_confidential { client_secret; _ } -> Some client_secret
+  ;;
+
+  let basic_auth_string t =
+    let client_id = client_id t in
+    let client_secret = Option.value (client_secret t) ~default:"" in
+    Cohttp.Auth.string_of_credential (`Basic (client_id, client_secret))
+  ;;
+
+  let auth_header t = Cohttp.Header.init_with "Authorization" (basic_auth_string t)
 end
 
 module Sequencer_table = Sequencer_table.Make (Api.Sequencer)
@@ -124,11 +147,7 @@ module Local = struct
       let open Async.Let_syntax in
       let%bind _response, body =
         let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
-        let headers =
-          Cohttp.Header.init_with
-            "Authorization"
-            (Credentials.basic_auth_string t.credentials)
-        in
+        let headers = Credentials.auth_header t.credentials in
         let params =
           match t.credentials with
           | Password { username; password; _ } ->
@@ -136,6 +155,8 @@ module Local = struct
             ; "username", [ username ]
             ; "password", [ password ]
             ]
+          | Refresh_token { refresh_token; _ } ->
+            [ "grant_type", [ "refresh_token" ]; "refresh_token", [ refresh_token ] ]
           | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
           | Userless_public public_credentials ->
             [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
@@ -641,6 +662,11 @@ module For_testing = struct
         Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
         Placeholders.add placeholders ~secret:password ~placeholder:"password";
         Placeholders.add placeholders ~secret:username ~placeholder:"username"
+      | Refresh_token { client_id; client_secret; refresh_token } ->
+        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+        Option.iter client_secret ~f:(fun secret ->
+            Placeholders.add placeholders ~secret ~placeholder:"client_secret");
+        Placeholders.add placeholders ~secret:refresh_token ~placeholder:"refresh_token"
       | Userless_confidential { client_id; client_secret } ->
         Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
         Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret"

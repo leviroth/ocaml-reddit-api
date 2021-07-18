@@ -21,3 +21,16 @@ let with_cassette cassette_name ~f =
   let filename = "cassettes" ^/ sprintf "%s.sexp" cassette_name in
   Connection.For_testing.with_cassette filename ~credentials ~f
 ;;
+
+let get_link_exn connection id =
+  let%bind link =
+    Connection.call_exn
+      connection
+      (Api.info (Id [ `Link (Thing.Link.Id.of_string id) ]) ())
+    >>| List.hd_exn
+  in
+  return
+    (match link with
+    | `Link link -> link
+    | _ -> raise_s [%message "Unexpected response item"])
+;;
