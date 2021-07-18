@@ -53,6 +53,15 @@ module Credentials : sig
     [@@deriving sexp]
   end
 
+  module Refresh_token : sig
+    type t =
+      { client_id : string
+      ; client_secret : string option
+      ; refresh_token : string
+      }
+    [@@deriving sexp]
+  end
+
   module Userless_confidential : sig
     type t =
       { client_id : string
@@ -71,6 +80,7 @@ module Credentials : sig
 
   type t =
     | Password of Password.t
+    | Refresh_token of Refresh_token.t
     | Userless_confidential of Userless_confidential.t
     | Userless_public of Userless_public.t
   [@@deriving sexp]
