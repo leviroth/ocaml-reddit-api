@@ -33,7 +33,7 @@ module Credentials = struct
   module Userless_public = struct
     type t =
       { client_id : string
-      ; device_id : string option [@sexp.option]
+      ; device_id : string option
       }
     [@@deriving sexp]
 
