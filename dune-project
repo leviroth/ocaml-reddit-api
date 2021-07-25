@@ -27,6 +27,7 @@
   (synopsis "Async connection and utility functions for Reddit's API")
   (depends
     (odoc :with-doc)
+    (expect_test_helpers_async (and (>= v0.14.0) :with-test))
     (dune              (>= 2.5))
     (async             (>= v0.14.0))
     (async_ssl         (>= v0.14.0))

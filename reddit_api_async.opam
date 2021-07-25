@@ -8,6 +8,7 @@ homepage: "https://github.com/leviroth/ocaml-reddit-api"
 bug-reports: "https://github.com/leviroth/ocaml-reddit-api/issues"
 depends: [
   "odoc" {with-doc}
+  "expect_test_helpers_async" {>= "v0.14.0" & with-test}
   "dune" {>= "2.5"}
   "async" {>= "v0.14.0"}
   "async_ssl" {>= "v0.14.0"}

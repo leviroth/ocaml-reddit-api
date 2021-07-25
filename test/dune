@@ -1,6 +1,6 @@
 (library
  (name reddit_api_test)
- (libraries core reddit_api_async)
+ (libraries core expect_test_helpers_async reddit_api_async)
  (inline_tests
   (deps
    (source_tree cassettes)))
