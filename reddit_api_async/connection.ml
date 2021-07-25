@@ -650,7 +650,11 @@ module For_testing = struct
         ;;
 
         let seal () = assert (Queue.is_empty queue)
-        let time_source = Time_source.read_only (Time_source.create ~now:Time_ns.epoch ())
+
+        let time_source =
+          Time_source.read_only
+            (Time_source.create ~now:Time_ns.max_value_representable ())
+        ;;
       end)
     ;;
 
@@ -686,11 +690,6 @@ module For_testing = struct
         | true -> reading filename placeholders
         | false -> recording filename placeholders
       in
-      let rate_limiters =
-        match file_exists with
-        | true -> []
-        | false -> online_rate_limiters
-      in
       let connection =
         T
           ( (module Local)
@@ -698,7 +697,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiters )
+              ~rate_limiters:online_rate_limiters )
       in
       Monitor.protect
         (fun () -> f connection)
