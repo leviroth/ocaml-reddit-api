@@ -184,7 +184,7 @@ module Local = struct
       return access_token
     ;;
 
-    let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
+    let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
       let%bind access_token =
         match t.access_token with
         | None -> get_token cohttp_client_wrapper t ~time_source
@@ -195,10 +195,7 @@ module Local = struct
         | true -> get_token cohttp_client_wrapper t ~time_source
         | false -> return access_token
       in
-      let headers =
-        Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)
-      in
-      f headers
+      return (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token))
     ;;
   end
 
@@ -227,15 +224,17 @@ module Local = struct
       ~time_source:(Time_source.wall_clock ())
   ;;
 
-  let with_t
+  let handle_request
       ?sequence
       { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
       ~f
       ~headers
     =
+    let%bind headers =
+      Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
+    in
     let run (None : Nothing.t option) =
-      Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-          Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
+      Rate_limiter.limit_request rate_limiter ~time_source ~f:(fun () -> f headers)
     in
     match sequence with
     | None -> run None
@@ -246,7 +245,7 @@ module Local = struct
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     Monitor.try_with (fun () ->
-        with_t ?sequence t ~headers ~f:(fun headers ->
+        handle_request ?sequence t ~headers ~f:(fun headers ->
             Cohttp_client_wrapper.post_form ~headers ~params uri))
   ;;
 
@@ -254,7 +253,7 @@ module Local = struct
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     Monitor.try_with (fun () ->
-        with_t ?sequence t ~headers ~f:(fun headers ->
+        handle_request ?sequence t ~headers ~f:(fun headers ->
             Cohttp_client_wrapper.get ~headers uri))
   ;;
 end

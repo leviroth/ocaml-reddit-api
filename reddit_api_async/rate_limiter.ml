@@ -6,7 +6,7 @@ module type S = sig
 
   val kind : string
 
-  val with_t
+  val limit_request
     :  t
     -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
     -> time_source:Time_source.t
@@ -16,7 +16,7 @@ end
 type t = T : (module S with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module S), t)) : Sexp.t = List [ Atom S.kind; [%sexp_of: S.t] t ]
-let with_t (T ((module S), t)) = S.with_t t
+let limit_request (T ((module S), t)) = S.limit_request t
 
 module With_minimum_delay = struct
   type t =
@@ -33,7 +33,7 @@ module With_minimum_delay = struct
     { ready; delay }
   ;;
 
-  let with_t { ready; delay } ~f ~time_source =
+  let limit_request { ready; delay } ~f ~time_source =
     let%bind () = Mvar.take ready in
     Deferred.upon (Time_source.after time_source delay) (fun () -> Mvar.set ready ());
     f ()
@@ -182,7 +182,7 @@ module By_headers = struct
              Server_side_info.update server_side_info new_server_side_info)
   ;;
 
-  let with_t t ~f ~time_source =
+  let limit_request t ~f ~time_source =
     Deferred.create (fun ivar ->
         Queue.enqueue t.jobs (fun () ->
             upon (f ()) (fun ((response, _body) as result) ->
@@ -216,11 +216,11 @@ module Combined = struct
 
   let kind = "Combined"
 
-  let with_t ts ~f ~time_source =
+  let limit_request ts ~f ~time_source =
     List.fold
       ts
       ~init:f
-      ~f:(fun f t headers -> with_t t ~time_source ~f:(fun () -> f headers))
+      ~f:(fun f t headers -> limit_request t ~time_source ~f:(fun () -> f headers))
       ()
   ;;
 end

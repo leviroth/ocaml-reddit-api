@@ -7,7 +7,7 @@ val by_headers : unit -> t
 val with_minimum_delay : delay:Time_ns.Span.t -> t
 val combine : t list -> t
 
-val with_t
+val limit_request
   :  t
   -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
   -> time_source:Time_source.t
