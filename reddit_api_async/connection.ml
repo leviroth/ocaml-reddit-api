@@ -204,16 +204,16 @@ module Local = struct
 
   type t =
     { auth : Auth.t
-    ; rate_limiters : Rate_limiter.t list
+    ; rate_limiter : Rate_limiter.t
     ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
     ; time_source : Time_source.t
     ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
     }
   [@@deriving sexp_of]
 
-  let create_internal cohttp_client_wrapper credentials ~time_source ~rate_limiters =
+  let create_internal cohttp_client_wrapper credentials ~time_source ~rate_limiter =
     { auth = Auth.create credentials ()
-    ; rate_limiters
+    ; rate_limiter
     ; cohttp_client_wrapper
     ; time_source
     ; sequencer_table = Sequencer_table.create ()
@@ -229,17 +229,13 @@ module Local = struct
 
   let with_t
       ?sequence
-      { auth; rate_limiters; cohttp_client_wrapper; time_source; sequencer_table }
+      { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
       ~f
       ~headers
     =
     let run (None : Nothing.t option) =
       Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-          let f =
-            List.fold rate_limiters ~init:f ~f:(fun f rate_limiter headers ->
-                Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
-          in
-          f headers)
+          Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
     in
     match sequence with
     | None -> run None
@@ -267,16 +263,15 @@ type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
-let online_rate_limiters =
-  [ Rate_limiter.by_headers ()
-  ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
-  ]
+let all_rate_limiters =
+  Rate_limiter.combine
+    [ Rate_limiter.by_headers ()
+    ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
+    ]
 ;;
 
 let create credentials ~user_agent =
-  T
-    ( (module Local)
-    , Local.create credentials ~user_agent ~rate_limiters:online_rate_limiters )
+  T ((module Local), Local.create credentials ~user_agent ~rate_limiter:all_rate_limiters)
 ;;
 
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
@@ -697,7 +692,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiters:online_rate_limiters )
+              ~rate_limiter:all_rate_limiters )
       in
       Monitor.protect
         (fun () -> f connection)

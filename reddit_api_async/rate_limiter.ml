@@ -210,3 +210,19 @@ let by_headers () = T ((module By_headers), By_headers.create ())
 let with_minimum_delay ~delay =
   T ((module With_minimum_delay), With_minimum_delay.create ~delay)
 ;;
+
+module Combined = struct
+  type nonrec t = t list [@@deriving sexp_of]
+
+  let kind = "Combined"
+
+  let with_t ts ~f ~time_source =
+    List.fold
+      ts
+      ~init:f
+      ~f:(fun f t headers -> with_t t ~time_source ~f:(fun () -> f headers))
+      ()
+  ;;
+end
+
+let combine ts = T ((module Combined), ts)

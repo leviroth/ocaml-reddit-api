@@ -5,6 +5,7 @@ type t [@@deriving sexp_of]
 
 val by_headers : unit -> t
 val with_minimum_delay : delay:Time_ns.Span.t -> t
+val combine : t list -> t
 
 val with_t
   :  t
