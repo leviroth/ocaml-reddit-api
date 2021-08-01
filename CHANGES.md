@@ -17,6 +17,7 @@
 - Change `Connection.Credentials.t` from record to variant that supports
   OAuth2 userless (app-only) flow, so if you serialize the variant,
   a constructor name will be prepended to the sexp.
+- Restructured `Rate_limiter` and added expect tests.
 
 # 0.1.1 (2020-12-30)
 

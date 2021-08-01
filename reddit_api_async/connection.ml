@@ -234,7 +234,10 @@ module Local = struct
       Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
     in
     let run (None : Nothing.t option) =
-      Rate_limiter.limit_request rate_limiter ~time_source ~f:(fun () -> f headers)
+      let%bind () = Rate_limiter.permit_request rate_limiter in
+      let%bind ((response, _body) as result) = f headers in
+      Rate_limiter.notify_response rate_limiter response;
+      return result
     in
     match sequence with
     | None -> run None
@@ -262,15 +265,20 @@ type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
-let all_rate_limiters =
+let all_rate_limiters ~time_source =
   Rate_limiter.combine
-    [ Rate_limiter.by_headers ()
-    ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
+    [ Rate_limiter.by_headers ~time_source
+    ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100) ~time_source
     ]
 ;;
 
 let create credentials ~user_agent =
-  T ((module Local), Local.create credentials ~user_agent ~rate_limiter:all_rate_limiters)
+  T
+    ( (module Local)
+    , Local.create
+        credentials
+        ~user_agent
+        ~rate_limiter:(all_rate_limiters ~time_source:(Time_source.wall_clock ())) )
 ;;
 
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
@@ -691,7 +699,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiter:all_rate_limiters )
+              ~rate_limiter:(all_rate_limiters ~time_source:Cassette.time_source) )
       in
       Monitor.protect
         (fun () -> f connection)
