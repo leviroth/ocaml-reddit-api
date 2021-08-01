@@ -97,23 +97,28 @@ module type Cohttp_client_wrapper = sig
   val get
     :  Uri.t
     -> headers:Cohttp.Header.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
   val post_form
     :  Uri.t
     -> headers:Cohttp.Header.t
     -> params:(string * string list) list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 end
 
 let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper) =
   (module struct
     let user_agent = library_client_user_agent ^ " ocaml-reddit-api/0.1.1"
     let add_user_agent headers = Cohttp.Header.add headers "User-Agent" user_agent
-    let get uri ~headers = Cohttp_async.Client.get uri ~headers:(add_user_agent headers)
+
+    let get uri ~headers =
+      Monitor.try_with (fun () ->
+          Cohttp_async.Client.get uri ~headers:(add_user_agent headers))
+    ;;
 
     let post_form uri ~headers ~params =
-      Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params
+      Monitor.try_with (fun () ->
+          Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params)
     ;;
   end)
 ;;
@@ -144,7 +149,7 @@ module Local = struct
     let create credentials () = { credentials; access_token = None }
 
     let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
-      let open Async.Let_syntax in
+      let open Deferred.Result.Let_syntax in
       let%bind _response, body =
         let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
         let headers = Credentials.auth_header t.credentials in
@@ -166,7 +171,9 @@ module Local = struct
         in
         Cohttp_client_wrapper.post_form ~headers uri ~params
       in
-      let%bind response_string = Cohttp_async.Body.to_string body in
+      let%bind response_string =
+        Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
+      in
       let response_json = Json.of_string response_string in
       let access_token : Access_token.t =
         let token = Json.find response_json [ "access_token" ] |> Json.get_string in
@@ -185,6 +192,7 @@ module Local = struct
     ;;
 
     let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
+      let open Deferred.Result.Let_syntax in
       let%bind access_token =
         match t.access_token with
         | None -> get_token cohttp_client_wrapper t ~time_source
@@ -230,11 +238,12 @@ module Local = struct
       ~f
       ~headers
     =
+    let open Deferred.Result.Let_syntax in
     let%bind headers =
       Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
     in
     let run (None : Nothing.t option) =
-      let%bind () = Rate_limiter.permit_request rate_limiter in
+      let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
       let%bind ((response, _body) as result) = f headers in
       Rate_limiter.notify_response rate_limiter response;
       return result
@@ -247,17 +256,15 @@ module Local = struct
   let post_form ?sequence t uri ~params =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
-    Monitor.try_with (fun () ->
-        handle_request ?sequence t ~headers ~f:(fun headers ->
-            Cohttp_client_wrapper.post_form ~headers ~params uri))
+    handle_request ?sequence t ~headers ~f:(fun headers ->
+        Cohttp_client_wrapper.post_form ~headers ~params uri)
   ;;
 
   let get ?sequence t uri =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
-    Monitor.try_with (fun () ->
-        handle_request ?sequence t ~headers ~f:(fun headers ->
-            Cohttp_client_wrapper.get ~headers uri))
+    handle_request ?sequence t ~headers ~f:(fun headers ->
+        Cohttp_client_wrapper.get ~headers uri)
   ;;
 end
 
@@ -550,17 +557,19 @@ module For_testing = struct
         ;;
 
         let get uri ~headers =
-          let%bind response = Cohttp_client_wrapper.get uri ~headers in
+          let%bind response = Cohttp_client_wrapper.get uri ~headers >>| Result.ok_exn in
           let%bind response = save_interaction (Get { uri; headers }) response in
-          return response
+          return (Ok response)
         ;;
 
         let post_form uri ~headers ~params =
-          let%bind response = Cohttp_client_wrapper.post_form uri ~headers ~params in
+          let%bind response =
+            Cohttp_client_wrapper.post_form uri ~headers ~params >>| Result.ok_exn
+          in
           let%bind response =
             save_interaction (Post_form { uri; headers; params }) response
           in
-          return response
+          return (Ok response)
         ;;
 
         let is_access_token_interaction (interaction : Interaction.t) =
@@ -625,7 +634,7 @@ module For_testing = struct
                && [%compare.equal: Cohttp.Header.t] headers request.headers
              with
             | false -> fail ()
-            | true -> return response)
+            | true -> return (Ok response))
         ;;
 
         let post_form uri ~headers ~params =
@@ -648,7 +657,7 @@ module For_testing = struct
                && [%equal: (string * string list) list] params request.params
              with
             | false -> fail ()
-            | true -> return response)
+            | true -> return (Ok response))
         ;;
 
         let seal () = assert (Queue.is_empty queue)
