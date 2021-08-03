@@ -97,23 +97,28 @@ module type Cohttp_client_wrapper = sig
   val get
     :  Uri.t
     -> headers:Cohttp.Header.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 
   val post_form
     :  Uri.t
     -> headers:Cohttp.Header.t
     -> params:(string * string list) list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
 end
 
 let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper) =
   (module struct
     let user_agent = library_client_user_agent ^ " ocaml-reddit-api/0.1.1"
     let add_user_agent headers = Cohttp.Header.add headers "User-Agent" user_agent
-    let get uri ~headers = Cohttp_async.Client.get uri ~headers:(add_user_agent headers)
+
+    let get uri ~headers =
+      Monitor.try_with (fun () ->
+          Cohttp_async.Client.get uri ~headers:(add_user_agent headers))
+    ;;
 
     let post_form uri ~headers ~params =
-      Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params
+      Monitor.try_with (fun () ->
+          Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params)
     ;;
   end)
 ;;
@@ -144,7 +149,7 @@ module Local = struct
     let create credentials () = { credentials; access_token = None }
 
     let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
-      let open Async.Let_syntax in
+      let open Deferred.Result.Let_syntax in
       let%bind _response, body =
         let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
         let headers = Credentials.auth_header t.credentials in
@@ -166,7 +171,9 @@ module Local = struct
         in
         Cohttp_client_wrapper.post_form ~headers uri ~params
       in
-      let%bind response_string = Cohttp_async.Body.to_string body in
+      let%bind response_string =
+        Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
+      in
       let response_json = Json.of_string response_string in
       let access_token : Access_token.t =
         let token = Json.find response_json [ "access_token" ] |> Json.get_string in
@@ -184,7 +191,8 @@ module Local = struct
       return access_token
     ;;
 
-    let with_t t ~f ~headers ~cohttp_client_wrapper ~time_source =
+    let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
+      let open Deferred.Result.Let_syntax in
       let%bind access_token =
         match t.access_token with
         | None -> get_token cohttp_client_wrapper t ~time_source
@@ -195,25 +203,22 @@ module Local = struct
         | true -> get_token cohttp_client_wrapper t ~time_source
         | false -> return access_token
       in
-      let headers =
-        Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)
-      in
-      f headers
+      return (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token))
     ;;
   end
 
   type t =
     { auth : Auth.t
-    ; rate_limiters : Rate_limiter.t list
+    ; rate_limiter : Rate_limiter.t
     ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
     ; time_source : Time_source.t
     ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
     }
   [@@deriving sexp_of]
 
-  let create_internal cohttp_client_wrapper credentials ~time_source ~rate_limiters =
+  let create_internal cohttp_client_wrapper credentials ~time_source ~rate_limiter =
     { auth = Auth.create credentials ()
-    ; rate_limiters
+    ; rate_limiter
     ; cohttp_client_wrapper
     ; time_source
     ; sequencer_table = Sequencer_table.create ()
@@ -227,19 +232,21 @@ module Local = struct
       ~time_source:(Time_source.wall_clock ())
   ;;
 
-  let with_t
+  let handle_request
       ?sequence
-      { auth; rate_limiters; cohttp_client_wrapper; time_source; sequencer_table }
+      { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
       ~f
       ~headers
     =
+    let open Deferred.Result.Let_syntax in
+    let%bind headers =
+      Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
+    in
     let run (None : Nothing.t option) =
-      Auth.with_t auth ~headers ~cohttp_client_wrapper ~time_source ~f:(fun headers ->
-          let f =
-            List.fold rate_limiters ~init:f ~f:(fun f rate_limiter headers ->
-                Rate_limiter.with_t rate_limiter ~time_source ~f:(fun () -> f headers))
-          in
-          f headers)
+      let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
+      let%bind ((response, _body) as result) = f headers in
+      Rate_limiter.notify_response rate_limiter response;
+      return result
     in
     match sequence with
     | None -> run None
@@ -249,17 +256,15 @@ module Local = struct
   let post_form ?sequence t uri ~params =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
-    Monitor.try_with (fun () ->
-        with_t ?sequence t ~headers ~f:(fun headers ->
-            Cohttp_client_wrapper.post_form ~headers ~params uri))
+    handle_request ?sequence t ~headers ~f:(fun headers ->
+        Cohttp_client_wrapper.post_form ~headers ~params uri)
   ;;
 
   let get ?sequence t uri =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
-    Monitor.try_with (fun () ->
-        with_t ?sequence t ~headers ~f:(fun headers ->
-            Cohttp_client_wrapper.get ~headers uri))
+    handle_request ?sequence t ~headers ~f:(fun headers ->
+        Cohttp_client_wrapper.get ~headers uri)
   ;;
 end
 
@@ -267,16 +272,20 @@ type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
-let online_rate_limiters =
-  [ Rate_limiter.by_headers ()
-  ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
-  ]
+let all_rate_limiters ~time_source =
+  Rate_limiter.combine
+    [ Rate_limiter.by_headers ~time_source
+    ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100) ~time_source
+    ]
 ;;
 
 let create credentials ~user_agent =
   T
     ( (module Local)
-    , Local.create credentials ~user_agent ~rate_limiters:online_rate_limiters )
+    , Local.create
+        credentials
+        ~user_agent
+        ~rate_limiter:(all_rate_limiters ~time_source:(Time_source.wall_clock ())) )
 ;;
 
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
@@ -548,17 +557,19 @@ module For_testing = struct
         ;;
 
         let get uri ~headers =
-          let%bind response = Cohttp_client_wrapper.get uri ~headers in
+          let%bind response = Cohttp_client_wrapper.get uri ~headers >>| Result.ok_exn in
           let%bind response = save_interaction (Get { uri; headers }) response in
-          return response
+          return (Ok response)
         ;;
 
         let post_form uri ~headers ~params =
-          let%bind response = Cohttp_client_wrapper.post_form uri ~headers ~params in
+          let%bind response =
+            Cohttp_client_wrapper.post_form uri ~headers ~params >>| Result.ok_exn
+          in
           let%bind response =
             save_interaction (Post_form { uri; headers; params }) response
           in
-          return response
+          return (Ok response)
         ;;
 
         let is_access_token_interaction (interaction : Interaction.t) =
@@ -623,7 +634,7 @@ module For_testing = struct
                && [%compare.equal: Cohttp.Header.t] headers request.headers
              with
             | false -> fail ()
-            | true -> return response)
+            | true -> return (Ok response))
         ;;
 
         let post_form uri ~headers ~params =
@@ -646,11 +657,15 @@ module For_testing = struct
                && [%equal: (string * string list) list] params request.params
              with
             | false -> fail ()
-            | true -> return response)
+            | true -> return (Ok response))
         ;;
 
         let seal () = assert (Queue.is_empty queue)
-        let time_source = Time_source.read_only (Time_source.create ~now:Time_ns.epoch ())
+
+        let time_source =
+          Time_source.read_only
+            (Time_source.create ~now:Time_ns.max_value_representable ())
+        ;;
       end)
     ;;
 
@@ -686,11 +701,6 @@ module For_testing = struct
         | true -> reading filename placeholders
         | false -> recording filename placeholders
       in
-      let rate_limiters =
-        match file_exists with
-        | true -> []
-        | false -> online_rate_limiters
-      in
       let connection =
         T
           ( (module Local)
@@ -698,7 +708,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiters )
+              ~rate_limiter:(all_rate_limiters ~time_source:Cassette.time_source) )
       in
       Monitor.protect
         (fun () -> f connection)

@@ -5,39 +5,45 @@ module type S = sig
   type t [@@deriving sexp_of]
 
   val kind : string
-
-  val with_t
-    :  t
-    -> f:(unit -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t)
-    -> time_source:Time_source.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t) Deferred.t
+  val permit_request : t -> unit Deferred.t
+  val notify_response : t -> Cohttp.Response.t -> unit
+  val is_ready : t -> bool
+  val wait_until_ready : t -> unit Deferred.t
 end
 
 type t = T : (module S with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module S), t)) : Sexp.t = List [ Atom S.kind; [%sexp_of: S.t] t ]
-let with_t (T ((module S), t)) = S.with_t t
+let permit_request (T ((module S), t)) = S.permit_request t
+let notify_response (T ((module S), t)) = S.notify_response t
+let is_ready (T ((module S), t)) = S.is_ready t
+let wait_until_ready (T ((module S), t)) = S.wait_until_ready t
 
 module With_minimum_delay = struct
   type t =
     { ready : (unit, read_write) Mvar.t
+    ; time_source : (Time_source.t[@sexp.opaque])
     ; delay : Time_ns.Span.t
     }
   [@@deriving sexp_of]
 
   let kind = "With_minimum_delay"
 
-  let create ~delay =
+  let create ~delay ~time_source =
     let ready = Mvar.create () in
     Mvar.set ready ();
-    { ready; delay }
+    { ready; delay; time_source }
   ;;
 
-  let with_t { ready; delay } ~f ~time_source =
+  let permit_request { ready; delay; time_source } =
     let%bind () = Mvar.take ready in
     Deferred.upon (Time_source.after time_source delay) (fun () -> Mvar.set ready ());
-    f ()
+    return ()
   ;;
+
+  let notify_response (_ : t) (_ : Cohttp.Response.t) = ()
+  let is_ready { ready; _ } = not (Mvar.is_empty ready)
+  let wait_until_ready { ready; _ } = Mvar.value_available ready
 end
 
 module By_headers = struct
@@ -47,7 +53,6 @@ module By_headers = struct
     type t =
       { remaining_api_calls : int
       ; reset_time : Time_ns.t
-      ; server_time : Time_ns.t
       }
     [@@deriving sexp, fields]
 
@@ -126,87 +131,122 @@ module By_headers = struct
         in
         snap_to_nearest_minute (Time_ns.add server_time relative_reset_time)
       in
-      { remaining_api_calls; reset_time; server_time }
+      { remaining_api_calls; reset_time }
     ;;
 
-    let demonstrates_reset old_t new_t = Time_ns.( < ) old_t.reset_time new_t.reset_time
+    let compare_by_inferred_age =
+      (* We use reset time instead of the "Date" header because we might have
+         sent some requests for which we have yet to receive a response. In that
+         case, the most authoritative picture of our remaining requests is not
+         the most recent response, but rather our previous state adjusted by the
+         number of requests we've sent.
 
-    let update t t' =
-      match Time_ns.( <= ) t.server_time t'.server_time with
-      | true -> t'
-      | false -> t
+         We therefore prefer the state with fewer requests remaining when two
+         states are for the same reset period.
+      *)
+      Comparable.lexicographic
+        [ Comparable.lift Time_ns.compare ~f:reset_time
+        ; Comparable.reverse (Comparable.lift compare ~f:remaining_api_calls)
+        ]
     ;;
+
+    let freshest = Base.Comparable.max compare_by_inferred_age
   end
 
   type t =
-    { mutable server_side_info : Server_side_info.t option
-    ; mutable waiting_for_reset : bool
-    ; jobs : (unit -> unit) Queue.t
+    { ready : (unit, read_write) Mvar.t
+    ; time_source : (Time_source.t[@sexp.opaque])
+    ; mutable reset_event : ((Nothing.t, unit) Time_source.Event.t[@sexp.opaque]) option
+    ; mutable server_side_info : Server_side_info.t option
     }
   [@@deriving sexp_of]
 
-  let create () =
-    { server_side_info = None; waiting_for_reset = false; jobs = Queue.create () }
+  let create ~time_source =
+    let ready = Mvar.create () in
+    Mvar.set ready ();
+    { server_side_info = None; reset_event = None; time_source; ready }
   ;;
 
-  let rec clear_queue t ~time_source =
-    match t.waiting_for_reset with
-    | true -> ()
-    | false ->
-      Queue.dequeue t.jobs
-      |> Option.iter ~f:(fun job ->
-             match t.server_side_info with
-             | None ->
-               t.waiting_for_reset <- true;
-               job ()
-             | Some
-                 ({ reset_time; remaining_api_calls; server_time = _ } as
-                 server_side_info) ->
-               (match remaining_api_calls with
-               | 0 ->
-                 t.waiting_for_reset <- true;
-                 upon (Time_source.at time_source reset_time) job
-               | n ->
-                 t.server_side_info
-                   <- Some { server_side_info with remaining_api_calls = n - 1 };
-                 job ();
-                 clear_queue t ~time_source))
+  let is_ready { ready; _ } = not (Mvar.is_empty ready)
+  let wait_until_ready { ready; _ } = Mvar.value_available ready
+
+  let rec schedule_reset_at_time t time =
+    let schedule_fresh_event () =
+      t.reset_event
+        <- Some
+             (Time_source.Event.run_at
+                t.time_source
+                time
+                (fun () ->
+                  Mvar.set t.ready ();
+                  (* In case something prevents our first request from receiving
+                     a response, we will periodically allow retries. *)
+                  schedule_reset_at_time t (Time_ns.add time Time_ns.Span.minute))
+                ())
+    in
+    match t.reset_event with
+    | None -> schedule_fresh_event ()
+    | Some event ->
+      let scheduled_time = Time_source.Event.scheduled_at event in
+      (match Time_ns.( < ) scheduled_time time with
+      | false -> ()
+      | true ->
+        (match Time_source.Event.reschedule_at event time with
+        | Ok -> ()
+        | Previously_aborted _ -> .
+        | Previously_happened () -> schedule_fresh_event ()))
   ;;
 
-  let update_server_side_info t new_server_side_info =
-    t.server_side_info
-      <- Some
-           (match t.server_side_info with
-           | None -> new_server_side_info
-           | Some server_side_info ->
-             Server_side_info.update server_side_info new_server_side_info)
+  let update_server_side_info t ~new_server_side_info =
+    t.server_side_info <- Some new_server_side_info;
+    schedule_reset_at_time t new_server_side_info.reset_time;
+    match new_server_side_info.remaining_api_calls > 0 with
+    | false -> ()
+    | true -> Mvar.set t.ready ()
   ;;
 
-  let with_t t ~f ~time_source =
-    Deferred.create (fun ivar ->
-        Queue.enqueue t.jobs (fun () ->
-            upon (f ()) (fun ((response, _body) as result) ->
-                let headers = Cohttp.Response.headers response in
-                let new_server_side_info = Server_side_info.t_of_headers headers in
-                (match t.server_side_info with
-                | None -> t.waiting_for_reset <- false
-                | Some old_server_side_info ->
-                  (match
-                     Server_side_info.demonstrates_reset
-                       old_server_side_info
-                       new_server_side_info
-                   with
-                  | false -> ()
-                  | true -> t.waiting_for_reset <- false));
-                update_server_side_info t new_server_side_info;
-                Ivar.fill ivar result;
-                clear_queue t ~time_source));
-        clear_queue t ~time_source)
+  let permit_request t =
+    let%bind () = Mvar.take t.ready in
+    (match t.server_side_info with
+    | None -> ()
+    | Some ({ remaining_api_calls; _ } as server_side_info) ->
+      (match remaining_api_calls with
+      | 0 -> ()
+      | n ->
+        let new_server_side_info =
+          { server_side_info with remaining_api_calls = n - 1 }
+        in
+        update_server_side_info t ~new_server_side_info));
+    return ()
+  ;;
+
+  let notify_response t response =
+    let headers = Cohttp.Response.headers response in
+    let response_server_side_info = Server_side_info.t_of_headers headers in
+    let new_server_side_info =
+      match t.server_side_info with
+      | None -> response_server_side_info
+      | Some server_side_info ->
+        Server_side_info.freshest server_side_info response_server_side_info
+    in
+    update_server_side_info t ~new_server_side_info
   ;;
 end
 
-let by_headers () = T ((module By_headers), By_headers.create ())
+let by_headers ~time_source = T ((module By_headers), By_headers.create ~time_source)
 
-let with_minimum_delay ~delay =
-  T ((module With_minimum_delay), With_minimum_delay.create ~delay)
+let with_minimum_delay ~time_source ~delay =
+  T ((module With_minimum_delay), With_minimum_delay.create ~time_source ~delay)
 ;;
+
+module Combined = struct
+  type nonrec t = t list [@@deriving sexp_of]
+
+  let kind = "Combined"
+  let permit_request ts = Deferred.all_unit (List.map ts ~f:permit_request)
+  let notify_response ts headers = List.iter ts ~f:(fun t -> notify_response t headers)
+  let is_ready ts = List.for_all ts ~f:is_ready
+  let wait_until_ready ts = Deferred.all_unit (List.map ts ~f:wait_until_ready)
+end
+
+let combine ts = T ((module Combined), ts)
