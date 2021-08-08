@@ -111,27 +111,19 @@ module By_headers = struct
     ;;
 
     let t_of_headers headers =
-      let get_header header =
-        match Cohttp.Header.get headers header with
-        | Some v -> v
-        | None ->
-          raise_s
-            [%message
-              "Missing expected X-Ratelimit header"
-                (header : string)
-                (headers : Cohttp.Header.t)]
+      let open Option.Let_syntax in
+      let get_header header = Cohttp.Header.get headers header in
+      let%bind remaining_api_calls =
+        get_header "X-Ratelimit-Remaining" >>| Float.of_string >>| Int.of_float
       in
-      let remaining_api_calls =
-        get_header "X-Ratelimit-Remaining" |> Float.of_string |> Int.of_float
-      in
-      let server_time = parse_http_header_date (get_header "Date") in
-      let reset_time =
-        let relative_reset_time =
-          get_header "X-Ratelimit-Reset" |> Int.of_string |> Time_ns.Span.of_int_sec
+      let%bind reset_time =
+        let%bind server_time = get_header "Date" >>| parse_http_header_date in
+        let%bind relative_reset_time =
+          get_header "X-Ratelimit-Reset" >>| Int.of_string >>| Time_ns.Span.of_int_sec
         in
-        snap_to_nearest_minute (Time_ns.add server_time relative_reset_time)
+        Some (snap_to_nearest_minute (Time_ns.add server_time relative_reset_time))
       in
-      { remaining_api_calls; reset_time }
+      Some { remaining_api_calls; reset_time }
     ;;
 
     let compare_by_inferred_age =
@@ -222,14 +214,16 @@ module By_headers = struct
 
   let notify_response t response =
     let headers = Cohttp.Response.headers response in
-    let response_server_side_info = Server_side_info.t_of_headers headers in
-    let new_server_side_info =
-      match t.server_side_info with
-      | None -> response_server_side_info
-      | Some server_side_info ->
-        Server_side_info.freshest server_side_info response_server_side_info
-    in
-    update_server_side_info t ~new_server_side_info
+    match Server_side_info.t_of_headers headers with
+    | None -> ()
+    | Some response_server_side_info ->
+      let new_server_side_info =
+        match t.server_side_info with
+        | None -> response_server_side_info
+        | Some server_side_info ->
+          Server_side_info.freshest server_side_info response_server_side_info
+      in
+      update_server_side_info t ~new_server_side_info
   ;;
 end
 
