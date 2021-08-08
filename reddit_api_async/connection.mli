@@ -10,7 +10,7 @@
 
     {1 Authentication }
 
-    [Connection] currently only supports the "script" app type. See 
+    [Connection] currently only supports the "script" app type. See
     {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types}
     Reddit's documentation on app types}.
 
@@ -32,8 +32,8 @@
 
     {2 Minimum time between requests }
 
-    In order to abide by /u/kemitche's 
-    {{:https://www.reddit.com/r/redditdev/comments/1yxrp7/formal_ratelimiting_headers/} 
+    In order to abide by /u/kemitche's
+    {{:https://www.reddit.com/r/redditdev/comments/1yxrp7/formal_ratelimiting_headers/}
     request} to "be reasonable" and not slam all 600 requests in as quickly as
     possible, [Connection] also enforces a 100ms delay between requests.
 *)

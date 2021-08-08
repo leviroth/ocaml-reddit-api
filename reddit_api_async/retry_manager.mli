@@ -13,14 +13,14 @@
     perform the same action twice. Reddit has been known to send HTTP server
     error statuses even while successfully handling the request. Therefore,
     [Retry_manager] cannot guarantee that a request had no effect before
-    retrying it - it just trusts Reddit when it says that there was an error. 
+    retrying it - it just trusts Reddit when it says that there was an error.
 
     {1 Transient and non-transient errors}
 
     A transient error is an error that we expect to resolve without changes to
     the API parameters. We operationalize this as
 
-    - any exception raised by the [Cohttp] client module; or 
+    - any exception raised by the [Cohttp] client module; or
     - any HTTP response with a server error status code (500-599).
 
     {b Example: Transient error.} Reddit responds to a request with [503
@@ -31,7 +31,7 @@
     Forbidden]. We expect that the request will not succeed unless either (a)
     the request is modified to no longer reference content to which the user
     does not have access; or (b) the user's permissions are modified outside of
-    this request. 
+    this request.
 *)
 
 open! Core
