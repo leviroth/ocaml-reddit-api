@@ -273,7 +273,7 @@ module Json_response_error : sig
 end
 
 (** An [Api_error.t] represents a "normal" error when making an API request.
- 
+
     "Normal" includes transient errors such as a loss of connectivity or HTTP
     responses representing temporary server issues. It also includes HTTP
     responses indicating an illegal operation, such as permission errors.
