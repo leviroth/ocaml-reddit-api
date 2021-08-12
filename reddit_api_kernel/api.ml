@@ -1932,11 +1932,14 @@ let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_
       ]
   in
   post ~endpoint ~params (fun (response, body) ->
-      let%bind json = Cohttp.Body.to_string body |> Ok >>| Json.of_string in
-      match Cohttp.Response.status response, json with
-      | #Cohttp.Code.success_status, `O [] -> return (Ok ())
-      | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
-      | _, _ -> Error (Api_error.Http_error { response; body }))
+      match Cohttp.Response.status response with
+      | `Conflict ->
+        let json = Json.of_string (Cohttp.Body.to_string body) in
+        Ok (Error (Wiki_page.Edit_conflict.of_json json))
+      | _ ->
+        (match ignore_empty_object (response, body) with
+        | Ok () -> Ok (Ok ())
+        | Error _ as error -> error))
 ;;
 
 let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision
