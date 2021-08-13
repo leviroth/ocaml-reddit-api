@@ -17,7 +17,7 @@ val fold
   -> get_before_parameter:('thing -> 'id)
   -> init:'state
   -> f:('state -> 'thing -> 'state Deferred.t)
-  -> on_error:('state -> Api.Api_error.t -> 'state Deferred.t)
+  -> on_error:('state -> Api.Api_error.t Connection.Error.t -> 'state Deferred.t)
   -> _ Deferred.t
 
 val fold_until_finished
@@ -28,5 +28,7 @@ val fold_until_finished
   -> init:'state
   -> f:('state -> 'thing -> ('state, 'result) Continue_or_stop.t Deferred.t)
   -> on_error:
-       ('state -> Api.Api_error.t -> ('state, 'result) Continue_or_stop.t Deferred.t)
+       ('state
+        -> Api.Api_error.t Connection.Error.t
+        -> ('state, 'result) Continue_or_stop.t Deferred.t)
   -> 'result Deferred.t
