@@ -8,11 +8,11 @@ module Non_transient_error = struct
         { response : Cohttp.Response.t
         ; body : Cohttp.Body.t
         }
-    | Json_response_errors of Api.Json_response_error.t list
+    | Json_response_errors of Endpoint.Json_response_error.t list
   [@@deriving sexp_of]
 end
 
-let is_good (result : (_, Api.Api_error.t Connection.Error.t) Result.t) =
+let is_good (result : (_, Endpoint.Error.t Connection.Error.t) Result.t) =
   match result with
   | Ok result -> `Yes (Ok result)
   | Error
@@ -43,7 +43,7 @@ let yield_until_reddit_available t =
   | Waiting_for_issue_resolution { finished } -> Ivar.read finished
 ;;
 
-let get_read_only_page t = Connection.call t.connection (Api.me ())
+let get_read_only_page t = Connection.call t.connection (Endpoint.me ())
 
 let on_good_response t =
   match t.state with

@@ -7,7 +7,7 @@ let%expect_test "create_modmail_conversation" =
       let%bind conversation =
         Connection.call_exn
           connection
-          (Api.create_modmail_conversation
+          (Endpoint.create_modmail_conversation
              ~subject:"Test subject"
              ~body:"Test body"
              ~subreddit:(Subreddit_name.of_string "ThirdRealm")

@@ -2,7 +2,7 @@
     rate limiting behavior.
 
     It is responsible for taking the endpoint specifications in
-    {!module:Reddit_api_kernel.Api} and actually performing HTTP requests.
+    {!module:Reddit_api_kernel.Endpoint} and actually performing HTTP requests.
 
     Consider wrapping your [Connection] in a {!module:Retry_manager} if you are
     writing a long-running process and want to just retry forever on transient
@@ -113,13 +113,13 @@ module Error : sig
 end
 
 val create : Credentials.t -> user_agent:string -> t
-val call : t -> 'a Api.t -> ('a, Api.Api_error.t Error.t) Result.t Deferred.t
-val call_exn : t -> 'a Api.t -> 'a Deferred.t
+val call : t -> 'a Endpoint.t -> ('a, Endpoint.Error.t Error.t) Result.t Deferred.t
+val call_exn : t -> 'a Endpoint.t -> 'a Deferred.t
 
 (** [call_raw] returns the raw HTTP response from Reddit. *)
 val call_raw
   :  t
-  -> 'a Api.t
+  -> 'a Endpoint.t
   -> (Cohttp.Response.t * Cohttp.Body.t, Exn.t Error.t) Result.t Deferred.t
 
 (** Any connection can be turned into an RPC server, acting as a shared

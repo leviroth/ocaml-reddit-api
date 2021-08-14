@@ -8,13 +8,16 @@ let%expect_test "set_subreddit_sticky" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.set_subreddit_sticky () ~link ~sticky_state:(Sticky { slot = Some 2 }))
+          (Endpoint.set_subreddit_sticky
+             ()
+             ~link
+             ~sticky_state:(Sticky { slot = Some 2 }))
       in
       [%expect];
       let%bind () =
         Connection.call_exn
           connection
-          (Api.set_subreddit_sticky () ~link ~sticky_state:Unsticky)
+          (Endpoint.set_subreddit_sticky () ~link ~sticky_state:Unsticky)
       in
       [%expect];
       return ())

@@ -7,7 +7,7 @@ let%expect_test "subreddit_fields" =
       let%bind subreddit =
         Connection.call_exn
           connection
-          (Api.about_subreddit ~subreddit:(Subreddit_name.of_string "ocaml") ())
+          (Endpoint.about_subreddit ~subreddit:(Subreddit_name.of_string "ocaml") ())
       in
       print_s [%sexp (Thing.Subreddit.name subreddit : Subreddit_name.t)];
       [%expect {| ocaml |}];

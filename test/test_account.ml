@@ -4,7 +4,7 @@ open! Import
 
 let%expect_test "friends" =
   with_cassette "friends" ~f:(fun connection ->
-      let%bind body = Connection.call_exn connection (Api.friends ()) in
+      let%bind body = Connection.call_exn connection (Endpoint.friends ()) in
       print_s [%sexp (body : User_list.t)];
       [%expect
         {|
@@ -15,7 +15,7 @@ let%expect_test "friends" =
 
 let%expect_test "blocked" =
   with_cassette "blocked" ~f:(fun connection ->
-      let%bind body = Connection.call_exn connection (Api.blocked ()) in
+      let%bind body = Connection.call_exn connection (Endpoint.blocked ()) in
       print_s [%sexp (body : User_list.t)];
       [%expect
         {|
@@ -26,7 +26,7 @@ let%expect_test "blocked" =
 
 let%expect_test "messaging" =
   with_cassette "messaging" ~f:(fun connection ->
-      let%bind body = Connection.call_exn connection (Api.messaging ()) in
+      let%bind body = Connection.call_exn connection (Endpoint.messaging ()) in
       print_s [%sexp (body : User_list.t)];
       [%expect
         {|
@@ -37,7 +37,7 @@ let%expect_test "messaging" =
 
 let%expect_test "trusted" =
   with_cassette "trusted" ~f:(fun connection ->
-      let%bind body = Connection.call_exn connection (Api.trusted ()) in
+      let%bind body = Connection.call_exn connection (Endpoint.trusted ()) in
       print_s [%sexp (body : User_list.t)];
       [%expect
         {|

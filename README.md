@@ -13,7 +13,7 @@ Reddit's rate-limiting headers.
 # Documentation
 
 [Here](https://leviroth.github.io/ocaml-reddit-api/). I recommend the
-[`Reddit_api_kernel.Api`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_kernel/Reddit_api_kernel/Api/index.html)
+[`Reddit_api_kernel.Endpoint`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_kernel/Reddit_api_kernel/Endpoint/index.html)
 and
 [`Reddit_api_async.Connection`](https://leviroth.github.io/ocaml-reddit-api/reddit_api_async/Reddit_api_async/Connection/index.html)
 modules as entry points.
@@ -27,7 +27,7 @@ let print_links credentials =
     Subreddit_name.combine (List.map ~f:Subreddit_name.of_string [ "ocaml"; "redditdev" ])
   in
   let%bind link_listing =
-    Connection.call_exn connection (Api.top ~since:Year ~subreddit ())
+    Connection.call_exn connection (Endpoint.top ~since:Year ~subreddit ())
   in
   let links = Listing.children link_listing in
   List.iter links ~f:(fun link ->
