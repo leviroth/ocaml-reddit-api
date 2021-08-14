@@ -94,7 +94,7 @@ module Credentials : sig
   module Userless_public : sig
     type t =
       { client_id : string
-      ; device_id : string option [@sexp.option]
+      ; device_id : string option
       }
     [@@deriving sexp]
   end
