@@ -76,6 +76,24 @@ end
 
 module Sequencer_table = Sequencer_table.Make (Api.Sequencer)
 
+module Access_token_error = struct
+  type t =
+    | Cohttp_raised of Exn.t
+    | Json_parsing_error of
+        { error : Error.t
+        ; response : Cohttp.Response.t
+        ; body_string : string
+        }
+  [@@deriving sexp_of]
+end
+
+module Error = struct
+  type 'endpoint_error t =
+    | Access_token_error of Access_token_error.t
+    | Endpoint_error of 'endpoint_error
+  [@@deriving sexp_of]
+end
+
 module type T = sig
   type t [@@deriving sexp_of]
 
@@ -84,13 +102,13 @@ module type T = sig
     -> t
     -> Uri.t
     -> params:(string * string list) list
-    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t Error.t) Deferred.Result.t
 
   val get
     :  ?sequence:Api.Sequencer.t
     -> t
     -> Uri.t
-    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+    -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t Error.t) Deferred.Result.t
 end
 
 module type Cohttp_client_wrapper = sig
@@ -149,46 +167,57 @@ module Local = struct
     let create credentials () = { credentials; access_token = None }
 
     let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
-      let open Deferred.Result.Let_syntax in
-      let%bind _response, body =
-        let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
-        let headers = Credentials.auth_header t.credentials in
-        let params =
-          match t.credentials with
-          | Password { username; password; _ } ->
-            [ "grant_type", [ "password" ]
-            ; "username", [ username ]
-            ; "password", [ password ]
-            ]
-          | Refresh_token { refresh_token; _ } ->
-            [ "grant_type", [ "refresh_token" ]; "refresh_token", [ refresh_token ] ]
-          | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
-          | Userless_public public_credentials ->
-            [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
-            ; ( "device_id"
-              , [ Credentials.Userless_public.device_id_or_default public_credentials ] )
-            ]
-        in
-        Cohttp_client_wrapper.post_form ~headers uri ~params
-      in
-      let%bind response_string =
-        Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
-      in
-      let response_json = Json.of_string response_string in
-      let access_token : Access_token.t =
-        let token = Json.find response_json [ "access_token" ] |> Json.get_string in
-        let expiration =
-          let additional_seconds =
-            Json.find response_json [ "expires_in" ]
-            |> Json.get_float
-            |> Time_ns.Span.of_sec
+      match%bind
+        let open Deferred.Result.Let_syntax in
+        let%bind response, body =
+          let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
+          let headers = Credentials.auth_header t.credentials in
+          let params =
+            match t.credentials with
+            | Password { username; password; _ } ->
+              [ "grant_type", [ "password" ]
+              ; "username", [ username ]
+              ; "password", [ password ]
+              ]
+            | Refresh_token { refresh_token; _ } ->
+              [ "grant_type", [ "refresh_token" ]; "refresh_token", [ refresh_token ] ]
+            | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
+            | Userless_public public_credentials ->
+              [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
+              ; ( "device_id"
+                , [ Credentials.Userless_public.device_id_or_default public_credentials ]
+                )
+              ]
           in
-          Time_ns.add (Time_source.now time_source) additional_seconds
+          Cohttp_client_wrapper.post_form ~headers uri ~params
         in
-        { token; expiration }
-      in
-      t.access_token <- Some access_token;
-      return access_token
+        let%bind body_string =
+          Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
+        in
+        return (response, body_string)
+      with
+      | Error exn -> return (Error (Access_token_error.Cohttp_raised exn))
+      | Ok (response, body_string) ->
+        (match Json.of_string body_string with
+        | Error error ->
+          return
+            (Error
+               (Access_token_error.Json_parsing_error { error; response; body_string }))
+        | Ok response_json ->
+          let access_token : Access_token.t =
+            let token = Json.find response_json [ "access_token" ] |> Json.get_string in
+            let expiration =
+              let additional_seconds =
+                Json.find response_json [ "expires_in" ]
+                |> Json.get_float
+                |> Time_ns.Span.of_sec
+              in
+              Time_ns.add (Time_source.now time_source) additional_seconds
+            in
+            { token; expiration }
+          in
+          t.access_token <- Some access_token;
+          return (Ok access_token))
     ;;
 
     let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
@@ -241,6 +270,7 @@ module Local = struct
     let open Deferred.Result.Let_syntax in
     let%bind headers =
       Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
+      |> Deferred.Result.map_error ~f:(fun error -> Error.Access_token_error error)
     in
     let run (None : Nothing.t option) =
       let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
@@ -257,14 +287,16 @@ module Local = struct
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     handle_request ?sequence t ~headers ~f:(fun headers ->
-        Cohttp_client_wrapper.post_form ~headers ~params uri)
+        Cohttp_client_wrapper.post_form ~headers ~params uri
+        |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
 
   let get ?sequence t uri =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     handle_request ?sequence t ~headers ~f:(fun headers ->
-        Cohttp_client_wrapper.get ~headers uri)
+        Cohttp_client_wrapper.get ~headers uri
+        |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
 end
 
@@ -300,19 +332,24 @@ let call_raw t ({ request; sequencer = sequence; handle_response = _ } : _ Api.t
   | Ok (response, body) ->
     let%bind body = Cohttp_async.Body.to_string body >>| Cohttp.Body.of_string in
     return (Ok (response, body))
-  | Error exn -> return (Error exn)
+  | Error _ as error -> return error
 ;;
 
 let call t api =
   match%bind call_raw t api with
-  | Ok (response, body) -> return (api.handle_response (response, body))
-  | Error exn -> return (Error (Api.Api_error.Cohttp_raised exn))
+  | Error (Access_token_error _) as error -> return error
+  | Error (Endpoint_error exn) ->
+    return (Error (Error.Endpoint_error (Api.Api_error.Cohttp_raised exn)))
+  | Ok (response, body) ->
+    api.handle_response (response, body)
+    |> Result.map_error ~f:(fun error -> Error.Endpoint_error error)
+    |> return
 ;;
 
 let call_exn t api =
   match%bind call t api with
   | Ok v -> return v
-  | Error error -> raise_s ([%sexp_of: Api.Api_error.t] error)
+  | Error error -> raise_s ([%sexp_of: Api.Api_error.t Error.t] error)
 ;;
 
 module Remote = struct
@@ -354,10 +391,10 @@ module Remote = struct
     module Exn = struct
       module T = struct
         include Exn
-        module Binable = Error
+        module Binable = Core.Error
 
-        let to_binable t = Error.of_exn ~backtrace:`Get t
-        let of_binable = Error.to_exn
+        let to_binable t = Binable.of_exn ~backtrace:`Get t
+        let of_binable = Binable.to_exn
 
         let caller_identity =
           Bin_prot.Shape.Uuid.of_string "dffaba84-e410-11ea-ad49-0755ab1141a3"
@@ -368,21 +405,41 @@ module Remote = struct
       include Bin_prot.Utils.Make_binable_with_uuid (T)
     end
 
+    module Access_token_error = struct
+      type t = Access_token_error.t =
+        | Cohttp_raised of Exn.t
+        | Json_parsing_error of
+            { error : Core.Error.t
+            ; response : Cohttp_response.t
+            ; body_string : string
+            }
+      [@@deriving sexp_of, bin_io]
+    end
+
+    module Error = struct
+      type 'endpoint_error t = 'endpoint_error Error.t =
+        | Access_token_error of Access_token_error.t
+        | Endpoint_error of 'endpoint_error
+      [@@deriving sexp_of, bin_io]
+    end
+
     let get =
       Rpc.Rpc.create
         ~name:"get"
-        ~version:1
+        ~version:2
         ~bin_query:[%bin_type_class: Api.Sequencer.t option * Uri.t]
-        ~bin_response:[%bin_type_class: (Cohttp_response.t * string, Exn.t) Result.t]
+        ~bin_response:
+          [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
     ;;
 
     let post_form =
       Rpc.Rpc.create
         ~name:"post_form"
-        ~version:1
+        ~version:2
         ~bin_query:
           [%bin_type_class: Api.Sequencer.t option * Uri.t * (string * string list) list]
-        ~bin_response:[%bin_type_class: (Cohttp_response.t * string, Exn.t) Result.t]
+        ~bin_response:
+          [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
     ;;
   end
 
@@ -585,7 +642,7 @@ module For_testing = struct
               | false -> ()
               | true ->
                 let _, body = interaction.response in
-                let json = Json.of_string body in
+                let json = Or_error.ok_exn (Json.of_string body) in
                 let token = Json.find json [ "access_token" ] |> Json.get_string in
                 Placeholders.add placeholders ~secret:token ~placeholder:"access_token");
               Interaction.map interaction ~f:(Placeholders.filter_string placeholders)

@@ -12,13 +12,15 @@ module Non_transient_error = struct
   [@@deriving sexp_of]
 end
 
-let is_good (result : (_, Api.Api_error.t) Result.t) =
+let is_good (result : (_, Api.Api_error.t Connection.Error.t) Result.t) =
   match result with
   | Ok result -> `Yes (Ok result)
-  | Error (Cohttp_raised _ | Json_parsing_error _) -> `No
-  | Error (Json_response_errors errors) ->
+  | Error
+      ( Access_token_error (Cohttp_raised _ | Json_parsing_error _)
+      | Endpoint_error (Cohttp_raised _ | Json_parsing_error _) ) -> `No
+  | Error (Endpoint_error (Json_response_errors errors)) ->
     `Yes (Error (Non_transient_error.Json_response_errors errors))
-  | Error (Http_error { response; body }) ->
+  | Error (Endpoint_error (Http_error { response; body })) ->
     (match Cohttp.Response.status response with
     | #Cohttp.Code.server_error_status -> `No
     | _ -> `Yes (Error (Http_error { response; body })))

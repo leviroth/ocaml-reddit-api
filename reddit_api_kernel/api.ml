@@ -578,7 +578,7 @@ module Api_error = struct
   type t =
     | Cohttp_raised of Exn.t
     | Json_parsing_error of
-        { exn : Exn.t
+        { error : Error.t
         ; response : Cohttp.Response.t
         ; body_string : string
         }
@@ -595,6 +595,13 @@ type 'a t =
   ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Api_error.t) Result.t
   ; sequencer : Sequencer.t option
   }
+
+let parse_json_response response body =
+  let body_string = Cohttp.Body.to_string body in
+  match Json.of_string body_string with
+  | Ok json -> Ok json
+  | Error error -> Error (Api_error.Json_parsing_error { error; response; body_string })
+;;
 
 let map t ~f =
   { t with handle_response = (fun v -> t.handle_response v |> Result.map ~f) }
@@ -653,42 +660,36 @@ let handle_json_response f (response, body) =
     | `Bad_request -> Ok `Bad_request
     | _ -> Error (Api_error.Http_error { response; body })
   in
-  let body_string = Cohttp.Body.to_string body in
-  match Json.of_string body_string with
-  | exception exn ->
-    Error
-      (Api_error.Json_parsing_error
-         { exn : Exn.t; response : Cohttp.Response.t; body_string : string })
-  | json ->
-    (match status with
-    | `Success ->
-      let errors =
-        match Json.find_opt json [ "json"; "errors" ] with
-        | None -> None
-        | Some list ->
-          (match Json.get_list ident list with
-           | [] -> None
-           | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
-            : Json_response_error.t list option)
+  let%bind json = parse_json_response response body in
+  match status with
+  | `Success ->
+    let errors =
+      match Json.find_opt json [ "json"; "errors" ] with
+      | None -> None
+      | Some list ->
+        (match Json.get_list ident list with
+         | [] -> None
+         | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
+          : Json_response_error.t list option)
+    in
+    (match errors with
+    | Some errors -> Error (Api_error.Json_response_errors errors)
+    | None -> Ok (f json))
+  | `Bad_request ->
+    (match Json.find_opt json [ "reason" ] with
+    | None -> Error (Http_error { response; body })
+    | Some reason ->
+      let error = Json.get_string reason in
+      let error_type =
+        Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
       in
-      (match errors with
-      | Some errors -> Error (Api_error.Json_response_errors errors)
-      | None -> Ok (f json))
-    | `Bad_request ->
-      (match Json.find_opt json [ "reason" ] with
-      | None -> Error (Http_error { response; body })
-      | Some reason ->
-        let error = Json.get_string reason in
-        let error_type =
-          Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
-        in
-        let details = Json.get_string (Json.find json [ "explanation" ]) in
-        let fields =
-          match Json.find_opt json [ "fields" ] with
-          | None -> []
-          | Some json -> Json.get_list Json.get_string json
-        in
-        Error (Json_response_errors [ { error_type; error; details; fields } ])))
+      let details = Json.get_string (Json.find json [ "explanation" ]) in
+      let fields =
+        match Json.find_opt json [ "fields" ] with
+        | None -> []
+        | Some json -> Json.get_list Json.get_string json
+      in
+      Error (Json_response_errors [ { error_type; error; details; fields } ]))
 ;;
 
 let assert_no_errors = handle_json_response (const ())
@@ -1932,11 +1933,14 @@ let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_
       ]
   in
   post ~endpoint ~params (fun (response, body) ->
-      let%bind json = Cohttp.Body.to_string body |> Ok >>| Json.of_string in
-      match Cohttp.Response.status response, json with
-      | #Cohttp.Code.success_status, `O [] -> return (Ok ())
-      | `Conflict, json -> return (Error (Wiki_page.Edit_conflict.of_json json))
-      | _, _ -> Error (Api_error.Http_error { response; body }))
+      match Cohttp.Response.status response with
+      | `Conflict ->
+        let%bind json = parse_json_response response body in
+        Ok (Error (Wiki_page.Edit_conflict.of_json json))
+      | _ ->
+        (match ignore_empty_object (response, body) with
+        | Ok () -> Ok (Ok ())
+        | Error _ as error -> error))
 ;;
 
 let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision

@@ -28,15 +28,16 @@ let%expect_test "Json error" =
         with
         | Ok () -> raise_s [%message "Expected API error"]
         | Error error ->
-          print_s [%message "" (error : Api.Api_error.t)];
+          print_s [%message "" (error : Api.Api_error.t Connection.Error.t)];
           return ()
       in
       [%expect
         {|
           (error
-           (Json_response_errors
-            (((error TOO_LONG) (error_type ()) (details "this is too long (max: 1000)")
-              (fields (ban_message)))))) |}];
+           (Endpoint_error
+            (Json_response_errors
+             (((error TOO_LONG) (error_type ())
+               (details "this is too long (max: 1000)") (fields (ban_message))))))) |}];
       return ())
 ;;
 
@@ -53,7 +54,7 @@ let%expect_test "HTTP error" =
                ~subreddit:(Subreddit_name.of_string "thirdrealm")
                ())
         with
-        | Error (Http_error _) ->
+        | Error (Endpoint_error (Http_error _)) ->
           print_s [%message "HTTP error"];
           return ()
         | Ok () | Error _ -> raise_s [%message "Expected HTTP error"]
@@ -72,14 +73,15 @@ let%expect_test "Bad request" =
         with
         | Ok _ -> raise_s [%message "Expected error"]
         | Error error ->
-          print_s [%message "" (error : Api.Api_error.t)];
+          print_s [%message "" (error : Api.Api_error.t Connection.Error.t)];
           return ()
       in
       [%expect
         {|
         (error
-         (Json_response_errors
-          (((error USER_DOESNT_EXIST) (error_type ())
-            (details "that user doesn't exist") (fields (id)))))) |}];
+         (Endpoint_error
+          (Json_response_errors
+           (((error USER_DOESNT_EXIST) (error_type ())
+             (details "that user doesn't exist") (fields (id))))))) |}];
       return ())
 ;;

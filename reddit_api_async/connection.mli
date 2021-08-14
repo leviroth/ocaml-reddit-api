@@ -88,16 +88,39 @@ end
 
 type t [@@deriving sexp_of]
 
+(** An [Access_token_error.t] represents an error encountered while fetching an access
+    token. *)
+module Access_token_error : sig
+  type t =
+    | Cohttp_raised of Exn.t
+    | Json_parsing_error of
+        { error : Error.t
+        ; response : Cohttp.Response.t
+        ; body_string : string
+        }
+  [@@deriving sexp_of]
+end
+
+(** A request via [Connection] may result in two different HTTP requests: a
+    request to the explicitly named API endpoint and, as necessary, a request to
+    retrieve an OAuth2 access token. This type distinguishes errors associated
+    with each of these requests. *)
+module Error : sig
+  type 'endpoint_error t =
+    | Access_token_error of Access_token_error.t
+    | Endpoint_error of 'endpoint_error
+  [@@deriving sexp_of]
+end
+
 val create : Credentials.t -> user_agent:string -> t
-val call : t -> 'a Api.t -> ('a, Api.Api_error.t) Result.t Deferred.t
+val call : t -> 'a Api.t -> ('a, Api.Api_error.t Error.t) Result.t Deferred.t
 val call_exn : t -> 'a Api.t -> 'a Deferred.t
 
-(** [call_raw] returns the raw HTTP response from Reddit, or any exception that
-    was raised by Cohttp. *)
+(** [call_raw] returns the raw HTTP response from Reddit. *)
 val call_raw
   :  t
   -> 'a Api.t
-  -> (Cohttp.Response.t * Cohttp.Body.t, Exn.t) Result.t Deferred.t
+  -> (Cohttp.Response.t * Cohttp.Body.t, Exn.t Error.t) Result.t Deferred.t
 
 (** Any connection can be turned into an RPC server, acting as a shared
     connection for multiple client [Connection.t]s. Rate limiting is managed
