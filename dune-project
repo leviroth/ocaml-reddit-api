@@ -1,4 +1,6 @@
-(lang dune 2.5)
+(lang dune 2.8)
+
+(generate_opam_files true)
 
 (name reddit_api)
 
@@ -17,7 +19,6 @@
   (synopsis "OCaml types for Reddit's API")
   (depends
     (odoc :with-doc)
-    (dune        (>= 2.5))
     (cohttp      (>= 2.5.4))
     (core_kernel (>= v0.14.0))
     (ezjsonm     (>= 1.0))))
@@ -28,7 +29,6 @@
   (depends
     (odoc :with-doc)
     (expect_test_helpers_async (and (>= v0.14.0) :with-test))
-    (dune              (>= 2.5))
     (async             (>= v0.14.0))
     (async_ssl         (>= v0.14.0))
     (cohttp-async      (>= 2.5.4))
