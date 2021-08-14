@@ -144,8 +144,11 @@ val call_raw
   -> (Cohttp.Response.t * Cohttp.Body.t, Exn.t Error.t) Result.t Deferred.t
 
 (** Any connection can be turned into an RPC server, acting as a shared
-    connection for multiple client [Connection.t]s. Rate limiting is managed
-    on the server side. *)
+    connection for multiple client [Connection.t]s. Rate limiting is managed on
+    the server side.
+
+    {b Important.} This feature is highly experimental. The protocol may change
+    without warning. *)
 module Remote : sig
   val serve
     :  t
