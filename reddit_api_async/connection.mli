@@ -10,9 +10,10 @@
 
     {1 Authentication }
 
-    [Connection] currently only supports the "script" app type. See
-    {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types}
-    Reddit's documentation on app types}.
+    [Connection] currently supports a subset of Reddit's OAuth2 app types via
+    the {!module:Credentials} module. See
+    {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types} Reddit's
+    documentation on app types}.
 
     {1 Rate-limiting behavior }
 
@@ -43,6 +44,12 @@ open! Async
 open Reddit_api_kernel
 
 module Credentials : sig
+  (** [Password] credentials correspond to Reddit's
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#script}"script"}
+      app type.
+
+      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2 > The
+      RFC 6749 section describing the corresponding access token request. *)
   module Password : sig
     type t =
       { client_id : string
@@ -53,10 +60,24 @@ module Credentials : sig
     [@@deriving sexp]
   end
 
+  (** [Refresh_token] credentials correspond to Reddit's
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#web-app}"web app"}
+      and
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#installed-app}"installed-app"}
+      app types.
+
+      @see < https://praw.readthedocs.io/en/stable/tutorials/refresh_token.html
+      > {{:https://praw.readthedocs.io/}PRAW}'s documentation on refresh tokens
+      for advice on obtaining a refresh token, which is currently outside the
+      scope of this project.
+
+      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-6 > The RFC
+      6749 section describing the corresponding access token request. *)
   module Refresh_token : sig
     type t =
       { client_id : string
       ; client_secret : string option
+            (** This field is present for web apps and absent for installed apps. *)
       ; refresh_token : string
       }
     [@@deriving sexp]
@@ -73,7 +94,7 @@ module Credentials : sig
   module Userless_public : sig
     type t =
       { client_id : string
-      ; device_id : string option [@sexp.option]
+      ; device_id : string option
       }
     [@@deriving sexp]
   end
@@ -123,8 +144,11 @@ val call_raw
   -> (Cohttp.Response.t * Cohttp.Body.t, Exn.t Error.t) Result.t Deferred.t
 
 (** Any connection can be turned into an RPC server, acting as a shared
-    connection for multiple client [Connection.t]s. Rate limiting is managed
-    on the server side. *)
+    connection for multiple client [Connection.t]s. Rate limiting is managed on
+    the server side.
+
+    {b Important.} This feature is highly experimental. The protocol may change
+    without warning. *)
 module Remote : sig
   val serve
     :  t
