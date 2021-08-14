@@ -6,7 +6,7 @@ let%expect_test "link_fields__url_contents" =
   with_cassette "link_fields__url_contents" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "lfx8ac" in
       let%bind ({ link; _ } : Comment_response.t) =
-        Connection.call_exn connection (Api.comments () ~link)
+        Connection.call_exn connection (Endpoint.comments () ~link)
       in
       let contents = Thing.Link.contents link in
       print_s [%sexp (contents : Thing.Link.Contents.t)];
@@ -19,7 +19,7 @@ let%expect_test "link_fields__self_contents" =
   with_cassette "link_fields__self_contents" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "kvzaot" in
       let%bind ({ link; _ } : Comment_response.t) =
-        Connection.call_exn connection (Api.comments () ~link)
+        Connection.call_exn connection (Endpoint.comments () ~link)
       in
       let contents : Thing.Link.Contents.t =
         match Thing.Link.contents link with

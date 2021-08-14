@@ -6,7 +6,7 @@ let%expect_test _ =
   let link = Thing.Link.Id.of_string "g7vyxy" in
   let%bind ({ comment_forest; _ } : Comment_response.t) =
     with_cassette "comments" ~f:(fun connection ->
-        Connection.call_exn connection (Api.comments () ~link))
+        Connection.call_exn connection (Endpoint.comments () ~link))
   in
   let ids = List.map comment_forest ~f:Thing.Poly.fullname in
   print_s [%message "" (ids : Thing.Fullname.t list)];
@@ -39,7 +39,7 @@ let%expect_test _ =
     with_cassette "more_comments" ~f:(fun connection ->
         Connection.call_exn
           connection
-          (Api.more_children ~link ~more_comments ~sort:New ()))
+          (Endpoint.more_children ~link ~more_comments ~sort:New ()))
   in
   let comments, more_comments =
     List.partition_map children ~f:(function

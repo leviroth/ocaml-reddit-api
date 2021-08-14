@@ -272,7 +272,7 @@ module Json_response_error : sig
   [@@deriving sexp]
 end
 
-(** An [Api_error.t] represents a "normal" error when making an API request.
+(** An [Error.t] represents a "normal" error when making an API request.
 
     "Normal" includes transient errors such as a loss of connectivity or HTTP
     responses representing temporary server issues. It also includes HTTP
@@ -281,7 +281,7 @@ end
     It does not include programming errors within [Reddit_api_kernel]; if we
     can't parse a response, we raise instead of returning an error value.
 *)
-module Api_error : sig
+module Error : sig
   type t =
     | Cohttp_raised of Exn.t
     | Json_parsing_error of
@@ -308,7 +308,7 @@ end
 *)
 type 'a t =
   { request : Request.t
-  ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Api_error.t) Result.t
+  ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Error.t) Result.t
   ; sequencer : Sequencer.t option
   }
 

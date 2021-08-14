@@ -574,7 +574,7 @@ module Json_response_error = struct
   ;;
 end
 
-module Api_error = struct
+module Error = struct
   type t =
     | Cohttp_raised of Exn.t
     | Json_parsing_error of
@@ -592,7 +592,7 @@ end
 
 type 'a t =
   { request : Request.t
-  ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Api_error.t) Result.t
+  ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Error.t) Result.t
   ; sequencer : Sequencer.t option
   }
 
@@ -600,7 +600,7 @@ let parse_json_response response body =
   let body_string = Cohttp.Body.to_string body in
   match Json.of_string body_string with
   | Ok json -> Ok json
-  | Error error -> Error (Api_error.Json_parsing_error { error; response; body_string })
+  | Error error -> Error (Error.Json_parsing_error { error; response; body_string })
 ;;
 
 let map t ~f =
@@ -658,7 +658,7 @@ let handle_json_response f (response, body) =
     match Cohttp.Response.status response with
     | #Cohttp.Code.success_status -> Ok `Success
     | `Bad_request -> Ok `Bad_request
-    | _ -> Error (Api_error.Http_error { response; body })
+    | _ -> Error (Error.Http_error { response; body })
   in
   let%bind json = parse_json_response response body in
   match status with
@@ -673,7 +673,7 @@ let handle_json_response f (response, body) =
           : Json_response_error.t list option)
     in
     (match errors with
-    | Some errors -> Error (Api_error.Json_response_errors errors)
+    | Some errors -> Error (Error.Json_response_errors errors)
     | None -> Ok (f json))
   | `Bad_request ->
     (match Json.find_opt json [ "reason" ] with

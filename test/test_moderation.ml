@@ -5,7 +5,7 @@ open! Import
 let%expect_test "remove" =
   with_cassette "remove" ~f:(fun connection ->
       let id = `Link (Thing.Link.Id.of_string "j4z0ig") in
-      let%bind () = Connection.call_exn connection (Api.remove () ~id ~spam:false) in
+      let%bind () = Connection.call_exn connection (Endpoint.remove () ~id ~spam:false) in
       [%expect];
       return ())
 ;;
@@ -14,7 +14,7 @@ let%expect_test "distinguish" =
   with_cassette "distinguish" ~f:(fun connection ->
       let id = `Comment (Thing.Comment.Id.of_string "g7ol4ce") in
       let%bind comment =
-        Connection.call_exn connection (Api.distinguish () ~id ~how:Mod)
+        Connection.call_exn connection (Endpoint.distinguish () ~id ~how:Mod)
       in
       print_s [%sexp (Thing.Poly.fullname comment : Thing.Fullname.t)];
       [%expect {| (Comment g7ol4ce) |}];
@@ -23,7 +23,7 @@ let%expect_test "distinguish" =
 
 let%expect_test "log" =
   with_cassette "log" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.log ~limit:2 ()) in
+      let%bind listing = Connection.call_exn connection (Endpoint.log ~limit:2 ()) in
       let modactions = Listing.children listing in
       print_s [%sexp (List.map modactions ~f:Mod_action.id : Mod_action.Id.t list)];
       [%expect
@@ -35,7 +35,7 @@ let%expect_test "log" =
 
 let%expect_test "reports" =
   with_cassette "reports" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.reports ()) in
+      let%bind listing = Connection.call_exn connection (Endpoint.reports ()) in
       let children = Listing.children listing |> List.map ~f:Thing.Poly.fullname in
       print_s [%sexp (children : Thing.Fullname.t list)];
       [%expect {| ((Link hoeti3)) |}];
@@ -44,7 +44,7 @@ let%expect_test "reports" =
 
 let%expect_test "spam" =
   with_cassette "spam" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.spam ~limit:1 ()) in
+      let%bind listing = Connection.call_exn connection (Endpoint.spam ~limit:1 ()) in
       let children = Listing.children listing |> List.map ~f:Thing.Poly.fullname in
       print_s [%sexp (children : Thing.Fullname.t list)];
       [%expect {| ((Link hmjd8r)) |}];
@@ -53,7 +53,7 @@ let%expect_test "spam" =
 
 let%expect_test "modqueue" =
   with_cassette "modqueue" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.modqueue ()) in
+      let%bind listing = Connection.call_exn connection (Endpoint.modqueue ()) in
       let children = Listing.children listing |> List.map ~f:Thing.Poly.fullname in
       print_s [%sexp (children : Thing.Fullname.t list)];
       [%expect {| ((Link hoeti3)) |}];
@@ -62,7 +62,9 @@ let%expect_test "modqueue" =
 
 let%expect_test "unmoderated" =
   with_cassette "unmoderated" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.unmoderated ~limit:1 ()) in
+      let%bind listing =
+        Connection.call_exn connection (Endpoint.unmoderated ~limit:1 ())
+      in
       let children = Listing.children listing |> List.map ~f:Thing.Poly.fullname in
       print_s [%sexp (children : Thing.Fullname.t list)];
       [%expect {| ((Link ili4vc)) |}];
@@ -71,7 +73,7 @@ let%expect_test "unmoderated" =
 
 let%expect_test "edited" =
   with_cassette "edited" ~f:(fun connection ->
-      let%bind listing = Connection.call_exn connection (Api.edited ()) in
+      let%bind listing = Connection.call_exn connection (Endpoint.edited ()) in
       let children = Listing.children listing |> List.map ~f:Thing.Poly.fullname in
       print_s [%sexp (children : Thing.Fullname.t list)];
       [%expect {| ((Comment g3krlj5)) |}];
@@ -83,7 +85,7 @@ let%expect_test "ignore_reports" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.ignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
+          (Endpoint.ignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
       in
       [%expect {| |}];
       return ())
@@ -94,7 +96,7 @@ let%expect_test "unignore_reports" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.unignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
+          (Endpoint.unignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
       in
       [%expect {| |}];
       return ())
@@ -105,7 +107,7 @@ let%expect_test "leavecontributor" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.leavecontributor () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
+          (Endpoint.leavecontributor () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
       in
       [%expect {| |}];
       return ())
@@ -116,7 +118,7 @@ let%expect_test "leavemoderator" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.leavemoderator () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
+          (Endpoint.leavemoderator () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
       in
       [%expect {| |}];
       return ())
@@ -127,7 +129,7 @@ let%expect_test "stylesheet" =
       let%bind stylesheet =
         Connection.call_exn
           connection
-          (Api.stylesheet () ~subreddit:(Subreddit_name.of_string "Thirdrealm"))
+          (Endpoint.stylesheet () ~subreddit:(Subreddit_name.of_string "Thirdrealm"))
       in
       let images =
         List.map (Stylesheet.images stylesheet) ~f:(fun image ->

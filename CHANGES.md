@@ -2,7 +2,7 @@
 
 ## Added
 
-- Add `Api.user_trophies` to view trophies by user.
+- Add `Endpoint.user_trophies` to view trophies by user.
 - Add `Thing.Link.Contents.t` variant for distinguishing self and link
   submissions.
 - Add `Thing.Comment.link_title` to view the title of the link for a comment in
@@ -14,7 +14,7 @@
 ## Changed
 
 - Require dune 2.8.
-- Add a case to `Api.Api_errors` representing Reddit's JSON error responses.
+- Add a case to `Endpoint.Error` representing Reddit's JSON error responses.
 - Change `Connection.Credentials.t` from record to variant that supports
   OAuth2 userless (app-only) flow, so if you serialize the variant,
   a constructor name will be prepended to the sexp.
@@ -22,6 +22,7 @@
 - Reorganize error types in `Connection` to distinguish errors in fetching an
   access token.
 - Bump `Connection.Remote` protocol to version 2.
+- Rename `Api` to `Endpoint` and `Api.Api_error` to `Api.Error`.
 
 # 0.1.1 (2020-12-30)
 

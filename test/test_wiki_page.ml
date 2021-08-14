@@ -9,14 +9,17 @@ let%expect_test "add_wiki_editor" =
   with_cassette "add_wiki_editor" ~f:(fun connection ->
       Connection.call_exn
         connection
-        (Api.add_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
+        (Endpoint.add_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "remove_wiki_editor" =
   with_cassette "remove_wiki_editor" ~f:(fun connection ->
       Connection.call_exn
         connection
-        (Api.remove_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
+        (Endpoint.remove_wiki_editor
+           ()
+           ~page
+           ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "toggle_wiki_revision_visibility" =
@@ -24,7 +27,7 @@ let%expect_test "toggle_wiki_revision_visibility" =
       let%bind result =
         Connection.call_exn
           connection
-          (Api.toggle_wiki_revision_visibility
+          (Endpoint.toggle_wiki_revision_visibility
              ()
              ~page
              ~revision:
@@ -39,7 +42,7 @@ let%expect_test "revert_wiki_page" =
   with_cassette "revert_wiki_page" ~f:(fun connection ->
       Connection.call_exn
         connection
-        (Api.revert_wiki_page
+        (Endpoint.revert_wiki_page
            ()
            ~page
            ~revision:
@@ -51,7 +54,7 @@ let%expect_test "wiki_page_revisions" =
       let%bind revisions =
         Connection.call_exn
           connection
-          (Api.wiki_page_revisions
+          (Endpoint.wiki_page_revisions
              ~pagination:
                (After
                   (Listing.Page_id.of_string
@@ -89,7 +92,7 @@ let%expect_test "wiki_page_revisions" =
 let%expect_test "wiki_discussions" =
   with_cassette "wiki_discussions" ~f:(fun connection ->
       let%bind discussions =
-        Connection.call_exn connection (Api.wiki_discussions () ~page)
+        Connection.call_exn connection (Endpoint.wiki_discussions () ~page)
         >>| Listing.children
       in
       List.iter discussions ~f:(fun link ->
@@ -100,7 +103,9 @@ let%expect_test "wiki_discussions" =
 
 let%expect_test "wiki_pages" =
   with_cassette "wiki_pages" ~f:(fun connection ->
-      let%bind pages = Connection.call_exn connection (Api.wiki_pages ~subreddit ()) in
+      let%bind pages =
+        Connection.call_exn connection (Endpoint.wiki_pages ~subreddit ())
+      in
       print_s [%sexp (pages : string list)];
       [%expect
         {|
@@ -115,7 +120,7 @@ let%expect_test "subreddit_wiki_revisions" =
       let%bind revisions =
         Connection.call_exn
           connection
-          (Api.subreddit_wiki_revisions ~subreddit ~limit:1 ())
+          (Endpoint.subreddit_wiki_revisions ~subreddit ~limit:1 ())
         >>| Listing.children
       in
       List.iter revisions ~f:(fun revision ->
@@ -140,7 +145,7 @@ let%expect_test "subreddit_wiki_revisions" =
 let%expect_test "wiki_permissions" =
   with_cassette "wiki_permissions" ~f:(fun connection ->
       let%bind permissions =
-        Connection.call_exn connection (Api.wiki_permissions () ~page)
+        Connection.call_exn connection (Endpoint.wiki_permissions () ~page)
       in
       print_s
         [%sexp
@@ -163,7 +168,7 @@ let%expect_test "set_wiki_permissions" =
       let%bind permissions =
         Connection.call_exn
           connection
-          (Api.set_wiki_permissions ~level:Only_moderators ~listed:true () ~page)
+          (Endpoint.set_wiki_permissions ~level:Only_moderators ~listed:true () ~page)
       in
       print_s
         [%sexp

@@ -48,7 +48,7 @@ module Non_transient_error : sig
         { response : Cohttp.Response.t
         ; body : Cohttp.Body.t
         }
-    | Json_response_errors of Api.Json_response_error.t list
+    | Json_response_errors of Endpoint.Json_response_error.t list
   [@@deriving sexp_of]
 end
 
@@ -56,7 +56,7 @@ end
     was a transient error. In the latter case, all calls block, and [call]
     periodically calls a read-only API endpoint until service is restored.
 *)
-val call : t -> 'a Api.t -> ('a, Non_transient_error.t) Deferred.Result.t
+val call : t -> 'a Endpoint.t -> ('a, Non_transient_error.t) Deferred.Result.t
 
 (** [yield_until_reddit_available] returns immediately if there is no known
     transient error; it never causes an HTTP request. *)

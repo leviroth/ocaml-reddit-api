@@ -18,7 +18,7 @@ let%expect_test "Json error" =
         match%bind
           Connection.call
             connection
-            (Api.add_relationship
+            (Endpoint.add_relationship
                ~relationship:Banned
                ~username:(Username.of_string "spez")
                ~duration:Permanent
@@ -28,7 +28,7 @@ let%expect_test "Json error" =
         with
         | Ok () -> raise_s [%message "Expected API error"]
         | Error error ->
-          print_s [%message "" (error : Api.Api_error.t Connection.Error.t)];
+          print_s [%message "" (error : Endpoint.Error.t Connection.Error.t)];
           return ()
       in
       [%expect
@@ -47,7 +47,7 @@ let%expect_test "HTTP error" =
         match%bind
           Connection.call
             connection
-            (Api.add_relationship
+            (Endpoint.add_relationship
                ~relationship:Banned
                ~username:(Username.of_string "spez")
                ~duration:Permanent
@@ -69,11 +69,13 @@ let%expect_test "Bad request" =
         match%bind
           Connection.call
             connection
-            (Api.user_trophies ~username:(Username.of_string "thisusershouldnotexist") ())
+            (Endpoint.user_trophies
+               ~username:(Username.of_string "thisusershouldnotexist")
+               ())
         with
         | Ok _ -> raise_s [%message "Expected error"]
         | Error error ->
-          print_s [%message "" (error : Api.Api_error.t Connection.Error.t)];
+          print_s [%message "" (error : Endpoint.Error.t Connection.Error.t)];
           return ()
       in
       [%expect

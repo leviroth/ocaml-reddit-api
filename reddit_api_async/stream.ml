@@ -126,6 +126,6 @@ let iter
     ~f:(fun () child -> f child)
     ~on_error:(fun () error ->
       Log.Global.error_s
-        [%message "Received error response" (error : Api.Api_error.t Connection.Error.t)];
+        [%message "Received error response" (error : Endpoint.Error.t Connection.Error.t)];
       return ())
 ;;

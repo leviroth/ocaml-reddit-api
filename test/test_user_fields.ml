@@ -7,7 +7,7 @@ let%expect_test "user_fields" =
       let%bind user =
         Connection.call_exn
           connection
-          (Api.about_user ~username:(Username.of_string "spez") ())
+          (Endpoint.about_user ~username:(Username.of_string "spez") ())
       in
       print_s [%sexp (Thing.User.name user : Username.t)];
       [%expect {| spez |}];

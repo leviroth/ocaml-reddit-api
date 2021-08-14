@@ -74,7 +74,7 @@ module Credentials = struct
   let auth_header t = Cohttp.Header.init_with "Authorization" (basic_auth_string t)
 end
 
-module Sequencer_table = Sequencer_table.Make (Api.Sequencer)
+module Sequencer_table = Sequencer_table.Make (Endpoint.Sequencer)
 
 module Access_token_error = struct
   type t =
@@ -98,14 +98,14 @@ module type T = sig
   type t [@@deriving sexp_of]
 
   val post_form
-    :  ?sequence:Api.Sequencer.t
+    :  ?sequence:Endpoint.Sequencer.t
     -> t
     -> Uri.t
     -> params:(string * string list) list
     -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t Error.t) Deferred.Result.t
 
   val get
-    :  ?sequence:Api.Sequencer.t
+    :  ?sequence:Endpoint.Sequencer.t
     -> t
     -> Uri.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t Error.t) Deferred.Result.t
@@ -323,7 +323,7 @@ let create credentials ~user_agent =
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
 let post_form ?sequence (T ((module T), t)) = T.post_form ?sequence t
 
-let call_raw t ({ request; sequencer = sequence; handle_response = _ } : _ Api.t) =
+let call_raw t ({ request; sequencer = sequence; handle_response = _ } : _ Endpoint.t) =
   match%bind
     match request with
     | Get { uri } -> get ?sequence t uri
@@ -339,7 +339,7 @@ let call t api =
   match%bind call_raw t api with
   | Error (Access_token_error _) as error -> return error
   | Error (Endpoint_error exn) ->
-    return (Error (Error.Endpoint_error (Api.Api_error.Cohttp_raised exn)))
+    return (Error (Error.Endpoint_error (Endpoint.Error.Cohttp_raised exn)))
   | Ok (response, body) ->
     api.handle_response (response, body)
     |> Result.map_error ~f:(fun error -> Error.Endpoint_error error)
@@ -349,7 +349,7 @@ let call t api =
 let call_exn t api =
   match%bind call t api with
   | Ok v -> return v
-  | Error error -> raise_s ([%sexp_of: Api.Api_error.t Error.t] error)
+  | Error error -> raise_s ([%sexp_of: Endpoint.Error.t Error.t] error)
 ;;
 
 module Remote = struct
@@ -427,7 +427,7 @@ module Remote = struct
       Rpc.Rpc.create
         ~name:"get"
         ~version:2
-        ~bin_query:[%bin_type_class: Api.Sequencer.t option * Uri.t]
+        ~bin_query:[%bin_type_class: Endpoint.Sequencer.t option * Uri.t]
         ~bin_response:
           [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
     ;;
@@ -437,7 +437,8 @@ module Remote = struct
         ~name:"post_form"
         ~version:2
         ~bin_query:
-          [%bin_type_class: Api.Sequencer.t option * Uri.t * (string * string list) list]
+          [%bin_type_class:
+            Endpoint.Sequencer.t option * Uri.t * (string * string list) list]
         ~bin_response:
           [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
     ;;

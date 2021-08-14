@@ -7,7 +7,7 @@ let%expect_test "hot" =
       let%bind link =
         Connection.call_exn
           connection
-          (Api.hot ~limit:1 ~subreddit:(Subreddit_name.of_string "ThirdRealm") ())
+          (Endpoint.hot ~limit:1 ~subreddit:(Subreddit_name.of_string "ThirdRealm") ())
         >>| Listing.children
         >>| List.hd_exn
       in
@@ -35,7 +35,7 @@ let%expect_test "hot__multiple_subreddits" =
         |> Subreddit_name.combine
       in
       let%bind links =
-        Connection.call_exn connection (Api.hot ~limit:10 ~subreddit ())
+        Connection.call_exn connection (Endpoint.hot ~limit:10 ~subreddit ())
         >>| Listing.children
       in
       List.iter links ~f:(fun link ->

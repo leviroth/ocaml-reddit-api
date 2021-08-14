@@ -9,7 +9,11 @@ let%expect_test "submit" =
       let%bind id, uri =
         Connection.call_exn
           connection
-          (Api.submit () ~title ~subreddit ~kind:(Self (Markdown "This is a post body.")))
+          (Endpoint.submit
+             ()
+             ~title
+             ~subreddit
+             ~kind:(Self (Markdown "This is a post body.")))
       in
       print_s
         [%message
@@ -28,7 +32,7 @@ let%expect_test "submit__crosspost" =
       let%bind id, uri =
         Connection.call_exn
           connection
-          (Api.submit
+          (Endpoint.submit
              ()
              ~title
              ~subreddit

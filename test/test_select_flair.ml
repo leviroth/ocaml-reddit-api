@@ -10,7 +10,7 @@ let%expect_test "select_flair" =
       let%bind () =
         Connection.call_exn
           connection
-          (Api.select_flair ~flair_template_id () ~subreddit ~target:(Link link))
+          (Endpoint.select_flair ~flair_template_id () ~subreddit ~target:(Link link))
       in
       [%expect {| |}];
       return ())

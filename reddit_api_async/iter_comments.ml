@@ -30,12 +30,12 @@ let children item ~retry_manager ~link =
       retry_or_log_unexpected
         retry_manager
         [%here]
-        (Api.more_children ~link ~more_comments ~sort:New ())
+        (Endpoint.more_children ~link ~more_comments ~sort:New ())
     | By_parent parent ->
       retry_or_log_unexpected
         retry_manager
         [%here]
-        (Api.comments ~comment:parent () ~link)
+        (Endpoint.comments ~comment:parent () ~link)
       >>| Option.map
             ~f:(fun ({ comment_forest; link = _ } as response : Comment_response.t) ->
               match comment_forest with
