@@ -12,18 +12,18 @@ module Non_transient_error = struct
   [@@deriving sexp_of]
 end
 
-let is_good (result : (_, Endpoint.Error.t Connection.Error.t) Result.t) =
+let classify_response (result : (_, Endpoint.Error.t Connection.Error.t) Result.t) =
   match result with
-  | Ok result -> `Yes (Ok result)
+  | Ok result -> `Non_transient (Ok result)
   | Error
       ( Access_token_error (Cohttp_raised _ | Json_parsing_error _)
-      | Endpoint_error (Cohttp_raised _ | Json_parsing_error _) ) -> `No
+      | Endpoint_error (Cohttp_raised _ | Json_parsing_error _) ) -> `Transient_error
   | Error (Endpoint_error (Json_response_errors errors)) ->
-    `Yes (Error (Non_transient_error.Json_response_errors errors))
+    `Non_transient (Error (Non_transient_error.Json_response_errors errors))
   | Error (Endpoint_error (Http_error { response; body })) ->
     (match Cohttp.Response.status response with
-    | #Cohttp.Code.server_error_status -> `No
-    | _ -> `Yes (Error (Http_error { response; body })))
+    | #Cohttp.Code.server_error_status -> `Transient_error
+    | _ -> `Non_transient (Error (Http_error { response; body })))
 ;;
 
 type state =
@@ -45,7 +45,7 @@ let yield_until_reddit_available t =
 
 let get_read_only_page t = Connection.call t.connection (Endpoint.me ())
 
-let on_good_response t =
+let on_non_transient_response t =
   match t.state with
   | Working_normally -> ()
   | Waiting_for_issue_resolution { finished } ->
@@ -56,21 +56,21 @@ let on_good_response t =
 let check_server t =
   Deferred.repeat_until_finished () (fun () ->
       let%bind response = get_read_only_page t in
-      match is_good response, t.state with
-      | `Yes _, Working_normally -> return (`Finished ())
-      | `Yes _, Waiting_for_issue_resolution { finished } ->
+      match classify_response response, t.state with
+      | `Non_transient _, Working_normally -> return (`Finished ())
+      | `Non_transient _, Waiting_for_issue_resolution { finished } ->
         Ivar.fill finished ();
         t.state <- Working_normally;
         return (`Finished ())
-      | `No, Working_normally ->
+      | `Transient_error, Working_normally ->
         t.state <- Waiting_for_issue_resolution { finished = Ivar.create () };
         return (`Repeat ())
-      | `No, Waiting_for_issue_resolution _ ->
+      | `Transient_error, Waiting_for_issue_resolution _ ->
         let%bind () = Clock_ns.after Time_ns.Span.minute in
         return (`Repeat ()))
 ;;
 
-let on_bad_response t =
+let on_transient_error t =
   match t.state with
   | Waiting_for_issue_resolution _ -> ()
   | Working_normally ->
@@ -85,11 +85,11 @@ let rec call t request =
     call t request
   | Working_normally ->
     let%bind response = Connection.call t.connection request in
-    (match is_good response with
-    | `Yes response ->
-      on_good_response t;
+    (match classify_response response with
+    | `Non_transient response ->
+      on_non_transient_response t;
       return response
-    | `No ->
-      on_bad_response t;
+    | `Transient_error ->
+      on_transient_error t;
       call t request)
 ;;
