@@ -49,6 +49,10 @@ module Non_transient_error : sig
         ; body : Cohttp.Body.t
         }
     | Json_response_errors of Endpoint.Json_response_error.t list
+    | Token_request_rejected of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
   [@@deriving sexp_of]
 end
 

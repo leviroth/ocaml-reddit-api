@@ -84,6 +84,14 @@ module Access_token_error = struct
         ; response : Cohttp.Response.t
         ; body_string : string
         }
+    | Token_request_rejected of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+    | Other_http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
   [@@deriving sexp_of]
 end
 
@@ -198,26 +206,38 @@ module Local = struct
       with
       | Error exn -> return (Error (Access_token_error.Cohttp_raised exn))
       | Ok (response, body_string) ->
-        (match Json.of_string body_string with
-        | Error error ->
+        (match Cohttp.Response.status response with
+        | `Bad_request | `Unauthorized ->
           return
             (Error
-               (Access_token_error.Json_parsing_error { error; response; body_string }))
-        | Ok response_json ->
-          let access_token : Access_token.t =
-            let token = Json.find response_json [ "access_token" ] |> Json.get_string in
-            let expiration =
-              let additional_seconds =
-                Json.find response_json [ "expires_in" ]
-                |> Json.get_float
-                |> Time_ns.Span.of_sec
+               (Access_token_error.Token_request_rejected
+                  { response; body = Cohttp.Body.of_string body_string }))
+        | `OK ->
+          (match Json.of_string body_string with
+          | Error error ->
+            return
+              (Error
+                 (Access_token_error.Json_parsing_error { error; response; body_string }))
+          | Ok response_json ->
+            let access_token : Access_token.t =
+              let token = Json.find response_json [ "access_token" ] |> Json.get_string in
+              let expiration =
+                let additional_seconds =
+                  Json.find response_json [ "expires_in" ]
+                  |> Json.get_float
+                  |> Time_ns.Span.of_sec
+                in
+                Time_ns.add (Time_source.now time_source) additional_seconds
               in
-              Time_ns.add (Time_source.now time_source) additional_seconds
+              { token; expiration }
             in
-            { token; expiration }
-          in
-          t.access_token <- Some access_token;
-          return (Ok access_token))
+            t.access_token <- Some access_token;
+            return (Ok access_token))
+        | _ ->
+          return
+            (Error
+               (Access_token_error.Other_http_error
+                  { response; body = Cohttp.Body.of_string body_string })))
     ;;
 
     let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
@@ -371,6 +391,23 @@ module Remote = struct
       include Bin_prot.Utils.Make_binable_with_uuid (T)
     end
 
+    module Cohttp_body = struct
+      module T = struct
+        include Cohttp.Body
+        module Binable = Sexp
+
+        let to_binable = Cohttp.Body.sexp_of_t
+        let of_binable = Cohttp.Body.t_of_sexp
+
+        let caller_identity =
+          Bin_prot.Shape.Uuid.of_string "be6b83a0-fdc6-11eb-9af8-b33c88c1c920"
+        ;;
+      end
+
+      include T
+      include Bin_prot.Utils.Make_binable_with_uuid (T)
+    end
+
     module Uri = struct
       module T = struct
         include Uri
@@ -412,6 +449,14 @@ module Remote = struct
             { error : Core.Error.t
             ; response : Cohttp_response.t
             ; body_string : string
+            }
+        | Token_request_rejected of
+            { response : Cohttp_response.t
+            ; body : Cohttp_body.t
+            }
+        | Other_http_error of
+            { response : Cohttp_response.t
+            ; body : Cohttp_body.t
             }
       [@@deriving sexp_of, bin_io]
     end

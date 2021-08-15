@@ -10,6 +10,7 @@
 - Add support for OAuth2 userless (app-only) flow. Both public clients and
   confidential clients are supported. See `Connection.Credentials.t`.
 - Add support for OAuth2 refresh token credentials.
+- Add handling of failed access token requests.
 
 ## Changed
 

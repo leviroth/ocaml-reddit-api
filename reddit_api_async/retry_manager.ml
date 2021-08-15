@@ -9,6 +9,10 @@ module Non_transient_error = struct
         ; body : Cohttp.Body.t
         }
     | Json_response_errors of Endpoint.Json_response_error.t list
+    | Token_request_rejected of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
   [@@deriving sexp_of]
 end
 
@@ -20,7 +24,11 @@ let classify_response (result : (_, Endpoint.Error.t Connection.Error.t) Result.
       | Endpoint_error (Cohttp_raised _ | Json_parsing_error _) ) -> `Transient_error
   | Error (Endpoint_error (Json_response_errors errors)) ->
     `Non_transient (Error (Non_transient_error.Json_response_errors errors))
-  | Error (Endpoint_error (Http_error { response; body })) ->
+  | Error (Access_token_error (Token_request_rejected { response; body })) ->
+    `Non_transient (Error (Token_request_rejected { response; body }))
+  | Error
+      ( Endpoint_error (Http_error { response; body })
+      | Access_token_error (Other_http_error { response; body }) ) ->
     (match Cohttp.Response.status response with
     | #Cohttp.Code.server_error_status -> `Transient_error
     | _ -> `Non_transient (Error (Http_error { response; body })))

@@ -119,6 +119,14 @@ module Access_token_error : sig
         ; response : Cohttp.Response.t
         ; body_string : string
         }
+    | Token_request_rejected of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+    | Other_http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
   [@@deriving sexp_of]
 end
 
