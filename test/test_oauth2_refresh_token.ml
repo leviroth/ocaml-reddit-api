@@ -131,3 +131,65 @@ let%expect_test "oauth2_refresh_token__bad_token" =
         (body (String "{\"message\": \"Bad Request\", \"error\": 400}"))))) |}];
   return ()
 ;;
+
+let%expect_test "oauth2_expired_access_token" =
+  let%bind () =
+    with_cassette "oauth2_expired_access_token" ~f:(fun connection ->
+        (* Note this is a bit of a hack: the test time source is currently also
+        pinned to [Time_ns.max_value_representable], but the implementation
+        details of [Auth.is_almsot_expired] are such that we will not treat the
+        token as expired, and we will make an actual request (as desired). *)
+        Connection.For_testing.set_access_token
+          connection
+          ~token:"71814082-xYAyuuglNJA8Br9B4Sot-Ws5CBi6BA"
+          ~expiration:Time_ns.max_value_representable;
+        Expect_test_helpers_async.show_raise_async (fun () ->
+            let%bind _link = get_link_exn connection "odlsl2" in
+            return ()))
+  in
+  let rec compact_sexp (sexp : Sexp.t) : Sexp.t =
+    let max_length = 200 in
+    match sexp with
+    | List l -> List (List.map l ~f:compact_sexp)
+    | Atom s ->
+      Atom
+        (match String.length s <= max_length with
+        | true -> s
+        | false -> String.prefix s max_length ^ "[...]")
+  in
+  let output = [%expect.output] in
+  print_s (compact_sexp (Sexp.of_string output));
+  [%expect
+    {|
+    (raised
+     (Endpoint_error
+      (Http_error
+       (response
+        ((encoding (Fixed 33825))
+         (headers
+          ((accept-ranges bytes) (cache-control "max-age=0, must-revalidate")
+           (connection keep-alive) (content-length 33825)
+           (content-type "text/html; charset=UTF-8")
+           (date "Sun, 15 Aug 2021 15:39:03 GMT") (server snooserv)
+           (set-cookie
+            "edgebucket=2ElcftMInqOdM8HsZm; Domain=reddit.com; Max-Age=63071999; Path=/;  secure")
+           (set-cookie
+            "csv=1; Max-Age=63072000; Domain=.reddit.com; Path=/; Secure; SameSite=None")
+           (set-cookie
+            session_tracker=e6gaLGXbbj5UeqzeRz.0.1629041943047.Z0FBQUFBQmhHVFVYLXo1SHBSM3ppSWpEUXkzU0ZLbmh3Y1NUQU5kR29CcnFMbzQyUWJlZ1VjcXlfU1VkQ3cwSTJjZlBpOFIybnRLLTRpSWE3OFZqM3dac2FLd2dmVEtpcGJfWGhEckFkdnBMU3FQS[...])
+           (set-cookie
+            loid=0000000000dxkmc1nk.2.1629041943047.Z0FBQUFBQmhHVFVYMHd2M3hkdFJybjZOR0g3NkRyeEw4eVFEUjczdnJnXzhuNlh2cnJUREJ1dl9EU3N0TDBXTkoxMVBGREtCZy1icm5WRmdTOHZRczFod3hQOGlpdkZla3NSZUhQWktWZ0dUNW9zc2JCUkVVYVM1[...])
+           (strict-transport-security
+            "max-age=15552000; includeSubDomains; preload")
+           (vary accept-encoding) (via "1.1 varnish")
+           (www-authenticate "Bearer realm=\"reddit\", error=\"invalid_token\"")
+           (x-clacks-overhead "GNU Terry Pratchett")
+           (x-content-type-options nosniff) (x-frame-options SAMEORIGIN)
+           (x-moose majestic) (x-ua-compatible IE=edge)
+           (x-xss-protection "1; mode=block")))
+         (version HTTP_1_1) (status Unauthorized) (flush false)))
+       (body
+        (String
+         "<!doctype html><html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\"><head><title>reddit.com: page not found</title><meta name=\"keywords\" content=\" reddit, reddit.com, vote, comment, subm[...]"))))) |}];
+  return ()
+;;

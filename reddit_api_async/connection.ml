@@ -117,6 +117,8 @@ module type T = sig
     -> t
     -> Uri.t
     -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t Error.t) Deferred.Result.t
+
+  val set_access_token : t -> token:string -> expiration:Time_ns.t -> unit
 end
 
 module type Cohttp_client_wrapper = sig
@@ -318,6 +320,10 @@ module Local = struct
         Cohttp_client_wrapper.get ~headers uri
         |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
+
+  let set_access_token t ~token ~expiration =
+    t.auth.access_token <- Some { token; expiration }
+  ;;
 end
 
 type t = T : (module T with type t = 't) * 't -> t
@@ -506,6 +512,8 @@ module Remote = struct
     let post_form ?sequence t uri ~params =
       get_body (Rpc.Rpc.dispatch_exn Protocol.post_form t (sequence, uri, params))
     ;;
+
+    let set_access_token _ ~token:_ ~expiration:_ = failwith "Unimplemented"
   end
 
   module Server = struct
@@ -825,4 +833,8 @@ module For_testing = struct
   end
 
   let with_cassette filename ~credentials ~f = Cassette.with_t filename ~credentials ~f
+
+  let set_access_token (T ((module T), t)) ~token ~expiration =
+    T.set_access_token t ~token ~expiration
+  ;;
 end

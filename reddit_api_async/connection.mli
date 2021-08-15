@@ -172,4 +172,6 @@ module For_testing : sig
     -> credentials:Credentials.t
     -> f:(t -> 'a Deferred.t)
     -> 'a Deferred.t
+
+  val set_access_token : t -> token:string -> expiration:Time_ns.t -> unit
 end
