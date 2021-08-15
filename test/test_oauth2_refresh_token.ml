@@ -84,3 +84,14 @@ let%expect_test "oauth2_refresh_token_insufficient_scope" =
         (body (String "{\"message\": \"Forbidden\", \"error\": 403}"))))) |}];
   return ()
 ;;
+
+let%expect_test "oauth2_refresh_token__bad_token" =
+  let%bind () =
+    with_cassette "oauth2_refresh_token__bad_token" ~f:(fun connection ->
+        Expect_test_helpers_async.show_raise_async (fun () ->
+            let%bind _link = get_link_exn connection "odlsl2" in
+            return ()))
+  in
+  [%expect {| (raised Not_found) |}];
+  return ()
+;;

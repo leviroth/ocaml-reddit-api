@@ -644,8 +644,11 @@ module For_testing = struct
               | true ->
                 let _, body = interaction.response in
                 let json = Or_error.ok_exn (Json.of_string body) in
-                let token = Json.find json [ "access_token" ] |> Json.get_string in
-                Placeholders.add placeholders ~secret:token ~placeholder:"access_token");
+                (match Json.find_opt json [ "access_token" ] with
+                | None -> ()
+                | Some json ->
+                  let token = Json.get_string json in
+                  Placeholders.add placeholders ~secret:token ~placeholder:"access_token"));
               Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
               |> Interaction.sexp_of_t
               |> Sexp.output_mach Out_channel.stdout);
