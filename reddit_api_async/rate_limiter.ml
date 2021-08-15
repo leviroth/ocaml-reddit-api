@@ -215,7 +215,11 @@ module By_headers = struct
   let notify_response t response =
     let headers = Cohttp.Response.headers response in
     match Server_side_info.t_of_headers headers with
-    | None -> ()
+    | None ->
+      (* We assume that, in the absence of ratelimit headers, we must have hit
+         some authentication failure. As a heuristic to avoid getting stuck, we
+         immediately reset [t.ready]. *)
+      Mvar.set t.ready ()
     | Some response_server_side_info ->
       let new_server_side_info =
         match t.server_side_info with

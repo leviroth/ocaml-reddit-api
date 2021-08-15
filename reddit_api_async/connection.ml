@@ -168,22 +168,35 @@ module Local = struct
       ;;
     end
 
+    module Access_token_state = struct
+      type t =
+        | No_outstanding_request of Access_token.t option
+        | Outstanding_request of (Access_token.t, Access_token_error.t) Result.t Ivar.t
+      [@@deriving sexp_of]
+    end
+
     type t =
       { credentials : Credentials.t
-      ; mutable access_token : Access_token.t option
+      ; mutable access_token : Access_token_state.t
       }
-    [@@deriving sexp]
+    [@@deriving sexp_of]
 
-    let create credentials () = { credentials; access_token = None }
+    let create credentials () =
+      { credentials; access_token = No_outstanding_request None }
+    ;;
 
-    let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) t ~time_source =
+    let get_token
+        (module Cohttp_client_wrapper : Cohttp_client_wrapper)
+        credentials
+        ~time_source
+      =
       match%bind
         let open Deferred.Result.Let_syntax in
         let%bind response, body =
           let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
-          let headers = Credentials.auth_header t.credentials in
+          let headers = Credentials.auth_header credentials in
           let params =
-            match t.credentials with
+            match credentials with
             | Password { username; password; _ } ->
               [ "grant_type", [ "password" ]
               ; "username", [ username ]
@@ -208,20 +221,16 @@ module Local = struct
       with
       | Error exn -> return (Error (Access_token_error.Cohttp_raised exn))
       | Ok (response, body_string) ->
-        (match Cohttp.Response.status response with
-        | `Bad_request | `Unauthorized ->
-          return
-            (Error
-               (Access_token_error.Token_request_rejected
-                  { response; body = Cohttp.Body.of_string body_string }))
-        | `OK ->
-          (match Json.of_string body_string with
-          | Error error ->
-            return
-              (Error
-                 (Access_token_error.Json_parsing_error { error; response; body_string }))
-          | Ok response_json ->
-            let access_token : Access_token.t =
+        let result : (Access_token.t, Access_token_error.t) Result.t =
+          match Cohttp.Response.status response with
+          | `Bad_request | `Unauthorized ->
+            Error
+              (Token_request_rejected
+                 { response; body = Cohttp.Body.of_string body_string })
+          | `OK ->
+            (match Json.of_string body_string with
+            | Error error -> Error (Json_parsing_error { error; response; body_string })
+            | Ok response_json ->
               let token = Json.find response_json [ "access_token" ] |> Json.get_string in
               let expiration =
                 let additional_seconds =
@@ -231,30 +240,37 @@ module Local = struct
                 in
                 Time_ns.add (Time_source.now time_source) additional_seconds
               in
-              { token; expiration }
-            in
-            t.access_token <- Some access_token;
-            return (Ok access_token))
-        | _ ->
-          return
-            (Error
-               (Access_token_error.Other_http_error
-                  { response; body = Cohttp.Body.of_string body_string })))
+              Ok { token; expiration })
+          | _ ->
+            Error
+              (Other_http_error { response; body = Cohttp.Body.of_string body_string })
+        in
+        return result
     ;;
 
     let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
-      let open Deferred.Result.Let_syntax in
-      let%bind access_token =
+      let get_token () =
+        let ivar = Ivar.create () in
+        t.access_token <- Outstanding_request ivar;
+        let%bind result = get_token cohttp_client_wrapper t.credentials ~time_source in
+        t.access_token <- No_outstanding_request (Result.ok result);
+        Ivar.fill ivar result;
+        return result
+      in
+      let%bind result =
         match t.access_token with
-        | None -> get_token cohttp_client_wrapper t ~time_source
-        | Some access_token -> return access_token
+        | Outstanding_request ivar -> Ivar.read ivar
+        | No_outstanding_request None -> get_token ()
+        | No_outstanding_request (Some access_token) ->
+          (match Access_token.is_almost_expired access_token ~time_source with
+          | false -> return (Ok access_token)
+          | true -> get_token ())
       in
-      let%bind { token; _ } =
-        match Access_token.is_almost_expired access_token ~time_source with
-        | true -> get_token cohttp_client_wrapper t ~time_source
-        | false -> return access_token
-      in
-      return (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token))
+      match result with
+      | Error _ as error -> return error
+      | Ok { token; _ } ->
+        return
+          (Ok (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)))
     ;;
   end
 
@@ -283,26 +299,58 @@ module Local = struct
       ~time_source:(Time_source.wall_clock ())
   ;;
 
+  let repeat_until_finished_with_result
+      (state : 'state)
+      (f : 'state -> ([ `Repeat of 'state | `Finished of 'ok ], 'error) Deferred.Result.t)
+      : ('ok, 'error) Deferred.Result.t
+    =
+    Deferred.repeat_until_finished state (fun state ->
+        match%bind f state with
+        | Ok (`Repeat state) -> return (`Repeat state)
+        | Ok (`Finished result) -> return (`Finished (Ok result))
+        | Error result -> return (`Finished (Error result)))
+  ;;
+
   let handle_request
       ?sequence
       { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
       ~f
-      ~headers
+      ~headers:initial_headers
     =
-    let open Deferred.Result.Let_syntax in
-    let%bind headers =
-      Auth.add_access_token auth ~headers ~cohttp_client_wrapper ~time_source
-      |> Deferred.Result.map_error ~f:(fun error -> Error.Access_token_error error)
-    in
-    let run (None : Nothing.t option) =
-      let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
-      let%bind ((response, _body) as result) = f headers in
-      Rate_limiter.notify_response rate_limiter response;
-      return result
+    let run () =
+      repeat_until_finished_with_result () (fun () ->
+          let open Deferred.Result.Let_syntax in
+          let%bind headers =
+            Auth.add_access_token
+              auth
+              ~headers:initial_headers
+              ~cohttp_client_wrapper
+              ~time_source
+            |> Deferred.Result.map_error ~f:(fun error -> Error.Access_token_error error)
+          in
+          let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
+          let%bind ((response, _body) as result) = f headers in
+          let authorization_failed =
+            match Cohttp.Response.status response with
+            | `Unauthorized ->
+              (match
+                 Cohttp.Header.get (Cohttp.Response.headers response) "www-authenticate"
+               with
+              | Some "Bearer realm=\"reddit\", error=\"invalid_token\"" -> true
+              | Some _ | None -> false)
+            | _ -> false
+          in
+          Rate_limiter.notify_response rate_limiter response;
+          match authorization_failed with
+          | false -> return (`Finished result)
+          | true ->
+            auth.access_token <- No_outstanding_request None;
+            return (`Repeat ()))
     in
     match sequence with
-    | None -> run None
-    | Some sequencer -> Sequencer_table.enqueue sequencer_table ~key:sequencer run
+    | None -> run ()
+    | Some sequencer ->
+      Sequencer_table.enqueue sequencer_table ~key:sequencer (fun None -> run ())
   ;;
 
   let post_form ?sequence t uri ~params =
@@ -322,7 +370,7 @@ module Local = struct
   ;;
 
   let set_access_token t ~token ~expiration =
-    t.auth.access_token <- Some { token; expiration }
+    t.auth.access_token <- No_outstanding_request (Some { token; expiration })
   ;;
 end
 

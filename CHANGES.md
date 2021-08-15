@@ -11,6 +11,8 @@
   confidential clients are supported. See `Connection.Credentials.t`.
 - Add support for OAuth2 refresh token credentials.
 - Add handling of failed access token requests.
+- Add automatic retries when an endpoint request fails due to an expired access
+  token.
 
 ## Changed
 
