@@ -39,6 +39,10 @@ jobs:
 
       - run: opam exec -- dune runtest
 
+      - run: opam depext ocamlformat=$(grep 'version' .ocamlformat | awk -F '=' '{ print $2 }' | sed 's/^ *//') --install
+
+      - run: opam exec -- dune build @fmt
+
       - run: opam exec -- dune build @doc
 
       - uses: actions/upload-artifact@v2
