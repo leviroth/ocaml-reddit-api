@@ -109,15 +109,23 @@ end
 
 type t [@@deriving sexp_of]
 
-(** An [Access_token_error.t] represents an error encountered while fetching an access
-    token. *)
-module Access_token_error : sig
+(** An [Access_token_request_error.t] represents an error encountered while
+    fetching an access token. *)
+module Access_token_request_error : sig
   type t =
     | Cohttp_raised of Exn.t
     | Json_parsing_error of
         { error : Error.t
         ; response : Cohttp.Response.t
-        ; body_string : string
+        ; body : Cohttp.Body.t
+        }
+    | Token_request_rejected of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
+        }
+    | Other_http_error of
+        { response : Cohttp.Response.t
+        ; body : Cohttp.Body.t
         }
   [@@deriving sexp_of]
 end
@@ -128,7 +136,7 @@ end
     with each of these requests. *)
 module Error : sig
   type 'endpoint_error t =
-    | Access_token_error of Access_token_error.t
+    | Access_token_request_error of Access_token_request_error.t
     | Endpoint_error of 'endpoint_error
   [@@deriving sexp_of]
 end
@@ -164,4 +172,6 @@ module For_testing : sig
     -> credentials:Credentials.t
     -> f:(t -> 'a Deferred.t)
     -> 'a Deferred.t
+
+  val set_access_token : t -> token:string -> expiration:Time_ns.t -> unit
 end

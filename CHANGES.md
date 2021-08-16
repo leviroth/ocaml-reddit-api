@@ -10,6 +10,9 @@
 - Add support for OAuth2 userless (app-only) flow. Both public clients and
   confidential clients are supported. See `Connection.Credentials.t`.
 - Add support for OAuth2 refresh token credentials.
+- Add handling of failed access token requests.
+- Add automatic retries when an endpoint request fails due to an expired access
+  token.
 
 ## Changed
 
@@ -19,8 +22,8 @@
   OAuth2 userless (app-only) flow, so if you serialize the variant,
   a constructor name will be prepended to the sexp.
 - Restructure `Rate_limiter` and added expect tests.
-- Reorganize error types in `Connection` to distinguish errors in fetching an
-  access token.
+- Reorganize error types in `Connection` and `Retry_manager` to distinguish
+  errors in fetching an access token.
 - Bump `Connection.Remote` protocol to version 2.
 - Rename `Api` to `Endpoint` and `Api.Api_error` to `Api.Error`.
 
