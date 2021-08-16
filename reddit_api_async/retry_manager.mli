@@ -43,16 +43,32 @@ type t
 val create : Connection.t -> t
 
 module Non_transient_error : sig
+  module Access_token_request_error : sig
+    type t =
+      | Token_request_rejected of
+          { response : Cohttp.Response.t
+          ; body : Cohttp.Body.t
+          }
+      | Other_http_error of
+          { response : Cohttp.Response.t
+          ; body : Cohttp.Body.t
+          }
+    [@@deriving sexp_of]
+  end
+
+  module Endpoint_error : sig
+    type t =
+      | Http_error of
+          { response : Cohttp.Response.t
+          ; body : Cohttp.Body.t
+          }
+      | Json_response_errors of Endpoint.Json_response_error.t list
+    [@@deriving sexp_of]
+  end
+
   type t =
-    | Http_error of
-        { response : Cohttp.Response.t
-        ; body : Cohttp.Body.t
-        }
-    | Json_response_errors of Endpoint.Json_response_error.t list
-    | Token_request_rejected of
-        { response : Cohttp.Response.t
-        ; body : Cohttp.Body.t
-        }
+    | Access_token_request_error of Access_token_request_error.t
+    | Endpoint_error of Endpoint_error.t
   [@@deriving sexp_of]
 end
 

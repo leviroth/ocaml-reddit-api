@@ -95,7 +95,7 @@ let%expect_test "oauth2_refresh_token__bad_token" =
   [%expect
     {|
     (raised (
-      Access_token_error (
+      Access_token_request_error (
         Token_request_rejected
         (response (
           (encoding (Fixed 40))

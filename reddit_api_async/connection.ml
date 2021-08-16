@@ -89,13 +89,13 @@ end
 
 module Sequencer_table = Sequencer_table.Make (Endpoint.Sequencer)
 
-module Access_token_error = struct
+module Access_token_request_error = struct
   type t =
     | Cohttp_raised of Exn.t
     | Json_parsing_error of
         { error : Error.t
         ; response : Cohttp.Response.t
-        ; body_string : string
+        ; body : Cohttp.Body.t
         }
     | Token_request_rejected of
         { response : Cohttp.Response.t
@@ -110,7 +110,7 @@ end
 
 module Error = struct
   type 'endpoint_error t =
-    | Access_token_error of Access_token_error.t
+    | Access_token_request_error of Access_token_request_error.t
     | Endpoint_error of 'endpoint_error
   [@@deriving sexp_of]
 end
@@ -184,7 +184,8 @@ module Local = struct
     module Access_token_state = struct
       type t =
         | No_outstanding_request of Access_token.t option
-        | Outstanding_request of (Access_token.t, Access_token_error.t) Result.t Ivar.t
+        | Outstanding_request of
+            (Access_token.t, Access_token_request_error.t) Result.t Ivar.t
       [@@deriving sexp_of]
     end
 
@@ -216,9 +217,9 @@ module Local = struct
         in
         return (response, body_string)
       with
-      | Error exn -> return (Error (Access_token_error.Cohttp_raised exn))
+      | Error exn -> return (Error (Access_token_request_error.Cohttp_raised exn))
       | Ok (response, body_string) ->
-        let result : (Access_token.t, Access_token_error.t) Result.t =
+        let result : (Access_token.t, Access_token_request_error.t) Result.t =
           match Cohttp.Response.status response with
           | `Bad_request | `Unauthorized ->
             Error
@@ -226,7 +227,10 @@ module Local = struct
                  { response; body = Cohttp.Body.of_string body_string })
           | `OK ->
             (match Json.of_string body_string with
-            | Error error -> Error (Json_parsing_error { error; response; body_string })
+            | Error error ->
+              Error
+                (Json_parsing_error
+                   { error; response; body = Cohttp.Body.of_string body_string })
             | Ok response_json ->
               let token = Json.find response_json [ "access_token" ] |> Json.get_string in
               let expiration =
@@ -323,7 +327,8 @@ module Local = struct
               ~headers:initial_headers
               ~cohttp_client_wrapper
               ~time_source
-            |> Deferred.Result.map_error ~f:(fun error -> Error.Access_token_error error)
+            |> Deferred.Result.map_error ~f:(fun error ->
+                   Error.Access_token_request_error error)
           in
           let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
           let%bind ((response, _body) as result) = f headers in
@@ -408,7 +413,7 @@ let call_raw t ({ request; sequencer = sequence; handle_response = _ } : _ Endpo
 
 let call t api =
   match%bind call_raw t api with
-  | Error (Access_token_error _) as error -> return error
+  | Error (Access_token_request_error _) as error -> return error
   | Error (Endpoint_error exn) ->
     return (Error (Error.Endpoint_error (Endpoint.Error.Cohttp_raised exn)))
   | Ok (response, body) ->
@@ -493,13 +498,13 @@ module Remote = struct
       include Bin_prot.Utils.Make_binable_with_uuid (T)
     end
 
-    module Access_token_error = struct
-      type t = Access_token_error.t =
+    module Access_token_request_error = struct
+      type t = Access_token_request_error.t =
         | Cohttp_raised of Exn.t
         | Json_parsing_error of
             { error : Core.Error.t
             ; response : Cohttp_response.t
-            ; body_string : string
+            ; body : Cohttp_body.t
             }
         | Token_request_rejected of
             { response : Cohttp_response.t
@@ -514,7 +519,7 @@ module Remote = struct
 
     module Error = struct
       type 'endpoint_error t = 'endpoint_error Error.t =
-        | Access_token_error of Access_token_error.t
+        | Access_token_request_error of Access_token_request_error.t
         | Endpoint_error of 'endpoint_error
       [@@deriving sexp_of, bin_io]
     end

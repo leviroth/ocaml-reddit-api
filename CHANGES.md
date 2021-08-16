@@ -22,8 +22,8 @@
   OAuth2 userless (app-only) flow, so if you serialize the variant,
   a constructor name will be prepended to the sexp.
 - Restructure `Rate_limiter` and added expect tests.
-- Reorganize error types in `Connection` to distinguish errors in fetching an
-  access token.
+- Reorganize error types in `Connection` and `Retry_manager` to distinguish
+  errors in fetching an access token.
 - Bump `Connection.Remote` protocol to version 2.
 - Rename `Api` to `Endpoint` and `Api.Api_error` to `Api.Error`.
 
