@@ -72,6 +72,19 @@ module Credentials = struct
   ;;
 
   let auth_header t = Cohttp.Header.init_with "Authorization" (basic_auth_string t)
+
+  let access_token_request_params t =
+    match t with
+    | Password { username; password; _ } ->
+      [ "grant_type", [ "password" ]; "username", [ username ]; "password", [ password ] ]
+    | Refresh_token { refresh_token; _ } ->
+      [ "grant_type", [ "refresh_token" ]; "refresh_token", [ refresh_token ] ]
+    | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
+    | Userless_public public_credentials ->
+      [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
+      ; "device_id", [ Userless_public.device_id_or_default public_credentials ]
+      ]
+  ;;
 end
 
 module Sequencer_table = Sequencer_table.Make (Endpoint.Sequencer)
@@ -195,23 +208,7 @@ module Local = struct
         let%bind response, body =
           let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
           let headers = Credentials.auth_header credentials in
-          let params =
-            match credentials with
-            | Password { username; password; _ } ->
-              [ "grant_type", [ "password" ]
-              ; "username", [ username ]
-              ; "password", [ password ]
-              ]
-            | Refresh_token { refresh_token; _ } ->
-              [ "grant_type", [ "refresh_token" ]; "refresh_token", [ refresh_token ] ]
-            | Userless_confidential _ -> [ "grant_type", [ "client_credentials" ] ]
-            | Userless_public public_credentials ->
-              [ "grant_type", [ "https://oauth.reddit.com/grants/installed_client" ]
-              ; ( "device_id"
-                , [ Credentials.Userless_public.device_id_or_default public_credentials ]
-                )
-              ]
-          in
+          let params = Credentials.access_token_request_params credentials in
           Cohttp_client_wrapper.post_form ~headers uri ~params
         in
         let%bind body_string =
