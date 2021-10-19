@@ -1,1 +1,1 @@
-include Relationship_intf.Relationship
+include Relationship_intf.Relationship (** @inline *)

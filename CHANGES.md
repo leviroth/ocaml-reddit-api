@@ -1,3 +1,10 @@
+# Unreleased
+
+## Changed
+
+- Add explicit interface to `reddit_api_kernel`
+  - Expose `foo_intf.ml` contents as `Reddit_api_kernel.Foo`.
+
 # 0.2.1
 
 ## Removed
