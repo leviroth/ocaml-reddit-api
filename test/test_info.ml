@@ -7,7 +7,7 @@ let%expect_test "info" =
       let%bind link =
         Connection.call_exn
           connection
-          (Endpoint.info (Id [ `Link (Thing.Link.Id.of_string "hmjd8r") ]) ())
+          (Endpoint.info (Id [ `Link (Thing.Link.Id.of_string "hmjd8r") ]))
         >>| List.hd_exn
       in
       let link =
@@ -37,8 +37,7 @@ let%expect_test "info__by_subreddit_name" =
           connection
           (Endpoint.info
              (Subreddit_name
-                (List.map [ "ocaml"; "redditdev"; "python" ] ~f:Subreddit_name.of_string))
-             ())
+                (List.map [ "ocaml"; "redditdev"; "python" ] ~f:Subreddit_name.of_string)))
         >>| List.map ~f:(function
                 | `Subreddit subreddit -> subreddit
                 | _ -> raise_s [%message "Unexpected response item"])

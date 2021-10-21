@@ -70,8 +70,7 @@ let%expect_test "Bad request" =
           Connection.call
             connection
             (Endpoint.user_trophies
-               ~username:(Username.of_string "thisusershouldnotexist")
-               ())
+               ~username:(Username.of_string "thisusershouldnotexist"))
         with
         | Ok _ -> raise_s [%message "Expected error"]
         | Error error ->

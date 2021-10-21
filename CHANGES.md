@@ -26,6 +26,8 @@
   errors in fetching an access token.
 - Bump `Connection.Remote` protocol to version 2.
 - Rename `Api` to `Endpoint` and `Api.Api_error` to `Api.Error`.
+- Remove `Endpoint.with_param_override` type.
+  - This changes the type of each endpoint value.
 
 # 0.1.1 (2020-12-30)
 

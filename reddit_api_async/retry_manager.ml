@@ -97,7 +97,7 @@ let yield_until_reddit_available t =
   | Waiting_for_issue_resolution { finished } -> Ivar.read finished
 ;;
 
-let get_read_only_page t = Connection.call t.connection (Endpoint.me ())
+let get_read_only_page t = Connection.call t.connection Endpoint.me
 
 let on_non_transient_response t =
   match t.state with

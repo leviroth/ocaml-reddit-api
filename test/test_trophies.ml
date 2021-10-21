@@ -4,7 +4,7 @@ open! Import
 
 let%expect_test _ =
   with_cassette "trophies" ~f:(fun connection ->
-      let%bind trophies = Connection.call_exn connection (Endpoint.trophies ()) in
+      let%bind trophies = Connection.call_exn connection Endpoint.trophies in
       print_s [%message "" (trophies : Thing.Award.t list)];
       [%expect
         {|
@@ -33,7 +33,7 @@ let%expect_test _ =
       let%bind trophies =
         Connection.call_exn
           connection
-          (Endpoint.user_trophies ~username:(Username.of_string "spez") ())
+          (Endpoint.user_trophies ~username:(Username.of_string "spez"))
       in
       print_s [%message "" ~trophies:(List.take trophies 5 : Thing.Award.t list)];
       [%expect

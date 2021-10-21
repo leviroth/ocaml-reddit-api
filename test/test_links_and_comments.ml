@@ -24,9 +24,9 @@ let%expect_test "save" =
 let%expect_test "unsave" =
   with_cassette "unsave" ~f:(fun connection ->
       let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
-      let%bind () = Connection.call_exn connection (Endpoint.unsave () ~id) in
+      let%bind () = Connection.call_exn connection (Endpoint.unsave ~id) in
       (* Unsave is idempotent *)
-      let%bind () = Connection.call_exn connection (Endpoint.unsave () ~id) in
+      let%bind () = Connection.call_exn connection (Endpoint.unsave ~id) in
       [%expect {| |}];
       return ())
 ;;
@@ -35,11 +35,11 @@ let%expect_test "send_replies" =
   with_cassette "send_replies" ~f:(fun connection ->
       let id = `Comment (Thing.Comment.Id.of_string "g3krlj5") in
       let%bind () =
-        Connection.call_exn connection (Endpoint.send_replies () ~id ~enabled:true)
+        Connection.call_exn connection (Endpoint.send_replies ~id ~enabled:true)
       in
       [%expect];
       let%bind () =
-        Connection.call_exn connection (Endpoint.send_replies () ~id ~enabled:false)
+        Connection.call_exn connection (Endpoint.send_replies ~id ~enabled:false)
       in
       [%expect];
       return ())
@@ -49,10 +49,10 @@ let%expect_test "set_contest_mode" =
   with_cassette "set_contest_mode" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hofd3k" in
       let%bind () =
-        Connection.call_exn connection (Endpoint.set_contest_mode () ~link ~enabled:true)
+        Connection.call_exn connection (Endpoint.set_contest_mode ~link ~enabled:true)
       in
       let%bind () =
-        Connection.call_exn connection (Endpoint.set_contest_mode () ~link ~enabled:false)
+        Connection.call_exn connection (Endpoint.set_contest_mode ~link ~enabled:false)
       in
       [%expect];
       return ())
@@ -61,7 +61,7 @@ let%expect_test "set_contest_mode" =
 let%expect_test "spoiler" =
   with_cassette "spoiler" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hofd3k" in
-      let%bind () = Connection.call_exn connection (Endpoint.spoiler () ~link) in
+      let%bind () = Connection.call_exn connection (Endpoint.spoiler ~link) in
       [%expect];
       return ())
 ;;
@@ -69,7 +69,7 @@ let%expect_test "spoiler" =
 let%expect_test "unspoiler" =
   with_cassette "unspoiler" ~f:(fun connection ->
       let link = Thing.Link.Id.of_string "hofd3k" in
-      let%bind () = Connection.call_exn connection (Endpoint.unspoiler () ~link) in
+      let%bind () = Connection.call_exn connection (Endpoint.unspoiler ~link) in
       [%expect];
       return ())
 ;;

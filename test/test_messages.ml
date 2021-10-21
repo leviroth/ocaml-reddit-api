@@ -7,7 +7,7 @@ let message_id = Thing.Message.Id.of_string "rdjz4y"
 let%expect_test "block_author" =
   with_cassette "block_author" ~f:(fun connection ->
       let id = `Message message_id in
-      let%bind () = Connection.call_exn connection (Endpoint.block_author () ~id) in
+      let%bind () = Connection.call_exn connection (Endpoint.block_author ~id) in
       [%expect];
       return ())
 ;;
@@ -16,7 +16,7 @@ let%expect_test "collapse_message" =
   with_cassette "collapse_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () =
-        Connection.call_exn connection (Endpoint.collapse_message () ~messages)
+        Connection.call_exn connection (Endpoint.collapse_message ~messages)
       in
       [%expect];
       return ())
@@ -26,7 +26,7 @@ let%expect_test "uncollapse_message" =
   with_cassette "uncollapse_message" ~f:(fun connection ->
       let messages = [ message_id ] in
       let%bind () =
-        Connection.call_exn connection (Endpoint.uncollapse_message () ~messages)
+        Connection.call_exn connection (Endpoint.uncollapse_message ~messages)
       in
       [%expect];
       return ())
@@ -35,7 +35,7 @@ let%expect_test "uncollapse_message" =
 let%expect_test "read_message" =
   with_cassette "read_message" ~f:(fun connection ->
       let messages = [ message_id ] in
-      let%bind () = Connection.call_exn connection (Endpoint.read_message () ~messages) in
+      let%bind () = Connection.call_exn connection (Endpoint.read_message ~messages) in
       [%expect];
       return ())
 ;;
@@ -43,9 +43,7 @@ let%expect_test "read_message" =
 let%expect_test "unread_message" =
   with_cassette "unread_message" ~f:(fun connection ->
       let messages = [ message_id ] in
-      let%bind () =
-        Connection.call_exn connection (Endpoint.unread_message () ~messages)
-      in
+      let%bind () = Connection.call_exn connection (Endpoint.unread_message ~messages) in
       [%expect];
       return ())
 ;;
