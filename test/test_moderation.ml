@@ -5,7 +5,7 @@ open! Import
 let%expect_test "remove" =
   with_cassette "remove" ~f:(fun connection ->
       let id = `Link (Thing.Link.Id.of_string "j4z0ig") in
-      let%bind () = Connection.call_exn connection (Endpoint.remove () ~id ~spam:false) in
+      let%bind () = Connection.call_exn connection (Endpoint.remove ~id ~spam:false) in
       [%expect];
       return ())
 ;;
@@ -85,7 +85,7 @@ let%expect_test "ignore_reports" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.ignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
+          (Endpoint.ignore_reports ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
       in
       [%expect {| |}];
       return ())
@@ -96,7 +96,7 @@ let%expect_test "unignore_reports" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.unignore_reports () ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
+          (Endpoint.unignore_reports ~id:(`Link (Thing.Link.Id.of_string "ili4vc")))
       in
       [%expect {| |}];
       return ())
@@ -107,7 +107,7 @@ let%expect_test "leavecontributor" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.leavecontributor () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
+          (Endpoint.leavecontributor ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
       in
       [%expect {| |}];
       return ())
@@ -118,7 +118,7 @@ let%expect_test "leavemoderator" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.leavemoderator () ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
+          (Endpoint.leavemoderator ~subreddit:(Thing.Subreddit.Id.of_string "390u2"))
       in
       [%expect {| |}];
       return ())
@@ -129,7 +129,7 @@ let%expect_test "stylesheet" =
       let%bind stylesheet =
         Connection.call_exn
           connection
-          (Endpoint.stylesheet () ~subreddit:(Subreddit_name.of_string "Thirdrealm"))
+          (Endpoint.stylesheet ~subreddit:(Subreddit_name.of_string "Thirdrealm"))
       in
       let images =
         List.map (Stylesheet.images stylesheet) ~f:(fun image ->

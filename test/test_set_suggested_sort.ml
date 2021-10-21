@@ -8,7 +8,7 @@ let%expect_test "set_suggested_sort" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.set_suggested_sort () ~sort:(Some New) ~link)
+          (Endpoint.set_suggested_sort ~sort:(Some New) ~link)
       in
       [%expect {| |}];
       return ())

@@ -26,7 +26,7 @@ let get_link_exn connection id =
   let%bind link =
     Connection.call_exn
       connection
-      (Endpoint.info (Id [ `Link (Thing.Link.Id.of_string id) ]) ())
+      (Endpoint.info (Id [ `Link (Thing.Link.Id.of_string id) ]))
     >>| List.hd_exn
   in
   return

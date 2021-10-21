@@ -191,7 +191,7 @@ let%expect_test "delete_subreddit_banner" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.delete_subreddit_image () ~subreddit ~image:Mobile_banner)
+          (Endpoint.delete_subreddit_image ~subreddit ~image:Mobile_banner)
       in
       [%expect {| |}];
       return ())
@@ -202,7 +202,7 @@ let%expect_test "delete_subreddit_header" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.delete_subreddit_image () ~subreddit ~image:Header)
+          (Endpoint.delete_subreddit_image ~subreddit ~image:Header)
       in
       [%expect {| |}];
       return ())
@@ -213,7 +213,7 @@ let%expect_test "delete_subreddit_icon" =
       let%bind () =
         Connection.call_exn
           connection
-          (Endpoint.delete_subreddit_image () ~subreddit ~image:Mobile_icon)
+          (Endpoint.delete_subreddit_image ~subreddit ~image:Mobile_icon)
       in
       [%expect {| |}];
       return ())
@@ -225,7 +225,6 @@ let%expect_test "delete_subreddit_image" =
         Connection.call_exn
           connection
           (Endpoint.delete_subreddit_image
-             ()
              ~subreddit
              ~image:(Stylesheet_image { name = "leviroth" }))
       in
@@ -253,7 +252,7 @@ let%expect_test "submit_text" =
       let%bind submit_text =
         Connection.call_exn
           connection
-          (Endpoint.submit_text () ~subreddit:(Subreddit_name.of_string "philosophy"))
+          (Endpoint.submit_text ~subreddit:(Subreddit_name.of_string "philosophy"))
       in
       List.iter [ `markdown; `HTML ] ~f:(fun markup ->
           print_s
@@ -369,7 +368,7 @@ let%expect_test "subreddit_settings" =
 let%expect_test "subreddit_rules" =
   with_cassette "subreddit_rules" ~f:(fun connection ->
       let%bind rules =
-        Connection.call_exn connection (Endpoint.subreddit_rules () ~subreddit)
+        Connection.call_exn connection (Endpoint.subreddit_rules ~subreddit)
       in
       List.iter (Subreddit_rules.subreddit_rules rules) ~f:(fun rule ->
           let open Subreddit_rules.Rule in
@@ -401,7 +400,7 @@ let%expect_test "subreddit_rules" =
 let%expect_test "subreddit_traffic" =
   with_cassette "subreddit_traffic" ~f:(fun connection ->
       let%bind traffic =
-        Connection.call_exn connection (Endpoint.subreddit_traffic () ~subreddit)
+        Connection.call_exn connection (Endpoint.subreddit_traffic ~subreddit)
       in
       let by_date = List.take (Subreddit_traffic.by_date traffic) 4 in
       print_s [%sexp (by_date : Subreddit_traffic.By_date.t list)];

@@ -17,7 +17,7 @@ let%expect_test "comment_fields" =
       let comment_id = Thing.Comment.id first_comment in
       let%bind keys_from_info_page =
         match%bind
-          Connection.call_exn connection (Endpoint.info (Id [ `Comment comment_id ]) ())
+          Connection.call_exn connection (Endpoint.info (Id [ `Comment comment_id ]))
           >>| List.hd_exn
         with
         | `Comment comment -> return (Thing.Comment.field_map comment |> Map.key_set)

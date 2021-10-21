@@ -9,17 +9,14 @@ let%expect_test "add_wiki_editor" =
   with_cassette "add_wiki_editor" ~f:(fun connection ->
       Connection.call_exn
         connection
-        (Endpoint.add_wiki_editor () ~page ~user:(Username.of_string "L72_Elite_Kraken")))
+        (Endpoint.add_wiki_editor ~page ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "remove_wiki_editor" =
   with_cassette "remove_wiki_editor" ~f:(fun connection ->
       Connection.call_exn
         connection
-        (Endpoint.remove_wiki_editor
-           ()
-           ~page
-           ~user:(Username.of_string "L72_Elite_Kraken")))
+        (Endpoint.remove_wiki_editor ~page ~user:(Username.of_string "L72_Elite_Kraken")))
 ;;
 
 let%expect_test "toggle_wiki_revision_visibility" =
@@ -28,7 +25,6 @@ let%expect_test "toggle_wiki_revision_visibility" =
         Connection.call_exn
           connection
           (Endpoint.toggle_wiki_revision_visibility
-             ()
              ~page
              ~revision:
                (Wiki_page.Revision.Id.of_string "8048c97c-52ba-11e7-ab00-0ad38c20ef7e"))
@@ -43,7 +39,6 @@ let%expect_test "revert_wiki_page" =
       Connection.call_exn
         connection
         (Endpoint.revert_wiki_page
-           ()
            ~page
            ~revision:
              (Wiki_page.Revision.Id.of_string "e4d3d130-52b9-11e7-9d0c-0e1b806ed802")))
@@ -104,7 +99,7 @@ let%expect_test "wiki_discussions" =
 let%expect_test "wiki_pages" =
   with_cassette "wiki_pages" ~f:(fun connection ->
       let%bind pages =
-        Connection.call_exn connection (Endpoint.wiki_pages ~subreddit ())
+        Connection.call_exn connection (Endpoint.wiki_pages () ~subreddit)
       in
       print_s [%sexp (pages : string list)];
       [%expect
@@ -145,7 +140,7 @@ let%expect_test "subreddit_wiki_revisions" =
 let%expect_test "wiki_permissions" =
   with_cassette "wiki_permissions" ~f:(fun connection ->
       let%bind permissions =
-        Connection.call_exn connection (Endpoint.wiki_permissions () ~page)
+        Connection.call_exn connection (Endpoint.wiki_permissions ~page)
       in
       print_s
         [%sexp
@@ -168,7 +163,7 @@ let%expect_test "set_wiki_permissions" =
       let%bind permissions =
         Connection.call_exn
           connection
-          (Endpoint.set_wiki_permissions ~level:Only_moderators ~listed:true () ~page)
+          (Endpoint.set_wiki_permissions ~level:Only_moderators ~listed:true ~page)
       in
       print_s
         [%sexp

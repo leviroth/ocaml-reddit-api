@@ -12,8 +12,7 @@ let%expect_test "create_modmail_conversation" =
              ~body:"Test body"
              ~subreddit:(Subreddit_name.of_string "ThirdRealm")
              ~to_:(User (Username.of_string "BJO_test_user"))
-             ~hide_author:false
-             ())
+             ~hide_author:false)
       in
       print_s [%sexp (conversation : Modmail.Conversation.t)];
       [%expect

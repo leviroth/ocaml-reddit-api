@@ -18,9 +18,7 @@ let%expect_test "best" =
 let%expect_test "links_by_id" =
   with_cassette "links_by_id" ~f:(fun connection ->
       let links = List.map ~f:Thing.Link.Id.of_string [ "icqrut"; "ikksvt" ] in
-      let%bind listing =
-        Connection.call_exn connection (Endpoint.links_by_id () ~links)
-      in
+      let%bind listing = Connection.call_exn connection (Endpoint.links_by_id ~links) in
       let ids = Listing.children listing |> List.map ~f:Thing.Link.id in
       print_s [%sexp (ids : Thing.Link.Id.t list)];
       [%expect {| (icqrut ikksvt) |}];

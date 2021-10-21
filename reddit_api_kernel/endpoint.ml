@@ -607,17 +607,8 @@ let map t ~f =
   { t with handle_response = (fun v -> t.handle_response v |> Result.map ~f) }
 ;;
 
-let call_api
-    ?sequencer
-    handle_response
-    ?(param_list_override = Fn.id)
-    ()
-    ~endpoint
-    ~http_verb
-    ~params
-  =
+let call_api ?sequencer handle_response ~endpoint ~http_verb ~params =
   let params = ("raw_json", [ "1" ]) :: params in
-  let params = param_list_override params in
   let uri = sprintf "https://oauth.reddit.com%s" endpoint |> Uri.of_string in
   let request : Request.t =
     match http_verb with
@@ -750,7 +741,7 @@ let with_listing_params k ?pagination ?count ?limit ?show_all =
 
 let prefs' which k ~listing_params =
   let endpoint = sprintf "/prefs/%s" which in
-  get k ~endpoint ~params:listing_params
+  fun () -> get k ~endpoint ~params:listing_params
 ;;
 
 let prefs endpoint k = with_listing_params (prefs' endpoint k)
@@ -776,6 +767,7 @@ let select_flair
     ?flair_template_id
     ?text
     ?text_color
+    ()
     ~subreddit
     ~target
   =
@@ -802,7 +794,7 @@ let handle_things_response =
       |> Thing.Poly.of_json)
 ;;
 
-let add_comment ?return_rtjson ?richtext_json ~parent ~text =
+let add_comment ?return_rtjson ?richtext_json () ~parent ~text =
   let endpoint = "/api/comment" in
   let params =
     let open Param_dsl in
@@ -830,7 +822,7 @@ let delete ~id =
   post ~endpoint ~params ignore_empty_object
 ;;
 
-let edit ?return_rtjson ?richtext_json ~id ~text =
+let edit ?return_rtjson ?richtext_json () ~id ~text =
   let endpoint = "/api/editusertext" in
   let params =
     let open Param_dsl in
@@ -887,7 +879,7 @@ let mark_nsfw' ~link = simple_toggle' "marknsfw" (`Link link) ignore_empty_objec
 let mark_nsfw = mark_nsfw' `Do
 let unmark_nsfw = mark_nsfw' `Undo
 
-let more_children ?limit_children ~link ~more_comments ~sort =
+let more_children ?limit_children () ~link ~more_comments ~sort =
   let endpoint = "/api/morechildren" in
   let children = More_comments.Details.By_children.children more_comments in
   let params =
@@ -917,6 +909,7 @@ let report
     ?rule_reason
     ?site_reason
     ?sr_name
+    ()
     ~target
     ~reason
   =
@@ -946,7 +939,7 @@ let report_award ~award_id =
   post ~endpoint ~params return
 ;;
 
-let save ?category ~id =
+let save ?category () ~id =
   let endpoint = "/api/save" in
   let params =
     let open Param_dsl in
@@ -982,7 +975,7 @@ let set_contest_mode ~link ~enabled =
   post ~endpoint ~params assert_no_errors
 ;;
 
-let set_subreddit_sticky ?to_profile ~link ~sticky_state =
+let set_subreddit_sticky ?to_profile () ~link ~sticky_state =
   let endpoint = "/api/set_subreddit_sticky" in
   let params =
     let open Param_dsl in
@@ -1037,6 +1030,7 @@ let submit
     ?event_start
     ?event_end
     ?event_tz
+    ()
     ~subreddit
     ~title
     ~kind
@@ -1073,7 +1067,7 @@ let submit
          id, url))
 ;;
 
-let vote ?rank ~direction ~target =
+let vote ?rank () ~direction ~target =
   let endpoint = "/api/vote" in
   let params =
     let open Param_dsl in
@@ -1086,7 +1080,7 @@ let vote ?rank ~direction ~target =
   post ~endpoint ~params ignore_empty_object
 ;;
 
-let best' ~listing_params ?include_categories =
+let best' ~listing_params ?include_categories () =
   let endpoint = "/best" in
   let params =
     let open Param_dsl in
@@ -1117,6 +1111,7 @@ let comments
     ?sort
     ?threaded
     ?truncate
+    ()
     ~link
   =
   let endpoint =
@@ -1153,7 +1148,7 @@ let comments
          | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
 ;;
 
-let duplicates' ~listing_params ?crossposts_only ?sort ~link =
+let duplicates' ~listing_params ?crossposts_only ?sort () ~link =
   let endpoint = sprintf !"/duplicates/%{Link.Id}" link in
   let params =
     let open Param_dsl in
@@ -1173,6 +1168,7 @@ let basic_post_listing'
     ~listing_params
     ?include_categories
     ?subreddit
+    ()
     ~extra_params
   =
   let endpoint = optional_subreddit_endpoint ?subreddit endpoint_part in
@@ -1234,7 +1230,7 @@ let link_id_from_redirect (response, (_ : Cohttp.Body.t)) =
   return (Thing.Link.Id.of_uri uri)
 ;;
 
-let random ?subreddit =
+let random ?subreddit () =
   let endpoint = optional_subreddit_endpoint ?subreddit "/random" in
   get ~endpoint ~params:[] link_id_from_redirect
 ;;
@@ -1251,7 +1247,7 @@ let collapse_message' ~messages =
 let collapse_message = collapse_message' `Do
 let uncollapse_message = collapse_message' `Undo
 
-let compose_message ?g_recaptcha_response ?from_subreddit ~to_ ~subject ~text =
+let compose_message ?g_recaptcha_response ?from_subreddit () ~to_ ~subject ~text =
   let endpoint = "/api/compose" in
   let params =
     let open Param_dsl in
@@ -1281,7 +1277,7 @@ let read_message' ~messages =
 let read_message = read_message' `Do
 let unread_message = read_message' `Undo
 
-let message_listing' k endpoint ~listing_params ?include_categories ?mid ~mark_read =
+let message_listing' k endpoint ~listing_params ?include_categories ?mid () ~mark_read =
   let endpoint = "/message/" ^ endpoint in
   let params =
     let open Param_dsl in
@@ -1330,7 +1326,7 @@ let moderation_endpoint ?(subreddit = Subreddit_name.of_string "mod") endpoint =
   sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint
 ;;
 
-let log' ~listing_params ?mod_filter ?subreddit ?type_ =
+let log' ~listing_params ?mod_filter ?subreddit ?type_ () =
   let endpoint = moderation_endpoint ?subreddit "log" in
   let params =
     let open Param_dsl in
@@ -1345,7 +1341,7 @@ let log' ~listing_params ?mod_filter ?subreddit ?type_ =
 
 let log = with_listing_params log'
 
-let mod_listing' ~listing_params ?location ?only ?subreddit ~endpoint =
+let mod_listing' ~listing_params ?location ?only ?subreddit () ~endpoint =
   let endpoint = moderation_endpoint ?subreddit endpoint in
   let params =
     let open Param_dsl in
@@ -1381,7 +1377,7 @@ let remove ~id ~spam =
   post ~endpoint ~params ignore_empty_object
 ;;
 
-let distinguish ?sticky ~id ~how =
+let distinguish ?sticky () ~id ~how =
   let endpoint = "/api/distinguish" in
   let params =
     let open Param_dsl in
@@ -1454,6 +1450,7 @@ let search'
     ?since
     ?sort
     ?types
+    ()
     ~query
   =
   let subreddit_part, restrict_param =
@@ -1535,7 +1532,7 @@ let search'
 
 let search = with_listing_params search'
 
-let about_endpoint' endpoint k ~listing_params ?include_categories ?user ~subreddit =
+let about_endpoint' endpoint k ~listing_params ?include_categories ?user () ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/about/%s" subreddit endpoint in
   let params =
     let open Param_dsl in
@@ -1580,7 +1577,7 @@ let delete_subreddit_image ~subreddit ~(image : Subreddit_image.t) =
   removal_endpoints ~endpoint ~extra_params ~subreddit
 ;;
 
-let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable ~query =
+let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable () ~query =
   let endpoint = "/api/search_reddit_names" in
   let params =
     let open Param_dsl in
@@ -1603,6 +1600,7 @@ let create_or_edit_subreddit
     ?comment_score_hide_mins
     ?wiki_edit_age
     ?wiki_edit_karma
+    ()
     ~all_original_content
     ~allow_discovery
     ~allow_images
@@ -1704,6 +1702,7 @@ let subreddit_autocomplete
     ?include_categories
     ?include_over_18
     ?include_profiles
+    ()
     ~query
   =
   let endpoint = "/api/subreddit_autocomplete_v2" in
@@ -1720,7 +1719,7 @@ let subreddit_autocomplete
   get ~endpoint ~params (get_listing Subreddit.of_json)
 ;;
 
-let set_subreddit_stylesheet ?reason ~subreddit ~stylesheet_contents =
+let set_subreddit_stylesheet ?reason () ~subreddit ~stylesheet_contents =
   let endpoint = sprintf !"/r/%{Subreddit_name}/api/subreddit_stylesheet" subreddit in
   let params =
     let open Param_dsl in
@@ -1735,7 +1734,7 @@ let set_subreddit_stylesheet ?reason ~subreddit ~stylesheet_contents =
   post ~endpoint ~params assert_no_errors
 ;;
 
-let subscribe ?skip_initial_defaults ~action ~subreddits =
+let subscribe ?skip_initial_defaults () ~action ~subreddits =
   let endpoint = "/api/subscribe" in
   let params =
     let open Param_dsl in
@@ -1748,7 +1747,7 @@ let subscribe ?skip_initial_defaults ~action ~subreddits =
   post ~endpoint ~params ignore_empty_object
 ;;
 
-let search_users' ~listing_params ?sort ~query =
+let search_users' ~listing_params ?sort () ~query =
   let endpoint = "/users/search" in
   let params =
     let open Param_dsl in
@@ -1773,7 +1772,7 @@ let subreddit_about ?(params = []) ~subreddit endpoint =
   get ~endpoint ~params
 ;;
 
-let subreddit_settings ?created ?location =
+let subreddit_settings ?created ?location () =
   let params =
     let open Param_dsl in
     combine [ optional' bool "created" created; optional' string "location" location ]
@@ -1789,7 +1788,7 @@ let subreddit_traffic =
   subreddit_about "traffic" (handle_json_response Subreddit_traffic.of_json)
 ;;
 
-let get_sticky ?number ~subreddit =
+let get_sticky ?number () ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/about/sticky" subreddit in
   let params =
     let open Param_dsl in
@@ -1798,7 +1797,7 @@ let get_sticky ?number ~subreddit =
   get ~endpoint ~params link_id_from_redirect
 ;;
 
-let get_subreddits' ~listing_params ?include_categories ~relationship =
+let get_subreddits' ~listing_params ?include_categories () ~relationship =
   let endpoint = sprintf !"/subreddits/mine/%{Subreddit_relationship}" relationship in
   let params =
     let open Param_dsl in
@@ -1809,7 +1808,13 @@ let get_subreddits' ~listing_params ?include_categories ~relationship =
 
 let get_subreddits = with_listing_params get_subreddits'
 
-let search_subreddits_by_title_and_description' ~listing_params ?show_users ?sort ~query =
+let search_subreddits_by_title_and_description'
+    ~listing_params
+    ?show_users
+    ?sort
+    ()
+    ~query
+  =
   let endpoint = "/subreddits/search" in
   let params =
     let open Param_dsl in
@@ -1827,7 +1832,7 @@ let search_subreddits_by_title_and_description =
   with_listing_params search_subreddits_by_title_and_description'
 ;;
 
-let list_subreddits' ~listing_params ?include_categories ?show_users ~sort =
+let list_subreddits' ~listing_params ?include_categories ?show_users () ~sort =
   let endpoint = sprintf !"/subreddits/%{Subreddit_listing_sort}" sort in
   let params =
     let open Param_dsl in
@@ -1852,7 +1857,7 @@ let user_trophies ~username =
 
 let list_subreddits = with_listing_params list_subreddits'
 
-let list_user_subreddits' ~listing_params ?include_categories ~sort =
+let list_user_subreddits' ~listing_params ?include_categories () ~sort =
   let endpoint = sprintf !"/users/%{User_subreddit_sort}" sort in
   let params =
     let open Param_dsl in
@@ -1864,14 +1869,15 @@ let list_user_subreddits' ~listing_params ?include_categories ~sort =
 let list_user_subreddits = with_listing_params list_user_subreddits'
 
 let add_relationship
-    ~relationship
-    ~username
-    ~duration
     ?subreddit
     ?note
     ?ban_reason
     ?ban_message
     ?ban_context
+    ()
+    ~relationship
+    ~username
+    ~duration
   =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/friend" in
   let params =
@@ -1893,7 +1899,7 @@ let add_relationship
   post ~endpoint ~params assert_no_errors
 ;;
 
-let remove_relationship ~relationship ~username ?subreddit =
+let remove_relationship ?subreddit () ~relationship ~username =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/unfriend" in
   let params =
     let open Param_dsl in
@@ -1920,7 +1926,12 @@ let add_or_remove_wiki_editor ~act ~page:({ subreddit; page } : Wiki_page.Id.t) 
 let add_wiki_editor = add_or_remove_wiki_editor ~act:"add"
 let remove_wiki_editor = add_or_remove_wiki_editor ~act:"del"
 
-let edit_wiki_page ?previous ?reason ~content ~page:({ subreddit; page } : Wiki_page.Id.t)
+let edit_wiki_page
+    ?previous
+    ?reason
+    ()
+    ~content
+    ~page:({ subreddit; page } : Wiki_page.Id.t)
   =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/edit" in
   let params =
@@ -1977,7 +1988,7 @@ let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
   post ~endpoint ~params ignore_empty_object
 ;;
 
-let wiki_discussions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
+let wiki_discussions' ~listing_params () ~page:({ subreddit; page } : Wiki_page.Id.t) =
   let endpoint =
     optional_subreddit_endpoint ?subreddit (sprintf "/wiki/discussions/%s" page)
   in
@@ -1986,7 +1997,7 @@ let wiki_discussions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.
 
 let wiki_discussions = with_listing_params wiki_discussions'
 
-let wiki_pages ?subreddit =
+let wiki_pages ?subreddit () =
   let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/pages" in
   get
     ~endpoint
@@ -1995,14 +2006,14 @@ let wiki_pages ?subreddit =
          Json.find json [ "data" ] |> Json.get_list Json.get_string))
 ;;
 
-let subreddit_wiki_revisions' ~listing_params ?subreddit =
+let subreddit_wiki_revisions' ~listing_params ?subreddit () =
   let endpoint = optional_subreddit_endpoint ?subreddit "/wiki/revisions" in
   get ~endpoint ~params:listing_params (get_listing Wiki_page.Revision.of_json)
 ;;
 
 let subreddit_wiki_revisions = with_listing_params subreddit_wiki_revisions'
 
-let wiki_page_revisions' ~listing_params ~page:({ subreddit; page } : Wiki_page.Id.t) =
+let wiki_page_revisions' ~listing_params () ~page:({ subreddit; page } : Wiki_page.Id.t) =
   let endpoint =
     optional_subreddit_endpoint ?subreddit (sprintf "/wiki/revisions/%s" page)
   in
@@ -2033,7 +2044,7 @@ let set_wiki_permissions ~page:({ subreddit; page } : Wiki_page.Id.t) ~listed ~l
   post ~endpoint ~params (handle_json_response Wiki_page.Permissions.of_json)
 ;;
 
-let wiki_page ?compare_revisions ~page:({ subreddit; page } : Wiki_page.Id.t) =
+let wiki_page ?compare_revisions () ~page:({ subreddit; page } : Wiki_page.Id.t) =
   let endpoint = optional_subreddit_endpoint ?subreddit (sprintf "/wiki/%s" page) in
   let v1, v2 = Option.value compare_revisions ~default:(None, None) in
   let params =
