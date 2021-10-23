@@ -55,9 +55,7 @@ let print_links credentials =
   - Handle common Reddit server issues such as 503 errors automatically, or
     else warn about them via the response type.
 - Provide workarounds when we get the above wrong:
-  - A `?param_list_override:((string * string list) list -> (string * string
-    list) list)` option on each API endpoint that allows the HTTP parameters to
-    be manipulated directly.
+  - The ability to directly edit the HTTP requests generated for each endpoint.
   - A `Connection.call_raw` function that allows users to access HTTP responses
     directly.
 

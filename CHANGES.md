@@ -28,6 +28,8 @@
 - Rename `Api` to `Endpoint` and `Api.Api_error` to `Api.Error`.
 - Remove `Endpoint.with_param_override` type.
   - This changes the type of each endpoint value.
+  - HTTP request parameters can instead be tweaked by simply editing the
+    `Endpoint.request` field.
 
 # 0.1.1 (2020-12-30)
 
