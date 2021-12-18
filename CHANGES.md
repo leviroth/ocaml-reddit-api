@@ -17,6 +17,7 @@
 ## Changed
 
 - Require dune 2.8.
+- Require cohttp >= 5.0.0.
 - Add a case to `Endpoint.Error` representing Reddit's JSON error responses.
 - Change `Connection.Credentials.t` from record to variant that supports
   OAuth2 userless (app-only) flow, so if you serialize the variant,

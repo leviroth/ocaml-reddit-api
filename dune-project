@@ -19,7 +19,7 @@
   (synopsis "OCaml types for Reddit's API")
   (depends
     (odoc :with-doc)
-    (cohttp      (>= 2.5.4))
+    (cohttp      (>= 5.0.0))
     (core_kernel (>= v0.14.0))
     (ezjsonm     (>= 1.0))))
 
@@ -31,7 +31,7 @@
     (expect_test_helpers_async (and (>= v0.14.0) :with-test))
     (async             (>= v0.14.0))
     (async_ssl         (>= v0.14.0))
-    (cohttp-async      (>= 2.5.4))
+    (cohttp-async      (>= 5.0.0))
     (core              (>= v0.14.0))
     (ezjsonm           (>= 1.0))
     (reddit_api_kernel (=  :version))

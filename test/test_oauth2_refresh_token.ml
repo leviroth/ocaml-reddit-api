@@ -60,13 +60,13 @@ let%expect_test "oauth2_refresh_token_insufficient_scope" =
             (date           "Sun, 25 Jul 2021 13:48:26 GMT")
             (server         snooserv)
             (set-cookie
-             "edgebucket=DOY2vtwecNrBUXjM3E; Domain=reddit.com; Max-Age=63071999; Path=/;  secure")
-            (set-cookie
-             "csv=1; Max-Age=63072000; Domain=.reddit.com; Path=/; Secure; SameSite=None")
+             "loid=0000000000dijrnrio.2.1627220906977.Z0FBQUFBQmdfV3VxY0tER3dTQXZyakFWdnpuSjJFcW1jNmhLeG9CWWNUcHpXMXVTMlpNNXA5YWtYTjJoLWIwNWRDcU5tNFluTkF1cDZRZFZaRElPYzZNdjN6c2VFS01RbkFZMGpsa3AyLTZidElfRlJ1TkpKN2Nzdi1hUG8ycnIwUUxpUlB5eDRCZXg; Domain=reddit.com; Max-Age=63071999; Path=/; expires=Tue, 25-Jul-2023 13:48:26 GMT; secure; SameSite=None; Secure")
             (set-cookie
              "session_tracker=GiIdHGp9KRBNycfn5d.0.1627220906977.Z0FBQUFBQmdfV3VxLUtmQ04tRzlVQlQ4dVVGNFVRWGx0Rm1qX2tqMzlYMERCTWZCWTR6bnV1Wk1na3ladXJMNmo5a1BxQnU4VHZ0aGNwT0RWbEE1NFcwWDdZV3VLMWx5Qlp6a3hJSlhfdXYyOUVMUjlUNlY0N3B3d3JaazBRbmhjS0NncVM1dERtOXI; Domain=reddit.com; Max-Age=7199; Path=/; expires=Sun, 25-Jul-2021 15:48:26 GMT; secure; SameSite=None; Secure")
             (set-cookie
-             "loid=0000000000dijrnrio.2.1627220906977.Z0FBQUFBQmdfV3VxY0tER3dTQXZyakFWdnpuSjJFcW1jNmhLeG9CWWNUcHpXMXVTMlpNNXA5YWtYTjJoLWIwNWRDcU5tNFluTkF1cDZRZFZaRElPYzZNdjN6c2VFS01RbkFZMGpsa3AyLTZidElfRlJ1TkpKN2Nzdi1hUG8ycnIwUUxpUlB5eDRCZXg; Domain=reddit.com; Max-Age=63071999; Path=/; expires=Tue, 25-Jul-2023 13:48:26 GMT; secure; SameSite=None; Secure")
+             "csv=1; Max-Age=63072000; Domain=.reddit.com; Path=/; Secure; SameSite=None")
+            (set-cookie
+             "edgebucket=DOY2vtwecNrBUXjM3E; Domain=reddit.com; Max-Age=63071999; Path=/;  secure")
             (strict-transport-security
              "max-age=15552000; includeSubDomains; preload")
             (via "1.1 varnish")
@@ -108,11 +108,11 @@ let%expect_test "oauth2_refresh_token__bad_token" =
             (date           "Mon, 16 Aug 2021 12:05:36 GMT")
             (server         snooserv)
             (set-cookie
-             "edgebucket=3mOacK9BpLNGpIFWmC; Domain=reddit.com; Max-Age=63071999; Path=/;  secure")
+             "loid=0000000000dy6kaj1h.2.1629115536645.Z0FBQUFBQmhHbFNRQmhUY3FIbENfU1Q4dWJDZVBmRjg2cmdVM1ExcmNQZ0ZiU2ZYTWVSYW5Rcnl4WDZVT2FKWEtEUmlpZXMtUjNENHpjdGNiY3o4eXlHMjdjbmd0UDV3VWZvanRzSjE5VFpEZ25pWWtjdXRDS2FRTjNYd0NsMmM1aDEwWXR1R2lqdEM; Domain=reddit.com; Max-Age=63071999; Path=/; expires=Wed, 16-Aug-2023 12:05:36 GMT; secure")
             (set-cookie
              "session_tracker=mZezrXm7BlvfIUmzaH.0.1629115536645.Z0FBQUFBQmhHbFNRUnN0M3JuUkZNT2d0SVNCOVM5Z05WMnlVSzd2a3dYSHpUVjlnYkI4RzhhOUprZFBQQnlmYzNBaTJhVmJSeFdVRTlWd3picmF4ZjBxUFFaZENTbXV5N2RvUnd0enMwNWhSRnNvT3ZlalBYanJldld1UUVORW4wRTd5WnJUaVE0WWo; Domain=reddit.com; Max-Age=7199; Path=/; expires=Mon, 16-Aug-2021 14:05:36 GMT; secure")
             (set-cookie
-             "loid=0000000000dy6kaj1h.2.1629115536645.Z0FBQUFBQmhHbFNRQmhUY3FIbENfU1Q4dWJDZVBmRjg2cmdVM1ExcmNQZ0ZiU2ZYTWVSYW5Rcnl4WDZVT2FKWEtEUmlpZXMtUjNENHpjdGNiY3o4eXlHMjdjbmd0UDV3VWZvanRzSjE5VFpEZ25pWWtjdXRDS2FRTjNYd0NsMmM1aDEwWXR1R2lqdEM; Domain=reddit.com; Max-Age=63071999; Path=/; expires=Wed, 16-Aug-2023 12:05:36 GMT; secure")
+             "edgebucket=3mOacK9BpLNGpIFWmC; Domain=reddit.com; Max-Age=63071999; Path=/;  secure")
             (strict-transport-security
              "max-age=15552000; includeSubDomains; preload")
             (via                    "1.1 varnish")
