@@ -15,12 +15,6 @@ depends: [
   "ezjsonm" {>= "1.0"}
 ]
 dev-repo: "git+https://github.com/leviroth/ocaml-reddit-api.git"
-# The point of this template is to prevent running tests, which depend on
-# reddit_api_async, when only reddit_api_kernel is being built.
-
-# It will be unnecessary once https://github.com/ocaml/dune/issues/4738 is
-# fixed.
-
 build: [
   ["dune" "subst"] {dev}
   [

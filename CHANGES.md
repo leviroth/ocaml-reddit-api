@@ -1,3 +1,9 @@
+# 0.2.1
+
+## Removed
+
+- A comment in the `reddit_api_kernel` opam file.
+
 # 0.2.0
 
 ## Added
