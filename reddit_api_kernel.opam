@@ -10,7 +10,7 @@ bug-reports: "https://github.com/leviroth/ocaml-reddit-api/issues"
 depends: [
   "dune" {>= "2.8"}
   "odoc" {with-doc}
-  "cohttp" {>= "2.5.4"}
+  "cohttp" {>= "5.0.0"}
   "core_kernel" {>= "v0.14.0"}
   "ezjsonm" {>= "1.0"}
 ]

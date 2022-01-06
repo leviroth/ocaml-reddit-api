@@ -645,9 +645,7 @@ module For_testing = struct
     end
 
     module Interaction = struct
-      let map_headers headers ~f =
-        Cohttp.Header.map (fun _key values -> List.map values ~f) headers
-      ;;
+      let map_headers headers ~f = Cohttp.Header.map (fun _key value -> f value) headers
 
       module Request = struct
         module T = struct
@@ -780,6 +778,13 @@ module For_testing = struct
           request, response
         ;;
 
+        let headers_equal =
+          Comparable.lift
+            [%compare: (String.Caseless.t * string) list]
+            ~f:Cohttp.Header.to_list
+          |> Base.Comparable.equal
+        ;;
+
         let get uri ~headers =
           let request, response = dequeue_response () in
           let fail () =
@@ -793,10 +798,7 @@ module For_testing = struct
           match request with
           | Post_form _ -> fail ()
           | Get request ->
-            (match
-               Uri.equal uri request.uri
-               && [%compare.equal: Cohttp.Header.t] headers request.headers
-             with
+            (match Uri.equal uri request.uri && headers_equal headers request.headers with
             | false -> fail ()
             | true -> return (Ok response))
         ;;
@@ -817,7 +819,7 @@ module For_testing = struct
           | Post_form request ->
             (match
                Uri.equal uri request.uri
-               && [%compare.equal: Cohttp.Header.t] headers request.headers
+               && headers_equal headers request.headers
                && [%equal: (string * string list) list] params request.params
              with
             | false -> fail ()
