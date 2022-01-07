@@ -21,7 +21,7 @@
     (odoc :with-doc)
     (cohttp      (>= 5.0.0))
     (core_kernel (>= v0.14.0))
-    (ezjsonm     (>= 1.0))))
+    (ezjsonm     (>= 1.2.0))))
 
 (package
   (name reddit_api_async)
@@ -33,6 +33,6 @@
     (async_ssl         (>= v0.14.0))
     (cohttp-async      (>= 5.0.0))
     (core              (>= v0.14.0))
-    (ezjsonm           (>= 1.0))
+    (ezjsonm           (>= 1.2.0))
     (reddit_api_kernel (=  :version))
     (sequencer_table   (>= v0.14.0))))
