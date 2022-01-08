@@ -1,1 +1,1 @@
-include Thing_intf.Thing
+include Thing_intf.Thing (** @inline *)

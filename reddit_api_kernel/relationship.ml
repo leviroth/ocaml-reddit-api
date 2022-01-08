@@ -1,4 +1,5 @@
 open! Core_kernel
+include Relationship_intf
 
 module Common = struct
   module Id = String
