@@ -865,6 +865,13 @@ val list_subreddits
 (** {2 Users } *)
 
 val about_user : username:Username.t -> User.t t
+
+val user_overview
+  : (unit
+     -> username:Username.t
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
+    with_listing_params
+
 val user_trophies : username:Username.t -> Award.t list t
 
 val list_user_subreddits

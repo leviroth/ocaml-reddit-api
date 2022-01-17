@@ -1862,6 +1862,13 @@ let about_user ~username =
   get ~endpoint ~params:[] (handle_json_response User.of_json)
 ;;
 
+let user_overview' ~listing_params () ~username =
+  let endpoint = sprintf !"/user/%{Username}/overview" username in
+  get ~endpoint ~params:listing_params (get_listing link_or_comment_of_json)
+;;
+
+let user_overview = with_listing_params user_overview'
+
 let user_trophies ~username =
   let endpoint = sprintf !"/api/v1/user/%{Username}/trophies" username in
   get ~endpoint ~params:[] get_tropy_list
