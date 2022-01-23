@@ -1442,6 +1442,21 @@ let create_modmail_conversation ~subject ~body ~subreddit ~to_ ~hide_author =
   post ~endpoint ~params (handle_json_response Modmail.Conversation.of_json)
 ;;
 
+let reply_modmail_conversation ~body ~conversation_id ~hide_author ~internal =
+  let endpoint =
+    sprintf !"/api/mod/conversations/%{Modmail.Conversation.Id}" conversation_id
+  in
+  let params =
+    let open Param_dsl in
+    combine
+      [ required' string "body" body
+      ; required' Bool.to_string "isAuthorHidden" hide_author
+      ; required' Bool.to_string "isInternal" internal
+      ]
+  in
+  post ~endpoint ~params (handle_json_response Modmail.Conversation.of_json)
+;;
+
 let search'
     ~listing_params
     ?category

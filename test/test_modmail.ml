@@ -58,3 +58,23 @@ let%expect_test "create_modmail_conversation" =
          (modActions (O ()))) |}];
       return ())
 ;;
+
+let%expect_test "reply_modmail_conversation" =
+  with_cassette "reply_modmail_conversation" ~f:(fun connection ->
+      let%bind conversation =
+        Connection.call_exn
+          connection
+          (Endpoint.reply_modmail_conversation
+             ~conversation_id:(Modmail.Conversation.Id.of_string "fsv44")
+             ~body:"Message body"
+             ~hide_author:false
+             ~internal:false)
+      in
+      print_s
+        [%sexp
+          { conversation_id : Modmail.Conversation.Id.t =
+              Modmail.Conversation.id conversation
+          }];
+      [%expect {| ((conversation_id fsv44)) |}];
+      return ())
+;;
