@@ -27,8 +27,6 @@ struct
         let prefix = sprintf !"%{Thing_kind}_" Param.kind in
         Id36.of_string (String.chop_prefix_if_exists s ~prefix)
       ;;
-
-      let to_string = Id36.to_string
     end)
   end
 
