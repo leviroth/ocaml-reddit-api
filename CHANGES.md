@@ -5,6 +5,7 @@
 - Add explicit interface to `reddit_api_kernel`
   - Expose `foo_intf.ml` contents as `Reddit_api_kernel.Foo`.
 - Pass an explicit `Log.t` in all cases where we previously used `Log.Global`.
+- Rename `Non_transient_error` to `Permanent_error`.
 
 # 0.2.1
 
