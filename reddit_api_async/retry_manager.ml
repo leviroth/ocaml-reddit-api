@@ -132,18 +132,24 @@ let on_transient_error t =
     don't_wait_for (check_server t)
 ;;
 
-let rec call t request =
+let rec call t endpoint =
   match t.state with
   | Waiting_for_issue_resolution { finished } ->
     let%bind () = Ivar.read finished in
-    call t request
+    call t endpoint
   | Working_normally ->
-    let%bind response = Connection.call t.connection request in
+    let%bind response = Connection.call t.connection endpoint in
     (match Permanent_error.classify_response response with
     | Permanent response ->
       on_permanent_response t;
       return response
     | Transient_error ->
+      let request = endpoint.request in
+      Log.Global.error_s
+        [%message
+          "Transient error"
+            (request : Endpoint.Request.t)
+            (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
       on_transient_error t;
-      call t request)
+      call t endpoint)
 ;;
