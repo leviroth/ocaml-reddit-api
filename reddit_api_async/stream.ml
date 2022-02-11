@@ -115,8 +115,20 @@ let iter
     connection
     ~get_listing
     ~get_before_parameter
+    ~log
     ~f
   =
+  let on_error =
+    match log with
+    | None -> fun () _error -> return ()
+    | Some log ->
+      fun () error ->
+        Log.error_s
+          log
+          [%message
+            "Received error response" (error : Endpoint.Error.t Connection.Error.t)];
+        return ()
+  in
   fold
     (module Id)
     connection
@@ -124,8 +136,5 @@ let iter
     ~get_before_parameter
     ~init:()
     ~f:(fun () child -> f child)
-    ~on_error:(fun () error ->
-      Log.Global.error_s
-        [%message "Received error response" (error : Endpoint.Error.t Connection.Error.t)];
-      return ())
+    ~on_error
 ;;

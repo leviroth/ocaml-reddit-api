@@ -7,6 +7,7 @@ val iter
   -> Connection.t
   -> get_listing:(before:'id option -> limit:int -> 'thing list Endpoint.t)
   -> get_before_parameter:('thing -> 'id)
+  -> log:Log.t option
   -> f:('thing -> unit Deferred.t)
   -> _ Deferred.t
 
