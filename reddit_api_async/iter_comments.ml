@@ -12,7 +12,7 @@ let retry_or_log_unexpected retry_manager here endpoint log =
       [%message
         "Unexpected response from Reddit"
           (here : Source_code_position.t)
-          (error : Retry_manager.Non_transient_error.t)];
+          (error : Retry_manager.Permanent_error.t)];
     return None
 ;;
 

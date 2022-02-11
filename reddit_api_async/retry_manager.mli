@@ -15,7 +15,7 @@
     [Retry_manager] cannot guarantee that a request had no effect before
     retrying it - it just trusts Reddit when it says that there was an error.
 
-    {1 Transient and non-transient errors}
+    {1 Transient and permanent errors}
 
     A transient error is an error that we expect to resolve without changes to
     the API parameters. We operationalize this as
@@ -27,7 +27,7 @@
     Service Unavailable].  We expect that service will eventually be restored,
     and the same request will then succeed. This is a transient error.
 
-    {b Example: Non-transient error.} Reddit responds to a request with [403
+    {b Example: Permanent error.} Reddit responds to a request with [403
     Forbidden]. We expect that the request will not succeed unless either (a)
     the request is modified to no longer reference content to which the user
     does not have access; or (b) the user's permissions are modified outside of
@@ -42,7 +42,7 @@ type t
 
 val create : Connection.t -> t
 
-module Non_transient_error : sig
+module Permanent_error : sig
   module Access_token_request_error : sig
     type t =
       | Token_request_rejected of
@@ -76,7 +76,7 @@ end
     was a transient error. In the latter case, all calls block, and [call]
     periodically calls a read-only API endpoint until service is restored.
 *)
-val call : t -> 'a Endpoint.t -> ('a, Non_transient_error.t) Deferred.Result.t
+val call : t -> 'a Endpoint.t -> ('a, Permanent_error.t) Deferred.Result.t
 
 (** [yield_until_reddit_available] returns immediately if there is no known
     transient error; it never causes an HTTP request. *)

@@ -5,16 +5,16 @@ open Reddit_api_kernel
 module Transience = struct
   type ('response, 'error) t =
     | Transient_error
-    | Non_transient of ('response, 'error) Result.t
+    | Permanent of ('response, 'error) Result.t
 
   let map_error t ~f =
     match t with
-    | (Transient_error | Non_transient (Ok _)) as v -> v
-    | Non_transient (Error error) -> Non_transient (Error (f error))
+    | (Transient_error | Permanent (Ok _)) as v -> v
+    | Permanent (Error error) -> Permanent (Error (f error))
   ;;
 end
 
-module Non_transient_error = struct
+module Permanent_error = struct
   module Access_token_request_error = struct
     type t =
       | Token_request_rejected of
@@ -33,11 +33,11 @@ module Non_transient_error = struct
       match error with
       | Cohttp_raised _ | Json_parsing_error _ -> Transient_error
       | Token_request_rejected { response; body } ->
-        Non_transient (Error (Token_request_rejected { response; body }))
+        Permanent (Error (Token_request_rejected { response; body }))
       | Other_http_error { response; body } ->
         (match Cohttp.Response.status response with
         | #Cohttp.Code.server_error_status -> Transient_error
-        | _ -> Non_transient (Error (Other_http_error { response; body })))
+        | _ -> Permanent (Error (Other_http_error { response; body })))
     ;;
   end
 
@@ -53,11 +53,11 @@ module Non_transient_error = struct
     let classify_error (error : Endpoint.Error.t) : ('a, t) Transience.t =
       match error with
       | Cohttp_raised _ | Json_parsing_error _ -> Transient_error
-      | Json_response_errors errors -> Non_transient (Error (Json_response_errors errors))
+      | Json_response_errors errors -> Permanent (Error (Json_response_errors errors))
       | Http_error { response; body } ->
         (match Cohttp.Response.status response with
         | #Cohttp.Code.server_error_status -> Transient_error
-        | _ -> Non_transient (Error (Http_error { response; body })))
+        | _ -> Permanent (Error (Http_error { response; body })))
     ;;
   end
 
@@ -70,7 +70,7 @@ module Non_transient_error = struct
       : (_, _) Transience.t
     =
     match result with
-    | Ok result -> Non_transient (Ok result)
+    | Ok result -> Permanent (Ok result)
     | Error (Access_token_request_error error) ->
       Access_token_request_error.classify_error error
       |> Transience.map_error ~f:(fun error -> Access_token_request_error error)
@@ -99,7 +99,7 @@ let yield_until_reddit_available t =
 
 let get_read_only_page t = Connection.call t.connection Endpoint.me
 
-let on_non_transient_response t =
+let on_permanent_response t =
   match t.state with
   | Working_normally -> ()
   | Waiting_for_issue_resolution { finished } ->
@@ -110,9 +110,9 @@ let on_non_transient_response t =
 let check_server t =
   Deferred.repeat_until_finished () (fun () ->
       let%bind response = get_read_only_page t in
-      match Non_transient_error.classify_response response, t.state with
-      | Non_transient _, Working_normally -> return (`Finished ())
-      | Non_transient _, Waiting_for_issue_resolution { finished } ->
+      match Permanent_error.classify_response response, t.state with
+      | Permanent _, Working_normally -> return (`Finished ())
+      | Permanent _, Waiting_for_issue_resolution { finished } ->
         Ivar.fill finished ();
         t.state <- Working_normally;
         return (`Finished ())
@@ -139,9 +139,9 @@ let rec call t request =
     call t request
   | Working_normally ->
     let%bind response = Connection.call t.connection request in
-    (match Non_transient_error.classify_response response with
-    | Non_transient response ->
-      on_non_transient_response t;
+    (match Permanent_error.classify_response response with
+    | Permanent response ->
+      on_permanent_response t;
       return response
     | Transient_error ->
       on_transient_error t;
