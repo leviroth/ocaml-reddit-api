@@ -665,6 +665,13 @@ val create_modmail_conversation
   -> hide_author:bool
   -> Modmail.Conversation.t t
 
+val reply_modmail_conversation
+  :  body:string
+  -> conversation_id:Modmail.Conversation.Id.t
+  -> hide_author:bool
+  -> internal:bool
+  -> Modmail.Conversation.t t
+
 (** {2 Search } *)
 
 val search
