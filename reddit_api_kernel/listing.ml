@@ -34,7 +34,7 @@ let of_json convert_element json =
     | _ -> fail "Expected \"data\" to be an object"
   in
   let data =
-    match String.Map.of_alist data with
+    match Map.of_alist (module String) data with
     | `Ok map -> map
     | `Duplicate_key key -> fail (sprintf "Duplicate key: \"%s\"" key)
   in

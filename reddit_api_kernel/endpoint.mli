@@ -680,7 +680,7 @@ val search
      -> ?restrict_to_subreddit:Subreddit_name.t
      -> ?since:Historical_span.t
      -> ?sort:Search_sort.t
-     -> ?types:Search_type.Set.t
+     -> ?types:Set.M(Search_type).t
      -> unit
      -> query:string
      -> (Thing.Link.t Listing.t option

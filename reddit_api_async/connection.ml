@@ -616,9 +616,9 @@ module For_testing = struct
     val filter_string : t -> string -> string
     val insert_dummy_strings : t -> string -> string
   end = struct
-    type t = string String.Table.t
+    type t = string Hashtbl.M(String).t
 
-    let create () = String.Table.create ()
+    let create () = Hashtbl.create (module String)
 
     let add t ~secret ~placeholder =
       let placeholder = sprintf "<%s>" (String.uppercase placeholder) in
