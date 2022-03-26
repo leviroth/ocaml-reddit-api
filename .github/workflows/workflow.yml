@@ -24,6 +24,7 @@ jobs:
         uses: avsm/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-version }}
+          dune-cache: true
 
       - run: opam pin add reddit_api_kernel.dev . --no-action
 
