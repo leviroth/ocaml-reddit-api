@@ -1,54 +1,70 @@
 name: Main workflow
 
 on:
-  - push
   - pull_request
+  - push
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-        ocaml-version:
-          - 4.11.1
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
+      - name: Use OCaml 4.13.x
         uses: avsm/setup-ocaml@v2
         with:
-          ocaml-compiler: ${{ matrix.ocaml-version }}
+          ocaml-compiler: 4.13.x
           dune-cache: true
 
-      - run: opam pin add reddit_api_kernel.dev . --no-action
-
-      - run: opam pin add reddit_api_async.dev . --no-action
-
-      - run: opam depext reddit_api_kernel --yes --with-doc
-
-      - run: opam depext reddit_api_async --yes --with-doc
-
-      - run: opam install . --deps-only --with-doc --with-test
+      - run: opam install . --deps-only --with-test
 
       - run: opam exec -- dune build
 
       - run: opam exec -- dune runtest
 
-      - run: opam depext ocamlformat=$(grep 'version' .ocamlformat | awk -F '=' '{ print $2 }' | sed 's/^ *//') --install
+  lint-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - run: opam exec -- dune build @fmt
-
-      - run: opam exec -- dune build @doc
-
-      - uses: actions/upload-artifact@v2
-        if: github.event_name == 'push' &&
-            ( github.ref == 'refs/heads/main' || startsWith(github.ref,'refs/tags') )
+      - name: Use OCaml 4.13.x
+        uses: ocaml/setup-ocaml@v2
         with:
-          name: docs
-          path: _build/default/_doc/_html
+          ocaml-compiler: 4.13.x
+          dune-cache: true
+
+      - name: Lint doc
+        uses: ocaml/setup-ocaml/lint-doc@v2
+
+  lint-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use OCaml 4.13.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.13.x
+          dune-cache: true
+
+      - name: Lint fmt
+        uses: ocaml/setup-ocaml/lint-fmt@v2
+
+  lint-opam:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use OCaml 4.13.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.13.x
+          dune-cache: true
+
+      - name: Lint opam
+        uses: ocaml/setup-ocaml/lint-opam@v2
