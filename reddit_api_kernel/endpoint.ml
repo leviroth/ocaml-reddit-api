@@ -1484,10 +1484,7 @@ let search'
       ; required' string "q" query
       ; include_optional Historical_span.params_of_t since
       ; include_optional Search_sort.params_of_t sort
-      ; optional
-          Search_type.to_string
-          "type"
-          (Option.map types ~f:Search_type.Set.to_list)
+      ; optional Search_type.to_string "type" (Option.map types ~f:Set.to_list)
       ; restrict_param
       ]
   in

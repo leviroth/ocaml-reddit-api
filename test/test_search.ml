@@ -61,7 +61,7 @@ let%expect_test "search__subreddits" =
           connection
           (Endpoint.search
              ()
-             ~types:(Endpoint.Parameters.Search_type.Set.singleton Subreddit)
+             ~types:(Set.singleton (module Endpoint.Parameters.Search_type) Subreddit)
              ~query:"ocaml")
       in
       print_links links;

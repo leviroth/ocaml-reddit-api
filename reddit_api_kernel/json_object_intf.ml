@@ -12,7 +12,7 @@ module type S_with_fields = sig
 
   val get_field : t -> string -> Json.t option
   val get_field_exn : t -> string -> Json.t
-  val field_map : t -> Json.t String.Map.t
+  val field_map : t -> Json.t Map.M(String).t
 end
 
 module type S_with_kind = sig
@@ -35,7 +35,7 @@ module type Json_object = sig
   module type S_with_kind = S_with_kind
 
   module Utils : sig
-    include S_with_fields with type t = Json.t String.Map.t
+    include S_with_fields with type t = Json.t Map.M(String).t
     include Sexpable.S with type t := t
 
     val optional_field : string -> (Json.t -> 'a) -> t -> 'a option

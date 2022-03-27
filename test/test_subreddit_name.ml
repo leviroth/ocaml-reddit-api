@@ -8,11 +8,11 @@ let%expect_test "Normalization" =
       ~f:Subreddit_name.of_string
       [ "askphilosophy"; "r/askphilosophy"; "/r/askphilosophy"; "/r/AskPhilosophy" ]
   in
-  let set = Subreddit_name.Set.of_list subreddit_names in
-  print_s [%message "" (set : Subreddit_name.Set.t)];
+  let set = Set.of_list (module Subreddit_name) subreddit_names in
+  print_s [%message "" (set : Set.M(Subreddit_name).t)];
   [%expect {| (set (askphilosophy)) |}];
-  let hash_set = Subreddit_name.Hash_set.of_list subreddit_names in
-  print_s [%message "" (hash_set : Subreddit_name.Hash_set.t)];
+  let hash_set = Hash_set.of_list (module Subreddit_name) subreddit_names in
+  print_s [%message "" (hash_set : Hash_set.M(Subreddit_name).t)];
   [%expect {| (hash_set (askphilosophy)) |}];
   return ()
 ;;

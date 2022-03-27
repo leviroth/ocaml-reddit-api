@@ -5,7 +5,7 @@ module Entry = struct
 
   let of_json json =
     match json with
-    | `O alist -> String.Map.of_alist_exn alist
+    | `O alist -> Map.of_alist_exn (module String) alist
     | _ -> raise_s [%message "Invalid [Karma_list.Entry] JSON" (json : Json.t)]
   ;;
 

@@ -2,7 +2,7 @@ open! Core_kernel
 include Json_object_intf
 
 module Utils = struct
-  type t = Json.t String.Map.t [@@deriving sexp, bin_io]
+  type t = Json.t Map.M(String).t [@@deriving sexp, bin_io]
 
   let field_map = ident
   let of_json = Json.get_map
