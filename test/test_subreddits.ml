@@ -254,9 +254,7 @@ let%expect_test "submit_text" =
           connection
           (Endpoint.submit_text ~subreddit:(Subreddit_name.of_string "philosophy"))
       in
-      List.iter
-        [ `markdown; `HTML ]
-        ~f:(fun markup ->
+      List.iter [ `markdown; `HTML ] ~f:(fun markup ->
           print_s
             [%sexp
               (Submit_text.submit_text markup submit_text |> String.sub ~pos:0 ~len:80
