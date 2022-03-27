@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Id = struct
   type t = Uuid.Unstable.t [@@deriving sexp]

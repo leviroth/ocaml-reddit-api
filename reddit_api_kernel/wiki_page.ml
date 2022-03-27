@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Id = struct
   type t =
@@ -15,8 +15,8 @@ module Revision = struct
     include Uuid
     include Uuid.Unstable
 
-    let of_uuid = ident
-    let to_uuid = ident
+    let of_uuid = Fn.id
+    let to_uuid = Fn.id
   end
 
   let page_name = required_field "page" string

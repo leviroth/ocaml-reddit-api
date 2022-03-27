@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Page_id : sig
   type t [@@deriving sexp]

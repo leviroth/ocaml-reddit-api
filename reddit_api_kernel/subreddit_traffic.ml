@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Json_object.Utils
 
 let bail_on_json json ~module_name =
@@ -7,7 +7,7 @@ let bail_on_json json ~module_name =
 ;;
 
 let get_time_and_rest json ~module_name =
-  match Json.get_list ident json with
+  match Json.get_list Fn.id json with
   | time_json :: rest ->
     let time = time time_json in
     let rest = List.map rest ~f:int in

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Entry = struct
   include Json_object.Utils

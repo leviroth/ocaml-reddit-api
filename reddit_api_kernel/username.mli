@@ -4,7 +4,7 @@
    - "u/" and "/u/" prefixes are dropped.
 *)
 
-open! Core_kernel
+open! Core
 include Identifiable.S
 
 val of_string_or_deleted : string -> t option

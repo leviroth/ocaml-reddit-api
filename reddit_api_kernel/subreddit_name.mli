@@ -5,7 +5,7 @@
     - "u/" and "/u/" prefixes cause the string to be converted to the user's subreddit.
 *)
 
-open! Core_kernel
+open! Core
 
 type t
 

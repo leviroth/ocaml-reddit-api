@@ -1,9 +1,9 @@
 open! Core
 open! Async
-module Expect_test_config = Expect_test_config_with_unit_expect
 include Reddit_api_async
+module Time_ns = Time_ns_unix
 
-let () = Time_ns.set_sexp_zone Time_ns.Zone.utc
+let () = Time_ns_unix.set_sexp_zone Time_ns.Zone.utc
 
 let with_cassette cassette_name ~f =
   let credentials =
