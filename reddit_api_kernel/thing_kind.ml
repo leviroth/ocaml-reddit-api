@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 type t =
   | Comment
@@ -97,12 +97,12 @@ let to_polymorphic_tag_uniform t ~data =
   to_polymorphic_tag
     t
     ~data
-    ~award:ident
-    ~comment:ident
-    ~link:ident
-    ~message:ident
-    ~modmail_conversation:ident
-    ~more_comments:ident
-    ~subreddit:ident
-    ~user:ident
+    ~award:Fn.id
+    ~comment:Fn.id
+    ~link:Fn.id
+    ~message:Fn.id
+    ~modmail_conversation:Fn.id
+    ~more_comments:Fn.id
+    ~subreddit:Fn.id
+    ~user:Fn.id
 ;;

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Thing_intf
 
 module Make (Param : sig
@@ -155,7 +155,7 @@ module More_comments = struct
     module By_children = struct
       type t = Comment'.Id.t list
 
-      let children = ident
+      let children = Fn.id
     end
 
     type t =

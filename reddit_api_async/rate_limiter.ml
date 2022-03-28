@@ -52,7 +52,7 @@ module By_headers = struct
   module Server_side_info = struct
     type t =
       { remaining_api_calls : int
-      ; reset_time : Time_ns.t
+      ; reset_time : Time_ns_unix.t
       }
     [@@deriving sexp, fields]
 
@@ -74,11 +74,12 @@ module By_headers = struct
 
     let%expect_test _ =
       List.iter [ "2020-11-30 18:48:01.02Z"; "2020-11-30 18:47:59.02Z" ] ~f:(fun time ->
-          let time = Time_ns.of_string time in
+          let time = Time_ns_unix.of_string time in
           print_s [%sexp (snap_to_nearest_minute time : Time_ns.Alternate_sexp.t)]);
       [%expect {|
           "2020-11-30 18:48:00Z"
-          "2020-11-30 18:48:00Z" |}]
+          "2020-11-30 18:48:00Z" |}];
+      return ()
     ;;
 
     let parse_http_header_date date_string =
@@ -99,7 +100,7 @@ module By_headers = struct
                   (date : Date.t)
                   (date_string : string)]);
           let ofday = Time_ns.Ofday.create ~hr ~min ~sec () in
-          Time_ns.of_date_ofday date ofday ~zone:Time_ns.Zone.utc)
+          Time_ns.of_date_ofday date ofday ~zone:Time_ns_unix.Zone.utc)
     ;;
 
     let%expect_test _ =
@@ -107,7 +108,8 @@ module By_headers = struct
         [%sexp
           (parse_http_header_date "Wed, 21 Oct 2015 07:28:00 GMT"
             : Time_ns.Alternate_sexp.t)];
-      [%expect {| "2015-10-21 07:28:00Z" |}]
+      [%expect {| "2015-10-21 07:28:00Z" |}];
+      return ()
     ;;
 
     let t_of_headers headers =

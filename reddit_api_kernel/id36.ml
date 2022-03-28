@@ -1,11 +1,11 @@
-open! Core_kernel
+open! Core
 include Id36_intf
 
 module M = struct
   type t = Int63.t [@@deriving compare, hash, bin_io]
 
-  let of_int63 = ident
-  let to_int63 = ident
+  let of_int63 = Fn.id
+  let to_int63 = Fn.id
   let base = Int63.of_int 36
 
   let to_string i =

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Conversation : sig
   type t [@@deriving sexp_of]

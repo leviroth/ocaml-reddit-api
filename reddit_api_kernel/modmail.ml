@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Conversation = struct
   include Json_object.Utils

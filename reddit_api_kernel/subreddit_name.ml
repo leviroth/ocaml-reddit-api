@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 type t = string
 
@@ -6,7 +6,7 @@ include Identifiable.Make (struct
   include String.Caseless
 
   let module_name = "Subreddit_name"
-  let to_string = ident
+  let to_string = Fn.id
 
   let of_string string =
     let try_prefix = List.find_map ~f:(fun prefix -> String.chop_prefix string ~prefix) in

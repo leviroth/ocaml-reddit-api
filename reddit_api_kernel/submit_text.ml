@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Json_object.Utils
 
 let submit_text markup =

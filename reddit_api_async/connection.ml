@@ -169,7 +169,7 @@ module Local = struct
     module Access_token = struct
       type t =
         { token : string
-        ; expiration : Time_ns.t
+        ; expiration : Time_ns_unix.t
         }
       [@@deriving sexp]
 

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Entry : sig
   type t [@@deriving sexp]

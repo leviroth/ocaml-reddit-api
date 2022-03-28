@@ -2,7 +2,7 @@
     of a comment with different fields from a {!Thing.Comment.t}.
 *)
 
-open! Core_kernel
+open! Core
 
 module Comment : sig
   module Type : sig

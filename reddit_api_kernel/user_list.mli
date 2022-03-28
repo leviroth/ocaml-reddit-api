@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Item : sig
   module Id : Identifiable

@@ -1,10 +1,10 @@
-open! Core_kernel
+open! Core
 include Json_object_intf
 
 module Utils = struct
   type t = Json.t Map.M(String).t [@@deriving sexp, bin_io]
 
-  let field_map = ident
+  let field_map = Fn.id
   let of_json = Json.get_map
   let to_json t = `O (Map.to_alist t)
   let get_field = Map.find

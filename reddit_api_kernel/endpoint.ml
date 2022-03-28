@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Thing
 
 module Sequencer = struct
@@ -658,7 +658,7 @@ let handle_json_response f (response, body) =
       match Json.find_opt json [ "json"; "errors" ] with
       | None -> None
       | Some list ->
-        (match Json.get_list ident list with
+        (match Json.get_list Fn.id list with
          | [] -> None
          | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
           : Json_response_error.t list option)
@@ -789,7 +789,7 @@ let select_flair
 let handle_things_response =
   handle_json_response (fun json ->
       Json.find json [ "json"; "data"; "things" ]
-      |> Json.get_list ident
+      |> Json.get_list Fn.id
       |> List.hd_exn
       |> Thing.Poly.of_json)
 ;;
@@ -1135,7 +1135,7 @@ let comments
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         match Json.get_list ident json with
+         match Json.get_list Fn.id json with
          | [ link_json; comment_forest_json ] ->
            let link =
              Listing.of_json Link.of_json link_json |> Listing.children |> List.hd_exn
@@ -1394,7 +1394,7 @@ let distinguish ?sticky () ~id ~how =
     (handle_json_response (fun json ->
          let thing =
            Json.find json [ "json"; "data"; "things" ]
-           |> Json.get_list ident
+           |> Json.get_list Fn.id
            |> List.hd_exn
            |> Thing.Poly.of_json
          in

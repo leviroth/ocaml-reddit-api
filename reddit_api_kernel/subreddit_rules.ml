@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Json_object.Utils
 
 module Rule = struct
@@ -40,5 +40,5 @@ module Rule = struct
 end
 
 let subreddit_rules = required_field "rules" (Json.get_list Rule.of_json)
-let site_rules = required_field "site_rules" ident
-let site_rules_flow = required_field "site_rules_flow" ident
+let site_rules = required_field "site_rules" Fn.id
+let site_rules_flow = required_field "site_rules_flow" Fn.id
