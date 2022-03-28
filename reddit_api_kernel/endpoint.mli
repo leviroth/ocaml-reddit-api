@@ -865,6 +865,42 @@ val list_subreddits
 (** {2 Users } *)
 
 val about_user : username:Username.t -> User.t t
+
+val user_overview
+  : (unit
+     -> username:Username.t
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
+    with_listing_params
+
+val user_submitted
+  : (unit -> username:Username.t -> Link.t Listing.t t) with_listing_params
+
+val user_comments
+  : (unit -> username:Username.t -> Comment.t Listing.t t) with_listing_params
+
+val user_upvoted
+  : (unit -> username:Username.t -> [ `Listing of Link.t Listing.t | `Private ] t)
+    with_listing_params
+
+val user_downvoted
+  : (unit -> username:Username.t -> [ `Listing of Link.t Listing.t | `Private ] t)
+    with_listing_params
+
+val user_hidden
+  : (unit -> logged_in_username:Username.t -> Link.t Listing.t t) with_listing_params
+
+val user_saved
+  : (unit
+     -> logged_in_username:Username.t
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
+    with_listing_params
+
+val user_gilded
+  : (unit
+     -> username:Username.t
+     -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
+    with_listing_params
+
 val user_trophies : username:Username.t -> Award.t list t
 
 val list_user_subreddits

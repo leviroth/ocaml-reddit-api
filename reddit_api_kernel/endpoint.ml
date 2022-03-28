@@ -1862,6 +1862,75 @@ let about_user ~username =
   get ~endpoint ~params:[] (handle_json_response User.of_json)
 ;;
 
+let overview_gen' ~endpoint_suffix ~handle_response ~listing_params () ~username =
+  let endpoint = sprintf !"/user/%{Username}/%s" username endpoint_suffix in
+  get ~endpoint ~params:listing_params handle_response
+;;
+
+let overview_gen ~endpoint_suffix ~handle_response =
+  with_listing_params (overview_gen' ~endpoint_suffix ~handle_response)
+;;
+
+let user_overview =
+  overview_gen
+    ~endpoint_suffix:"overview"
+    ~handle_response:(get_listing link_or_comment_of_json)
+;;
+
+let user_submitted =
+  overview_gen ~endpoint_suffix:"submitted" ~handle_response:get_link_listing
+;;
+
+let user_comments =
+  overview_gen ~endpoint_suffix:"comments" ~handle_response:(get_listing Comment.of_json)
+;;
+
+let user_private_overview ~endpoint_suffix =
+  overview_gen ~endpoint_suffix ~handle_response:(fun response ->
+      match get_link_listing response with
+      | Ok v -> Ok (`Listing v)
+      | Error (Http_error { response = { status = `Forbidden; _ }; _ }) -> Ok `Private
+      | Error _ as error -> error)
+;;
+
+let user_upvoted = user_private_overview ~endpoint_suffix:"upvoted"
+let user_downvoted = user_private_overview ~endpoint_suffix:"downvoted"
+
+let logged_in_user_overview
+    ~endpoint_suffix
+    ~handle_response
+    ?pagination
+    ?count
+    ?limit
+    ?show_all
+    ()
+    ~logged_in_username
+  =
+  (overview_gen ~endpoint_suffix ~handle_response)
+    ?pagination
+    ?count
+    ?limit
+    ?show_all
+    ()
+    ~username:logged_in_username
+;;
+
+let user_hidden =
+  logged_in_user_overview ~endpoint_suffix:"hidden" ~handle_response:get_link_listing
+;;
+
+let user_saved =
+  logged_in_user_overview
+    ~endpoint_suffix:"saved"
+    ~handle_response:(get_listing link_or_comment_of_json)
+;;
+
+let user_gilded =
+  overview_gen
+    ~endpoint_suffix:"gilded"
+    ~handle_response:(get_listing link_or_comment_of_json)
+;;
+
 let user_trophies ~username =
   let endpoint = sprintf !"/api/v1/user/%{Username}/trophies" username in
   get ~endpoint ~params:[] get_tropy_list
