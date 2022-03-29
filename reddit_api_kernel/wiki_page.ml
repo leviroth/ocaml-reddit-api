@@ -58,7 +58,7 @@ module Permissions = struct
   end
 
   let level = required_field "permlevel" (int >> Level.of_int_exn)
-  let contributors = required_field "editors" (Json.get_list Thing.User.of_json)
+  let contributors = required_field "editors" (Jsonaf.list_of_jsonaf Thing.User.of_json)
   let listed = required_field "listed" bool
 end
 

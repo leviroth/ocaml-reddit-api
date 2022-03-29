@@ -4,12 +4,12 @@ module Entry = struct
   include Json_object.Utils
 
   let of_json json =
-    match json with
-    | `O alist -> Map.of_alist_exn (module String) alist
-    | _ -> raise_s [%message "Invalid [Karma_list.Entry] JSON" (json : Json.t)]
+    match Jsonaf.assoc_list json with
+    | Some alist -> Map.of_alist_exn (module String) alist
+    | None -> raise_s [%message "Invalid [Karma_list.Entry] JSON" (json : Jsonaf.t)]
   ;;
 
-  let to_json t = `O (Map.to_alist t)
+  let to_json t = `Object (Map.to_alist t)
   let subreddit = required_field "sr" subreddit_name
   let link_karma = required_field "link_karma" int
   let comment_karma = required_field "comment_karma" int
@@ -21,11 +21,11 @@ include Json_object.Make_kinded (struct
   type nonrec t = t
 
   let of_data_field json =
-    match json with
-    | `A entries -> List.map entries ~f:Entry.of_json
-    | _ -> raise_s [%message "Invalid [Karma_list] JSON" (json : Json.t)]
+    match Jsonaf.list json with
+    | Some entries -> List.map entries ~f:Entry.of_json
+    | None -> raise_s [%message "Invalid [Karma_list] JSON" (json : Jsonaf.t)]
   ;;
 
-  let to_data_field t = `A (List.map t ~f:Entry.to_json)
+  let to_data_field t = `Array (List.map t ~f:Entry.to_json)
   let kind = "KarmaList"
 end)

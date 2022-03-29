@@ -17,11 +17,11 @@ type 'a t =
 let map t ~f = { t with children = List.map t.children ~f }
 
 let of_json convert_element json =
-  let fail s = raise_s [%message s (json : Json.t)] in
+  let fail s = raise_s [%message s (json : Jsonaf.t)] in
   let assoc =
-    match json with
-    | `O list -> list
-    | _ -> fail "Expected JSON map when creating [Listing.t]"
+    match Jsonaf.assoc_list json with
+    | Some list -> list
+    | None -> fail "Expected JSON map when creating [Listing.t]"
   in
   let data =
     match List.Assoc.find assoc "data" ~equal:String.equal with
@@ -29,9 +29,9 @@ let of_json convert_element json =
     | None -> fail "Missing field \"data\""
   in
   let data =
-    match data with
-    | `O list -> list
-    | _ -> fail "Expected \"data\" to be an object"
+    match Jsonaf.assoc_list data with
+    | Some list -> list
+    | None -> fail "Expected \"data\" to be an object"
   in
   let data =
     match Map.of_alist (module String) data with
@@ -40,7 +40,7 @@ let of_json convert_element json =
   in
   let children =
     match Map.find data "children" with
-    | Some (`A l) -> l
+    | Some (`Array l) -> l
     | Some _ -> fail "Expected \"children\" to be a list"
     | None -> fail "Missing key \"children\""
   in

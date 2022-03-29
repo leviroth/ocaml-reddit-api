@@ -1,7 +1,7 @@
 open! Core
 
 module type S = sig
-  type t [@@deriving sexp, bin_io]
+  type t [@@deriving sexp]
 
   module Id : Id36.S
   include Json_object.S_with_fields with type t := t
@@ -158,7 +158,7 @@ module type Thing = sig
       ]
     [@@deriving sexp]
 
-    val of_json : Json.t -> [> t ]
+    val of_json : Jsonaf.t -> [> t ]
     val fullname : [< t ] -> [> Fullname.t ]
   end
 end

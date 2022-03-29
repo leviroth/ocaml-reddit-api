@@ -15,7 +15,7 @@ end
 
 type +'child t [@@deriving sexp]
 
-val of_json : (Json.t -> 'child) -> Json.t -> 'child t
+val of_json : (Jsonaf.t -> 'child) -> Jsonaf.t -> 'child t
 val children : 'child t -> 'child list
 val after : _ t -> Page_id.t option
 val map : 'a t -> f:('a -> 'b) -> 'b t

@@ -15,6 +15,6 @@ module Conversation = struct
 
   let id =
     required_field "conversation" (fun json ->
-        Json.find json [ "id" ] |> string |> Id.of_string)
+        Jsonaf.member_exn "id" json |> string |> Id.of_string)
   ;;
 end

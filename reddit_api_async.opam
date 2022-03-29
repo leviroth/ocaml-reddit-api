@@ -14,7 +14,7 @@ depends: [
   "cohttp-async" {>= "5.0.0"}
   "core" {>= "v0.15.0"}
   "expect_test_helpers_async" {>= "v0.15.0" & with-test}
-  "ezjsonm" {>= "1.2.0"}
+  "jsonaf" {>= "v0.15.0"}
   "ppx_jane" {>= "v0.15.0"}
   "reddit_api_kernel" {= version}
   "sequencer_table" {>= "v0.15.0"}

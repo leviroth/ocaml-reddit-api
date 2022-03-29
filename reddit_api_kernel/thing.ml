@@ -11,7 +11,7 @@ struct
     let kind = Thing_kind.to_string Param.kind
   end)
 
-  type t = Json.t Map.M(String).t [@@deriving sexp, bin_io]
+  type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
 
   let module_name = Thing_kind.to_string_long Param.kind
 
@@ -48,7 +48,7 @@ struct
   let total_karma = karma_field "total_karma"
 
   let moderator_reports =
-    required_field "mod_reports" (Json.get_list Moderator_report.of_json)
+    required_field "mod_reports" (Jsonaf.list_of_jsonaf Moderator_report.of_json)
   ;;
 
   let permalink =
@@ -163,14 +163,17 @@ module More_comments = struct
       | By_parent of Comment'.Id.t
   end
 
-  let count t = get_field_exn t "count" |> Json.get_int
+  let count t = get_field_exn t "count" |> Jsonaf.int_exn
 
   let details t : Details.t =
     match count t with
     | 0 -> By_parent (required_field "parent_id" (string >> Comment'.Id.of_string) t)
     | _ ->
       By_children
-        (required_field "children" (Json.get_list (string >> Comment'.Id.of_string)) t)
+        (required_field
+           "children"
+           (Jsonaf.list_of_jsonaf (string >> Comment'.Id.of_string))
+           t)
   ;;
 end
 
@@ -225,8 +228,10 @@ module Poly = struct
   [@@deriving sexp]
 
   let of_json json =
-    let kind = Json.find json [ "kind" ] |> Json.get_string |> Thing_kind.of_string in
-    let data = Json.find json [ "data" ] |> Comment'.of_json in
+    let kind =
+      Jsonaf.member_exn "kind" json |> Jsonaf.string_exn |> Thing_kind.of_string
+    in
+    let data = Jsonaf.member_exn "data" json |> Comment'.of_json in
     Thing_kind.to_polymorphic_tag_uniform kind ~data
   ;;
 

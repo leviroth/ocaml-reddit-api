@@ -36,4 +36,4 @@ type t =
   | Comment of Comment.t
 [@@deriving sexp]
 
-val of_json : Json.t -> t
+val of_json : Jsonaf.t -> t

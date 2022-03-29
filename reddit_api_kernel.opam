@@ -13,7 +13,7 @@ depends: [
   "core_kernel" {>= "v0.15.0"}
   "core" {>= "v0.15.0"}
   "expect_test_helpers_async" {>= "v0.15.0" & with-test}
-  "ezjsonm" {>= "1.2.0"}
+  "jsonaf" {>= "v0.15.0"}
   "odoc" {with-doc}
   "ppx_jane" {>= "v0.15.0"}
 ]

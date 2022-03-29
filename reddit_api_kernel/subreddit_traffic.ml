@@ -3,11 +3,11 @@ include Json_object.Utils
 
 let bail_on_json json ~module_name =
   let message = sprintf "Unexpected [Subreddit_traffic.%s.t] JSON" module_name in
-  raise_s [%message message (json : Json.t)]
+  raise_s [%message message (json : Jsonaf.t)]
 ;;
 
 let get_time_and_rest json ~module_name =
-  match Json.get_list Fn.id json with
+  match Jsonaf.list_exn json with
   | time_json :: rest ->
     let time = time time_json in
     let rest = List.map rest ~f:int in
@@ -71,6 +71,6 @@ module By_hour = struct
   ;;
 end
 
-let by_date = required_field "day" (Json.get_list By_date.of_json)
-let by_month = required_field "month" (Json.get_list By_month.of_json)
-let by_hour = required_field "hour" (Json.get_list By_hour.of_json)
+let by_date = required_field "day" (Jsonaf.list_of_jsonaf By_date.of_json)
+let by_month = required_field "month" (Jsonaf.list_of_jsonaf By_month.of_json)
+let by_hour = required_field "hour" (Jsonaf.list_of_jsonaf By_hour.of_json)

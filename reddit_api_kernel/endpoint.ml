@@ -62,7 +62,7 @@ module Param_dsl = struct
 
   let fullname_ = Thing.Fullname.to_string
   let username_ = Username.to_string
-  let json = Json.value_to_string
+  let json = Jsonaf.to_string
   let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
 end
 
@@ -165,7 +165,7 @@ module Parameters = struct
     module Self_post_body = struct
       type t =
         | Markdown of string
-        | Richtext_json of Json.t
+        | Richtext_json of Jsonaf.t
       [@@deriving sexp]
     end
 
@@ -182,7 +182,7 @@ module Parameters = struct
         [ "kind", [ "self" ]
         ; (match body with
           | Markdown markdown -> "text", [ markdown ]
-          | Richtext_json json -> "richtext_json", [ Json.value_to_string json ])
+          | Richtext_json json -> "richtext_json", [ Jsonaf.to_string json ])
         ]
       | Crosspost link_id ->
         [ "kind", [ "crosspost" ]
@@ -563,13 +563,7 @@ module Json_response_error = struct
   [@@deriving sexp]
 
   let of_json_http_success json =
-    let error, details, field =
-      Json.(
-        get_triple get_string get_string (function
-            | `Null -> None
-            | v -> Some (get_string v)))
-        json
-    in
+    let error, details, field = [%of_jsonaf: string * string * string option] json in
     { error; details; fields = Option.to_list field; error_type = None }
   ;;
 end
@@ -598,9 +592,9 @@ type 'a t =
 
 let parse_json_response response body =
   let body_string = Cohttp.Body.to_string body in
-  match Json.of_string body_string with
-  | Ok json -> Ok json
-  | Error error -> Error (Error.Json_parsing_error { error; response; body_string })
+  Jsonaf.parse body_string
+  |> Result.map_error ~f:(fun error ->
+         Error.Json_parsing_error { error; response; body_string })
 ;;
 
 let map t ~f =
@@ -654,11 +648,19 @@ let handle_json_response f (response, body) =
   let%bind json = parse_json_response response body in
   match status with
   | `Success ->
+    let rec find_repeated json fields =
+      match fields with
+      | [] -> Some json
+      | field :: rest ->
+        (match Jsonaf.member field json with
+        | None -> None
+        | Some value -> find_repeated value rest)
+    in
     let errors =
-      match Json.find_opt json [ "json"; "errors" ] with
+      match find_repeated json [ "json"; "errors" ] with
       | None -> None
       | Some list ->
-        (match Json.get_list Fn.id list with
+        (match Jsonaf.list_exn list with
          | [] -> None
          | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
           : Json_response_error.t list option)
@@ -667,18 +669,18 @@ let handle_json_response f (response, body) =
     | Some errors -> Error (Error.Json_response_errors errors)
     | None -> Ok (f json))
   | `Bad_request ->
-    (match Json.find_opt json [ "reason" ] with
+    (match Jsonaf.member "reason" json with
     | None -> Error (Http_error { response; body })
     | Some reason ->
-      let error = Json.get_string reason in
+      let error = Jsonaf.string_exn reason in
       let error_type =
-        Json.find_opt json [ "error_type" ] |> Option.map ~f:Json.get_string
+        Jsonaf.member "error_type" json |> Option.map ~f:Jsonaf.string_exn
       in
-      let details = Json.get_string (Json.find json [ "explanation" ]) in
+      let details = Jsonaf.string_exn (Jsonaf.member_exn "explanation" json) in
       let fields =
-        match Json.find_opt json [ "fields" ] with
+        match Jsonaf.member "fields" json with
         | None -> []
-        | Some json -> Json.get_list Json.get_string json
+        | Some json -> [%of_jsonaf: string list] json
       in
       Error (Json_response_errors [ { error_type; error; details; fields } ]))
 ;;
@@ -688,8 +690,8 @@ let assert_no_errors = handle_json_response (const ())
 let ignore_empty_object =
   handle_json_response (fun json ->
       match json with
-      | `O [] -> ()
-      | _ -> raise_s [%message "Unexpected JSON response" (json : Json.t)])
+      | `Object [] -> ()
+      | _ -> raise_s [%message "Unexpected JSON response" (json : Jsonaf.t)])
 ;;
 
 let link_or_comment_of_json json =
@@ -713,9 +715,11 @@ let get_subreddit_listing = get_listing Subreddit.of_json
 let get_tropy_list =
   handle_json_response (fun json ->
       match json with
-      | `O [ ("kind", `String "TrophyList"); ("data", `O [ ("trophies", `A trophies) ]) ]
-        -> List.map trophies ~f:Award.of_json
-      | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Json.t)])
+      | `Object
+          [ ("kind", `String "TrophyList")
+          ; ("data", `Object [ ("trophies", `Array trophies) ])
+          ] -> List.map trophies ~f:Award.of_json
+      | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Jsonaf.t)])
 ;;
 
 let me = get ~endpoint:"/api/v1/me" ~params:[] (handle_json_response User.of_json)
@@ -748,12 +752,14 @@ let prefs endpoint k = with_listing_params (prefs' endpoint k)
 
 let userlist json =
   let of_array_item json =
-    Json.find json [ "data"; "children" ] |> Json.get_list User_list.Item.of_json
+    Jsonaf.member_exn "data" json
+    |> Jsonaf.member_exn "children"
+    |> Jsonaf.list_of_jsonaf User_list.Item.of_json
   in
   match json with
-  | `O _ -> of_array_item json
-  | `A l -> List.concat_map l ~f:of_array_item
-  | _ -> raise_s [%message "Unexpect User_list.t JSON" (json : Json.t)]
+  | `Object _ -> of_array_item json
+  | `Array l -> List.concat_map l ~f:of_array_item
+  | _ -> raise_s [%message "Unexpect User_list.t JSON" (json : Jsonaf.t)]
 ;;
 
 let friends = prefs "friends" (handle_json_response userlist)
@@ -788,8 +794,10 @@ let select_flair
 
 let handle_things_response =
   handle_json_response (fun json ->
-      Json.find json [ "json"; "data"; "things" ]
-      |> Json.get_list Fn.id
+      Jsonaf.member_exn "json" json
+      |> Jsonaf.member_exn "data"
+      |> Jsonaf.member_exn "things"
+      |> Jsonaf.list_exn
       |> List.hd_exn
       |> Thing.Poly.of_json)
 ;;
@@ -896,8 +904,10 @@ let more_children ?limit_children () ~link ~more_comments ~sort =
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         Json.find json [ "json"; "data"; "things" ]
-         |> Json.get_list comment_or_more_of_json))
+         Jsonaf.member_exn "json" json
+         |> Jsonaf.member_exn "data"
+         |> Jsonaf.member_exn "things"
+         |> Jsonaf.list_of_jsonaf comment_or_more_of_json))
 ;;
 
 let report
@@ -1061,9 +1071,9 @@ let submit
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         let json = Json.find json [ "json"; "data" ] in
-         let id = Json.find json [ "id" ] |> Json.get_string |> Link.Id.of_string in
-         let url = Json.find json [ "url" ] |> Json.get_string |> Uri.of_string in
+         let json = Jsonaf.member_exn "json" json |> Jsonaf.member_exn "data" in
+         let id = Jsonaf.member_exn "id" json |> Jsonaf.string_exn |> Link.Id.of_string in
+         let url = Jsonaf.member_exn "url" json |> Jsonaf.string_exn |> Uri.of_string in
          id, url))
 ;;
 
@@ -1135,7 +1145,7 @@ let comments
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         match Json.get_list Fn.id json with
+         match Jsonaf.list_exn json with
          | [ link_json; comment_forest_json ] ->
            let link =
              Listing.of_json Link.of_json link_json |> Listing.children |> List.hd_exn
@@ -1145,7 +1155,7 @@ let comments
              |> Listing.children
            in
            { Comment_response.link; comment_forest }
-         | json -> raise_s [%message "Expected two-item response" (json : Json.t list)]))
+         | json -> raise_s [%message "Expected two-item response" (json : Jsonaf.t list)]))
 ;;
 
 let duplicates' ~listing_params ?crossposts_only ?sort () ~link =
@@ -1393,8 +1403,10 @@ let distinguish ?sticky () ~id ~how =
     ~params
     (handle_json_response (fun json ->
          let thing =
-           Json.find json [ "json"; "data"; "things" ]
-           |> Json.get_list Fn.id
+           Jsonaf.member_exn "json" json
+           |> Jsonaf.member_exn "data"
+           |> Jsonaf.member_exn "things"
+           |> Jsonaf.list_exn
            |> List.hd_exn
            |> Thing.Poly.of_json
          in
@@ -1505,9 +1517,9 @@ let search'
          let listings =
            let jsons =
              match json with
-             | `O _ as json -> [ json ]
-             | `A listings -> listings
-             | _ -> raise_s [%message "Unexpected search response" (json : Json.t)]
+             | `Object _ as json -> [ json ]
+             | `Array listings -> listings
+             | _ -> raise_s [%message "Unexpected search response" (json : Jsonaf.t)]
            in
            List.map jsons ~f:(Listing.of_json Thing.Poly.of_json)
          in
@@ -1527,7 +1539,7 @@ let search'
                    (Listing.map listing ~f:(fun thing ->
                         match extract_subkind thing with
                         | Some v -> v
-                        | None -> raise_s [%message error_message (json : Json.t)])))
+                        | None -> raise_s [%message error_message (json : Jsonaf.t)])))
          in
          let link_listing =
            find_kinded_listing
@@ -1604,8 +1616,8 @@ let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable ()
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         Json.find json [ "names" ]
-         |> Json.get_list (Fn.compose Subreddit_name.of_string Json.get_string)))
+         Jsonaf.member_exn "names" json
+         |> Jsonaf.list_of_jsonaf (Fn.compose Subreddit_name.of_string Jsonaf.string_exn)))
 ;;
 
 let create_or_edit_subreddit
@@ -2049,12 +2061,12 @@ let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t)
     ~endpoint
     ~params
     (handle_json_response (function
-        | `O [ ("status", `Bool true) ] -> `Became_hidden
-        | `O [ ("status", `Bool false) ] -> `Became_visible
+        | `Object [ ("status", `True) ] -> `Became_hidden
+        | `Object [ ("status", `False) ] -> `Became_visible
         | json ->
           raise_s
             [%message
-              "Unexpected toggle_wiki_revision_visibility response" (json : Json.t)]))
+              "Unexpected toggle_wiki_revision_visibility response" (json : Jsonaf.t)]))
 ;;
 
 let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
@@ -2084,7 +2096,7 @@ let wiki_pages ?subreddit () =
     ~endpoint
     ~params:[]
     (handle_json_response (fun json ->
-         Json.find json [ "data" ] |> Json.get_list Json.get_string))
+         Jsonaf.member_exn "data" json |> [%of_jsonaf: string list]))
 ;;
 
 let subreddit_wiki_revisions' ~listing_params ?subreddit () =

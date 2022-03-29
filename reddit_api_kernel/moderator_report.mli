@@ -5,4 +5,4 @@ type t =
   ; report : string
   }
 
-val of_json : Json.t -> t
+val of_json : Jsonaf.t -> t

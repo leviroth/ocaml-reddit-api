@@ -61,8 +61,8 @@ type t =
 [@@deriving sexp]
 
 let of_json json =
-  let kind = Json.find json [ "kind" ] |> Json.get_string in
-  let data = Json.find json [ "data" ] in
+  let kind = Jsonaf.member_exn "kind" json |> Jsonaf.string_exn in
+  let data = Jsonaf.member_exn "data" json in
   match kind with
   | "t1" -> Comment (Comment.of_json data)
   | "t4" -> Message (Thing.Message.of_json data)

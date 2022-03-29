@@ -26,5 +26,5 @@ module Rule : sig
 end
 
 val subreddit_rules : t -> Rule.t list
-val site_rules : t -> Json.t
-val site_rules_flow : t -> Json.t
+val site_rules : t -> Jsonaf.t
+val site_rules_flow : t -> Jsonaf.t
