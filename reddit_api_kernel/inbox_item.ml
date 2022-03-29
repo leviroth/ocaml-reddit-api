@@ -60,11 +60,11 @@ type t =
   | Comment of Comment.t
 [@@deriving sexp]
 
-let of_json json =
-  let kind = Json.find json [ "kind" ] |> Json.get_string in
-  let data = Json.find json [ "data" ] in
+let t_of_jsonaf json =
+  let kind = Jsonaf.member_exn "kind" json |> Jsonaf.string_exn in
+  let data = Jsonaf.member_exn "data" json in
   match kind with
-  | "t1" -> Comment (Comment.of_json data)
-  | "t4" -> Message (Thing.Message.of_json data)
+  | "t1" -> Comment ([%of_jsonaf: Comment.t] data)
+  | "t4" -> Message ([%of_jsonaf: Thing.Message.t] data)
   | _ -> raise_s [%message "Unrecognized Inbox_item kind" (kind : string)]
 ;;

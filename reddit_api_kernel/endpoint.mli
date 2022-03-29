@@ -44,7 +44,7 @@ module Parameters : sig
     module Self_post_body : sig
       type t =
         | Markdown of string
-        | Richtext_json of Json.t
+        | Richtext_json of Jsonaf.t
       [@@deriving sexp]
     end
 
@@ -351,7 +351,7 @@ val select_flair
 
 val add_comment
   :  ?return_rtjson:bool
-  -> ?richtext_json:Json.t
+  -> ?richtext_json:Jsonaf.t
   -> unit
   -> parent:[< `Link of Link.Id.t | `Comment of Comment.Id.t | `Message of Message.Id.t ]
   -> text:string
@@ -361,7 +361,7 @@ val delete : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit t
 
 val edit
   :  ?return_rtjson:bool
-  -> ?richtext_json:Json.t
+  -> ?richtext_json:Jsonaf.t
   -> unit
   -> id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> text:string

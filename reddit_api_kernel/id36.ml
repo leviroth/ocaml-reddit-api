@@ -47,3 +47,4 @@ end
 
 include M
 include Identifiable.Make (M)
+include Jsonaf.Jsonafable.Of_stringable (M)

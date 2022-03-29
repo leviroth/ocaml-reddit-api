@@ -359,7 +359,7 @@ let%expect_test "subreddit_settings" =
       print_s
         [%sexp
           (Subreddit_settings.get_field_exn subreddit_settings "restrict_posting"
-           |> Json.get_bool
+           |> Jsonaf.bool_exn
             : bool)];
       [%expect {| true |}];
       return ())
@@ -392,8 +392,8 @@ let%expect_test "subreddit_rules" =
           ((kind Comment) (description "Rule 3 - details - with *markdown*.")
            (short_name "Rule 3") (report_reason "Rule 3 - report reason")
            (creation_time (2016-11-15 03:13:28.000000000Z)) (priority 2)) |}];
-      ignore (Subreddit_rules.site_rules rules : Json.t);
-      ignore (Subreddit_rules.site_rules_flow rules : Json.t);
+      ignore (Subreddit_rules.site_rules rules : Jsonaf.t);
+      ignore (Subreddit_rules.site_rules_flow rules : Jsonaf.t);
       return ())
 ;;
 

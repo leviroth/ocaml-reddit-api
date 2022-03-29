@@ -5,8 +5,6 @@ module Common = struct
   module Id = String
   include Json_object.Utils
 
-  let of_json = Json.get_map
-  let to_json t = `O (Map.to_alist t)
   let relationship_id = required_field "rel_id" string
   let username = required_field "name" username
   let user_id = required_field "id" (string >> Thing.User.Id.of_string)
@@ -36,7 +34,7 @@ end
 module Moderator = struct
   include Common
 
-  let permissions = required_field "mod_permissions" (Json.get_list string)
+  let permissions = required_field "mod_permissions" [%of_jsonaf: string list]
   let flair_text = optional_field "author_flair_text" string
   let flair_css_class = optional_field "author_css_class" string
 end

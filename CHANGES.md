@@ -6,6 +6,7 @@
 
 ## Changed
 
+- Use `jsonaf` instead of `ezjsonm`.
 - Add explicit interface to `reddit_api_kernel`
   - Expose `foo_intf.ml` contents as `Reddit_api_kernel.Foo`.
 - Pass an explicit `Log.t` in all cases where we previously used `Log.Global`.
@@ -13,6 +14,10 @@
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.15.0.
+
+## Removed
+
+- Remove `[@@deriving bin_io]` in `Thing` interfaces.
 
 # 0.2.1
 

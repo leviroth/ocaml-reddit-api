@@ -1,7 +1,7 @@
 open! Core
 
 module Entry : sig
-  type t [@@deriving sexp]
+  type t [@@deriving sexp, jsonaf]
 
   val subreddit : t -> Subreddit_name.t
   val link_karma : t -> int
