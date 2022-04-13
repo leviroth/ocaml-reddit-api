@@ -14,7 +14,7 @@ module Comment = struct
     [@@deriving sexp]
   end
 
-  let id = required_field "id" (string >> Thing.Comment.Id.of_string)
+  let id = required_field "id" (string @> Thing.Comment.Id.of_string)
 
   let body t markup =
     let field =
@@ -25,7 +25,7 @@ module Comment = struct
     required_field field string t
   ;;
 
-  let author = required_field "author" (string >> Username.of_string_or_deleted)
+  let author = required_field "author" (string @> Username.of_string_or_deleted)
   let subreddit = required_field "subreddit" subreddit_name
   let creation_time = required_field "created_utc" time_sec_since_epoch
   let score = required_field "score" int
@@ -50,7 +50,7 @@ module Comment = struct
         | type_ -> raise_s [%message "Unrecognized Inbox.Comment.t type" (type_ : string)])
   ;;
 
-  let link_id = required_field "context" (uri >> Thing.Link.Id.of_uri)
+  let link_id = required_field "context" (uri @> Thing.Link.Id.of_uri)
   let link_title = required_field "link_title" string
   let num_comments_in_thread = required_field "num_comments" int
 end

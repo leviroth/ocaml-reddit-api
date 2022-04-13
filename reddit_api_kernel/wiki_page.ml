@@ -20,7 +20,7 @@ module Revision = struct
   end
 
   let page_name = required_field "page" string
-  let id = required_field "id" (string >> Id.of_string)
+  let id = required_field "id" (string @> Id.of_string)
   let reason = optional_field "reason" string
   let timestamp = required_field "timestamp" time_sec_since_epoch
   let hidden = required_field "revision_hidden" bool
@@ -57,7 +57,7 @@ module Permissions = struct
     ;;
   end
 
-  let level = required_field "permlevel" (int >> Level.of_int_exn)
+  let level = required_field "permlevel" (int @> Level.of_int_exn)
   let contributors = required_field "editors" [%of_jsonaf: Thing.User.t list]
   let listed = required_field "listed" bool
 end
@@ -69,7 +69,7 @@ include Json_object.Make_kinded_simple (struct
 end)
 
 let may_revise = required_field "may_revise" bool
-let revision_id = required_field "revision_id" (string >> Uuid.of_string)
+let revision_id = required_field "revision_id" (string @> Uuid.of_string)
 let revision_by = required_field "revision_by" [%of_jsonaf: Thing.User.t]
 
 let content t markup =
@@ -90,6 +90,6 @@ module Edit_conflict = struct
   let diff = required_field "diffcontent" string
   let message = required_field "message" string
   let new_content = required_field "newcontent" string
-  let new_revision = required_field "newrevision" (string >> Uuid.of_string)
+  let new_revision = required_field "newrevision" (string @> Uuid.of_string)
   let reason = optional_field "reason" string
 end

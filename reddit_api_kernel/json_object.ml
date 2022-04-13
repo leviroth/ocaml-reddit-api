@@ -4,6 +4,8 @@ include Json_object_intf
 module Utils = struct
   type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
 
+  include (Of_json : module type of Of_json with type 'a t := 'a Of_json.t)
+
   let field_map = Fn.id
   let t_of_jsonaf json = Jsonaf.assoc_list_exn json |> Map.of_alist_exn (module String)
   let jsonaf_of_t t = `Object (Map.to_alist t)
@@ -22,22 +24,10 @@ module Utils = struct
   ;;
 
   let required_field name convert t = convert (get_field_exn t name)
-  let ( >> ) f g x = g (f x)
-
-  let or_null f json =
-    match json with
-    | `Null -> None
-    | json -> Some (f json)
-  ;;
-
-  let int = Jsonaf.int_exn
-  let float = Jsonaf.float_exn
-  let bool = Jsonaf.bool_exn
-  let string = Jsonaf.string_exn
-  let username = string >> Username.of_string
-  let subreddit_name = string >> Subreddit_name.of_string
-  let time_sec_since_epoch = float >> Time_ns.Span.of_sec >> Time_ns.of_span_since_epoch
-  let uri = string >> Uri.of_string
+  let username = string @> Username.of_string
+  let subreddit_name = string @> Subreddit_name.of_string
+  let time_sec_since_epoch = float @> Time_ns.Span.of_sec >>> Time_ns.of_span_since_epoch
+  let uri = string @> Uri.of_string
 end
 
 include Utils

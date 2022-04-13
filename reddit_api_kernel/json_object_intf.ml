@@ -32,15 +32,10 @@ module type Json_object = sig
   module Utils : sig
     include S_with_fields with type t = Jsonaf.t Map.M(String).t
     include Sexpable.S with type t := t
+    include module type of Of_json with type 'a t := 'a Of_json.t
 
     val optional_field : string -> (Jsonaf.t -> 'a) -> t -> 'a option
     val required_field : string -> (Jsonaf.t -> 'a) -> t -> 'a
-    val ( >> ) : ('a -> 'b) -> ('b -> 'c) -> 'a -> 'c
-    val or_null : (Jsonaf.t -> 'a) -> Jsonaf.t -> 'a option
-    val int : Jsonaf.t -> int
-    val float : Jsonaf.t -> float
-    val bool : Jsonaf.t -> bool
-    val string : Jsonaf.t -> string
     val username : Jsonaf.t -> Username.t
     val subreddit_name : Jsonaf.t -> Subreddit_name.t
     val time_sec_since_epoch : Jsonaf.t -> Time_ns.t

@@ -22,7 +22,7 @@ module Rule = struct
     ;;
   end
 
-  let kind = required_field "kind" (string >> Kind.of_string)
+  let kind = required_field "kind" (string @> Kind.of_string)
 
   let description t markup =
     let field =

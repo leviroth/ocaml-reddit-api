@@ -21,5 +21,5 @@ include Json_object.Make_kinded_simple (struct
 end)
 
 let images = required_field "images" [%of_jsonaf: Image.t list]
-let subreddit_id = required_field "subreddit_id" (string >> Thing.Subreddit.Id.of_string)
+let subreddit_id = required_field "subreddit_id" (string @> Thing.Subreddit.Id.of_string)
 let stylesheet_text = required_field "stylesheet" string

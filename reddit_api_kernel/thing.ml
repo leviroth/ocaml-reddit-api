@@ -35,9 +35,9 @@ struct
     include Jsonaf.Jsonafable.Of_stringable (T)
   end
 
-  let id = required_field "id" (string >> Id.of_string)
+  let id = required_field "id" (string @> Id.of_string)
   let url = required_field "url" uri
-  let author = required_field "author" (string >> Username.of_string_or_deleted)
+  let author = required_field "author" (string @> Username.of_string_or_deleted)
   let title = required_field "title" string
   let description = required_field "description" string
   let is_stickied = required_field "stickied" bool
@@ -59,9 +59,8 @@ struct
   let permalink =
     required_field
       "permalink"
-      (string
-      >> Uri.of_string
-      >> Uri.with_uri ~scheme:(Some "https") ~host:(Some "reddit.com"))
+      (string @> Uri.of_string
+      >>> Uri.with_uri ~scheme:(Some "https") ~host:(Some "reddit.com"))
   ;;
 end
 
@@ -122,7 +121,7 @@ module Comment' = struct
 
   let body = required_field "body" string
   let subreddit = required_field "subreddit" subreddit_name
-  let link = required_field "link_id" (string >> Link.Id.of_string)
+  let link = required_field "link_id" (string @> Link.Id.of_string)
   let link_title = optional_field "link_title" string
 end
 
@@ -172,7 +171,7 @@ module More_comments = struct
 
   let details t : Details.t =
     match count t with
-    | 0 -> By_parent (required_field "parent_id" (string >> Comment'.Id.of_string) t)
+    | 0 -> By_parent (required_field "parent_id" (string @> Comment'.Id.of_string) t)
     | _ -> By_children (required_field "children" [%of_jsonaf: Comment'.Id.t list] t)
   ;;
 end
