@@ -2,23 +2,17 @@ open! Core
 include Json_object_intf
 
 module Utils = struct
-  type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
+  type t = Jsonaf.t [@@deriving sexp, jsonaf]
 
   include (Of_json : module type of Of_json with type 'a t := 'a Of_json.t)
 
-  let field_map = Fn.id
-  let t_of_jsonaf json = Jsonaf.assoc_list_exn json |> Map.of_alist_exn (module String)
-  let jsonaf_of_t t = `Object (Map.to_alist t)
-  let get_field = Map.find
+  let field_map json = Jsonaf.assoc_list_exn json |> Map.of_alist_exn (module String)
+  let get_field t field = Jsonaf.member field t
+  let get_field_exn t field = Jsonaf.member_exn field t
 
-  let get_field_exn t field =
-    match Map.find t field with
-    | Some value -> value
-    | None -> raise_s [%message "Missing JSON field" (t : t) (field : string)]
-  ;;
-
+  (* TODO: Do we ever need to support both cases? *)
   let optional_field name convert t =
-    match Map.find t name with
+    match get_field t name with
     | None | Some `Null -> None
     | Some v -> Some (convert v)
   ;;

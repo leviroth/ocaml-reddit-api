@@ -30,7 +30,7 @@ module type Json_object = sig
   module type S_with_kind = S_with_kind
 
   module Utils : sig
-    include S_with_fields with type t = Jsonaf.t Map.M(String).t
+    include S_with_fields with type t = Jsonaf.t
     include Sexpable.S with type t := t
     include module type of Of_json with type 'a t := 'a Of_json.t
 

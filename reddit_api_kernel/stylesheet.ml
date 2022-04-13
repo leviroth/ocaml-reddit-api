@@ -3,12 +3,6 @@ open! Core
 module Image = struct
   include Json_object.Utils
 
-  let t_of_jsonaf json =
-    match Jsonaf.assoc_list json with
-    | Some alist -> Map.of_alist_exn (module String) alist
-    | None -> raise_s [%message "Unexpected stylesheet image json" (json : Jsonaf.t)]
-  ;;
-
   let url = required_field "url" uri
   let link = required_field "link" string
   let name = required_field "name" string

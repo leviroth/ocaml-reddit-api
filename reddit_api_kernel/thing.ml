@@ -5,13 +5,15 @@ module Make (Param : sig
   val kind : Thing_kind.t
 end) =
 struct
-  include Json_object.Utils
+  include (
+    Json_object.Utils :
+      module type of Json_object.Utils with type t := Json_object.Utils.t)
 
   include Json_object.Make_kinded_simple (struct
     let kind = Thing_kind.to_string Param.kind
   end)
 
-  type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
+  type t = Jsonaf.t
 
   let module_name = Thing_kind.to_string_long Param.kind
 
