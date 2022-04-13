@@ -1,0 +1,3 @@
+[submodule "jsonaf"]
+	path = vendor/jsonaf
+	url = git@github.com:leviroth/jsonaf-janestreet.git

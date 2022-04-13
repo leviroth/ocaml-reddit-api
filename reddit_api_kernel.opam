@@ -12,6 +12,7 @@ depends: [
   "cohttp" {>= "5.0.0"}
   "core_kernel" {>= "v0.15.0"}
   "core" {>= "v0.15.0"}
+  "core_extended" {>= "v0.15.0"}
   "expect_test_helpers_async" {>= "v0.15.0" & with-test}
   "jsonaf" {>= "v0.15.0"}
   "odoc" {with-doc}

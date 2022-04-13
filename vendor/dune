@@ -1,0 +1,10 @@
+(data_only_dirs *)
+
+(subdir
+ jsonaf/of_json/src
+ (library
+  (name of_json)
+  (public_name reddit_api_kernel.jsonaf.of_json)
+  (libraries core_extended.appendable_list core jsonaf)
+  (preprocess
+   (pps ppx_jane))))
