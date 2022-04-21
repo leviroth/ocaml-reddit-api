@@ -22,7 +22,7 @@ end)
 let id = required_field "id" (string >> Id.of_json_string)
 let action = required_field "action" string
 let details = required_field "details" string
-let created = required_field "created_utc" time
+let created = required_field "created_utc" time_sec_since_epoch
 let target_title = required_field "target_title" string
 let target_fullname = required_field "target_fullname" (string >> Thing.Fullname.of_string)
 let target_permalink = required_field "target_permalink" uri

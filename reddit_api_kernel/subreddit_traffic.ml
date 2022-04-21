@@ -9,7 +9,7 @@ let bail_on_json json ~module_name =
 let get_time_and_rest json ~module_name =
   match Json.get_list Fn.id json with
   | time_json :: rest ->
-    let time = time time_json in
+    let time = time_sec_since_epoch time_json in
     let rest = List.map rest ~f:int in
     time, rest
   | _ -> bail_on_json json ~module_name

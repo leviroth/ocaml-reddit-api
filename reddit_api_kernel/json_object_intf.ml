@@ -48,7 +48,7 @@ module type Json_object = sig
     val string : Json.value -> string
     val username : Json.value -> Username.t
     val subreddit_name : Json.value -> Subreddit_name.t
-    val time : Json.value -> Time_ns.t
+    val time_sec_since_epoch : Json.value -> Time_ns.t
     val uri : Json.value -> Uri.t
   end
 

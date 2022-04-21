@@ -27,7 +27,7 @@ module Comment = struct
 
   let author = required_field "author" (string >> Username.of_string_or_deleted)
   let subreddit = required_field "subreddit" subreddit_name
-  let creation_time = required_field "created_utc" time
+  let creation_time = required_field "created_utc" time_sec_since_epoch
   let score = required_field "score" int
 
   let parent_id =

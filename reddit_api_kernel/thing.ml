@@ -38,7 +38,7 @@ struct
   let is_stickied = required_field "stickied" bool
   let active_users = required_field "active_user_count" int
   let subscribers = required_field "subscribers" int
-  let creation_time = required_field "created_utc" time
+  let creation_time = required_field "created_utc" time_sec_since_epoch
   let depth = optional_field "depth" int
   let karma_field name = required_field name int
   let link_karma = karma_field "link_karma"

@@ -10,7 +10,7 @@ module Common = struct
   let relationship_id = required_field "rel_id" string
   let username = required_field "name" username
   let user_id = required_field "id" (string >> Thing.User.Id.of_string)
-  let date = required_field "date" time
+  let date = required_field "date" time_sec_since_epoch
 end
 
 module Contributor = Common

@@ -22,7 +22,7 @@ module Revision = struct
   let page_name = required_field "page" string
   let id = required_field "id" (string >> Id.of_string)
   let reason = optional_field "reason" string
-  let timestamp = required_field "timestamp" time
+  let timestamp = required_field "timestamp" time_sec_since_epoch
   let hidden = required_field "revision_hidden" bool
   let author = optional_field "author" Thing.User.of_json
 end
@@ -81,7 +81,7 @@ let content t markup =
   required_field field string t
 ;;
 
-let revision_time = required_field "revision_date" time
+let revision_time = required_field "revision_date" time_sec_since_epoch
 let revision_reason = optional_field "reason" string
 
 module Edit_conflict = struct

@@ -7,6 +7,7 @@
 - Pass an explicit `Log.t` in all cases where we previously used `Log.Global`.
 - Rename `Non_transient_error` to `Permanent_error`.
 - Log when `Retry_manager` retries.
+- Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 
 # 0.2.1
 
