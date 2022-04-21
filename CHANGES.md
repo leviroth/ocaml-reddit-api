@@ -1,5 +1,9 @@
 # Unreleased
 
+## Added 
+
+- Add various user overview endpoints.
+
 ## Changed
 
 - Add explicit interface to `reddit_api_kernel`
@@ -8,6 +12,7 @@
 - Rename `Non_transient_error` to `Permanent_error`.
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
+- Require Jane Street libraries >= v0.15.0.
 
 # 0.2.1
 
