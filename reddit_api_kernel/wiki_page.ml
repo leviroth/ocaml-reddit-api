@@ -21,10 +21,10 @@ module Revision = struct
 
   let page_name = required_field "page" string
   let id = required_field "id" (string @> Id.of_string)
-  let reason = optional_field "reason" string
+  let reason = required_field "reason" (option string)
   let timestamp = required_field "timestamp" time_sec_since_epoch
   let hidden = required_field "revision_hidden" bool
-  let author = optional_field "author" [%of_jsonaf: Thing.User.t]
+  let author = required_field "author" (option [%of_jsonaf: Thing.User.t])
 end
 
 module Permissions = struct
@@ -82,7 +82,7 @@ let content t markup =
 ;;
 
 let revision_time = required_field "revision_date" time_sec_since_epoch
-let revision_reason = optional_field "reason" string
+let revision_reason = required_field "reason" (option string)
 
 module Edit_conflict = struct
   include Json_object.Utils
@@ -91,5 +91,5 @@ module Edit_conflict = struct
   let message = required_field "message" string
   let new_content = required_field "newcontent" string
   let new_revision = required_field "newrevision" (string @> Uuid.of_string)
-  let reason = optional_field "reason" string
+  let reason = required_field "reason" (option string)
 end

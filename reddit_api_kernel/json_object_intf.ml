@@ -34,7 +34,6 @@ module type Json_object = sig
     include Sexpable.S with type t := t
     include module type of Of_json with type 'a t := 'a Of_json.t
 
-    val optional_field : string -> (Jsonaf.t -> 'a) -> t -> 'a option
     val required_field : string -> (Jsonaf.t -> 'a) -> t -> 'a
     val username : Jsonaf.t -> Username.t
     val subreddit_name : Jsonaf.t -> Subreddit_name.t

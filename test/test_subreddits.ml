@@ -172,7 +172,7 @@ let%expect_test "moderators" =
            (flair_text ("Reddit Admin")) (flair_css_class ()))
           ((relationship_id rb_lue6xm) (username bboe) (user_id 3pz6e)
            (date (2017-01-31 21:09:49.000000000Z)) (permissions (all))
-           (flair_text ("PRAW Author")) (flair_css_class ()))
+           (flair_text ("PRAW Author")) (flair_css_class ("")))
           ((relationship_id rb_os2pwe) (username taylorkline) (user_id 13jrwt)
            (date (2017-05-25 00:42:54.000000000Z)) (permissions (wiki flair))
            (flair_text ("Bot Developer")) (flair_css_class ()))

@@ -28,13 +28,13 @@ module Ban = struct
   include Common
 
   let note = required_field "note" string
-  let days_left = optional_field "days_left" int
+  let days_left = required_field "days_left" (option int)
 end
 
 module Moderator = struct
   include Common
 
   let permissions = required_field "mod_permissions" [%of_jsonaf: string list]
-  let flair_text = optional_field "author_flair_text" string
-  let flair_css_class = optional_field "author_css_class" string
+  let flair_text = required_field "author_flair_text" (option string)
+  let flair_css_class = required_field "author_flair_css_class" (option string)
 end

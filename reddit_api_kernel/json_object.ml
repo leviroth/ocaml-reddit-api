@@ -9,14 +9,6 @@ module Utils = struct
   let field_map json = Jsonaf.assoc_list_exn json |> Map.of_alist_exn (module String)
   let get_field t field = Jsonaf.member field t
   let get_field_exn t field = Jsonaf.member_exn field t
-
-  (* TODO: Do we ever need to support both cases? *)
-  let optional_field name convert t =
-    match get_field t name with
-    | None | Some `Null -> None
-    | Some v -> Some (convert v)
-  ;;
-
   let required_field name convert t = convert (get_field_exn t name)
   let username = string @> Username.of_string
   let subreddit_name = string @> Subreddit_name.of_string
