@@ -35,7 +35,7 @@ module Rule = struct
 
   let short_name = required_field "short_name" string
   let report_reason = required_field "violation_reason" string
-  let creation_time = required_field "created_utc" time
+  let creation_time = required_field "created_utc" time_sec_since_epoch
   let priority = required_field "priority" int
 end
 

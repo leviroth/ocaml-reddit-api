@@ -36,7 +36,7 @@ module Utils = struct
   let string = Json.get_string
   let username = string >> Username.of_string
   let subreddit_name = string >> Subreddit_name.of_string
-  let time = float >> Time_ns.Span.of_sec >> Time_ns.of_span_since_epoch
+  let time_sec_since_epoch = float >> Time_ns.Span.of_sec >> Time_ns.of_span_since_epoch
   let uri = string >> Uri.of_string
 end
 
