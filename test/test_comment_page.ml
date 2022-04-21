@@ -55,16 +55,17 @@ let%expect_test _ =
   [%expect
     {|
     ((first_comment
-      (((all_awardings (A ())) (approved_at_utc Null) (approved_by Null)
-        (archived (Bool false)) (associated_award Null)
-        (author (String texans1234)) (author_flair_background_color (String ""))
+      (((all_awardings (Array ())) (approved_at_utc Null) (approved_by Null)
+        (archived False) (associated_award Null) (author (String texans1234))
+        (author_flair_background_color (String ""))
         (author_flair_css_class (String texans))
-        (author_flair_richtext (A ((O ((e (String text)) (t (String Texans)))))))
+        (author_flair_richtext
+         (Array ((Object ((e (String text)) (t (String Texans)))))))
         (author_flair_template_id Null) (author_flair_text (String Texans))
         (author_flair_text_color (String dark))
         (author_flair_type (String richtext)) (author_fullname (String t2_dn2lt))
-        (author_patreon_flair (Bool false)) (author_premium (Bool false))
-        (awarders (A ())) (banned_at_utc Null) (banned_by Null)
+        (author_patreon_flair False) (author_premium False) (awarders (Array ()))
+        (banned_at_utc Null) (banned_by Null)
         (body
          (String
           "Had they pulled the trigger last year they would have AT LEAST gotten a 1st round pick."))
@@ -72,30 +73,30 @@ let%expect_test _ =
          (String
            "<div class=\"md\"><p>Had they pulled the trigger last year they would have AT LEAST gotten a 1st round pick.</p>\
           \n</div>"))
-        (can_gild (Bool true)) (can_mod_post (Bool false))
-        (collapsed (Bool false)) (collapsed_because_crowd_control Null)
-        (collapsed_reason Null) (controversiality (Float 0))
-        (created (Float 1587974290)) (created_utc (Float 1587945490))
-        (depth (Float 0)) (distinguished Null) (downs (Float 0))
-        (edited (Bool false)) (gilded (Float 0)) (gildings (O ()))
-        (id (String foosfwm)) (is_submitter (Bool false)) (likes Null)
-        (link_id (String t3_g7vyxy)) (locked (Bool false)) (mod_note Null)
-        (mod_reason_by Null) (mod_reason_title Null) (mod_reports (A ()))
-        (name (String t1_foosfwm)) (no_follow (Bool true)) (num_reports Null)
+        (can_gild True) (can_mod_post False) (collapsed False)
+        (collapsed_because_crowd_control Null) (collapsed_reason Null)
+        (controversiality (Number 0)) (created (Number 1587974290.0))
+        (created_utc (Number 1587945490.0)) (depth (Number 0))
+        (distinguished Null) (downs (Number 0)) (edited False)
+        (gilded (Number 0)) (gildings (Object ())) (id (String foosfwm))
+        (is_submitter False) (likes Null) (link_id (String t3_g7vyxy))
+        (locked False) (mod_note Null) (mod_reason_by Null)
+        (mod_reason_title Null) (mod_reports (Array ()))
+        (name (String t1_foosfwm)) (no_follow True) (num_reports Null)
         (parent_id (String t3_g7vyxy))
         (permalink
          (String
           /r/nfl/comments/g7vyxy/rapoport_the_redskins_have_agreed_to_terms_on_a/foosfwm/))
         (removal_reason Null) (replies (String "")) (report_reasons Null)
-        (saved (Bool false)) (score (Float 1)) (score_hidden (Bool false))
-        (send_replies (Bool true)) (stickied (Bool false))
-        (subreddit (String nfl)) (subreddit_id (String t5_2qmg3))
-        (subreddit_name_prefixed (String r/nfl)) (subreddit_type (String public))
-        (top_awarded_type Null) (total_awards_received (Float 0))
-        (treatment_tags (A ())) (ups (Float 1)) (user_reports (A ())))))
+        (saved False) (score (Number 1)) (score_hidden False) (send_replies True)
+        (stickied False) (subreddit (String nfl))
+        (subreddit_id (String t5_2qmg3)) (subreddit_name_prefixed (String r/nfl))
+        (subreddit_type (String public)) (top_awarded_type Null)
+        (total_awards_received (Number 0)) (treatment_tags (Array ()))
+        (ups (Number 1)) (user_reports (Array ())))))
      (more_comments
       (((children
-         (A
+         (Array
           ((String fojx728) (String fojy1aa) (String fok0tmx) (String fojx824)
            (String fojx6h9) (String fojx3pr) (String fojwidt) (String fojx446)
            (String fok0ro7) (String fojwp43) (String fojwis9) (String fojz38j)
@@ -126,7 +127,7 @@ let%expect_test _ =
            (String fojwrfi) (String fojwoo6) (String fok0ezs) (String fojwr24)
            (String fok054f) (String fojwmpf) (String fojyq5y) (String fojwl4n)
            (String fojyygq) (String fojx4vw))))
-        (count (Float 268)) (depth (Float 0)) (id (String fojx728))
+        (count (Number 268)) (depth (Number 0)) (id (String fojx728))
         (name (String t1_fojx728)) (parent_id (String t3_g7vyxy)))))) |}];
   return ()
 ;;

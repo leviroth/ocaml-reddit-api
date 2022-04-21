@@ -11,23 +11,28 @@ struct
     let kind = Thing_kind.to_string Param.kind
   end)
 
-  type t = Json.t Map.M(String).t [@@deriving sexp, bin_io]
+  type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
 
   let module_name = Thing_kind.to_string_long Param.kind
 
   module Id = struct
-    include Id36
-
-    include Identifiable.Make (struct
+    module T = struct
       include Id36
 
-      let module_name = sprintf "%s.Id" module_name
+      include Identifiable.Make (struct
+        include Id36
 
-      let of_string s =
-        let prefix = sprintf !"%{Thing_kind}_" Param.kind in
-        Id36.of_string (String.chop_prefix_if_exists s ~prefix)
-      ;;
-    end)
+        let module_name = sprintf "%s.Id" module_name
+
+        let of_string s =
+          let prefix = sprintf !"%{Thing_kind}_" Param.kind in
+          Id36.of_string (String.chop_prefix_if_exists s ~prefix)
+        ;;
+      end)
+    end
+
+    include T
+    include Jsonaf.Jsonafable.Of_stringable (T)
   end
 
   let id = required_field "id" (string >> Id.of_string)
@@ -48,7 +53,7 @@ struct
   let total_karma = karma_field "total_karma"
 
   let moderator_reports =
-    required_field "mod_reports" (Json.get_list Moderator_report.of_json)
+    required_field "mod_reports" [%of_jsonaf: Moderator_report.t list]
   ;;
 
   let permalink =
@@ -139,7 +144,7 @@ module User = struct
   end)
 
   let name = required_field "name" username
-  let subreddit = required_field "subreddit" Subreddit.of_json
+  let subreddit = required_field "subreddit" [%of_jsonaf: Subreddit.t]
 end
 
 module Award = Make (struct
@@ -163,14 +168,12 @@ module More_comments = struct
       | By_parent of Comment'.Id.t
   end
 
-  let count t = get_field_exn t "count" |> Json.get_int
+  let count t = get_field_exn t "count" |> Jsonaf.int_exn
 
   let details t : Details.t =
     match count t with
     | 0 -> By_parent (required_field "parent_id" (string >> Comment'.Id.of_string) t)
-    | _ ->
-      By_children
-        (required_field "children" (Json.get_list (string >> Comment'.Id.of_string)) t)
+    | _ -> By_children (required_field "children" [%of_jsonaf: Comment'.Id.t list] t)
   ;;
 end
 
@@ -224,9 +227,11 @@ module Poly = struct
     ]
   [@@deriving sexp]
 
-  let of_json json =
-    let kind = Json.find json [ "kind" ] |> Json.get_string |> Thing_kind.of_string in
-    let data = Json.find json [ "data" ] |> Comment'.of_json in
+  let t_of_jsonaf json =
+    let kind =
+      Jsonaf.member_exn "kind" json |> Jsonaf.string_exn |> Thing_kind.of_string
+    in
+    let data = Jsonaf.member_exn "data" json |> [%of_jsonaf: Comment'.t] in
     Thing_kind.to_polymorphic_tag_uniform kind ~data
   ;;
 
@@ -244,7 +249,7 @@ module Comment = struct
     match get_field_exn t "replies" with
     | `String "" -> []
     | json ->
-      Listing.of_json Poly.of_json json
+      [%of_jsonaf: Poly.t Listing.t] json
       |> Listing.children
       |> List.map ~f:(function
              | (`Comment _ | `More_comments _) as v -> v

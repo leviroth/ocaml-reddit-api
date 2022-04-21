@@ -5,12 +5,7 @@ type t =
   ; report : string
   }
 
-let of_json json =
-  let report, moderator =
-    Json.get_pair
-      Json.get_string
-      Json_object.Utils.(string >> Username.of_string_or_deleted)
-      json
-  in
-  { report; moderator }
+let t_of_jsonaf json =
+  let report, moderator_string = [%of_jsonaf: string * string] json in
+  { report; moderator = Username.of_string_or_deleted moderator_string }
 ;;

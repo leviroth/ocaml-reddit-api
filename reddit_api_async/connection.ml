@@ -226,17 +226,19 @@ module Local = struct
               (Token_request_rejected
                  { response; body = Cohttp.Body.of_string body_string })
           | `OK ->
-            (match Json.of_string body_string with
+            (match Jsonaf.parse body_string with
             | Error error ->
               Error
                 (Json_parsing_error
                    { error; response; body = Cohttp.Body.of_string body_string })
             | Ok response_json ->
-              let token = Json.find response_json [ "access_token" ] |> Json.get_string in
+              let token =
+                Jsonaf.member_exn "access_token" response_json |> Jsonaf.string_exn
+              in
               let expiration =
                 let additional_seconds =
-                  Json.find response_json [ "expires_in" ]
-                  |> Json.get_float
+                  Jsonaf.member_exn "expires_in" response_json
+                  |> Jsonaf.float_exn
                   |> Time_ns.Span.of_sec
                 in
                 Time_ns.add (Time_source.now time_source) additional_seconds
@@ -744,11 +746,11 @@ module For_testing = struct
               | false -> ()
               | true ->
                 let _, body = interaction.response in
-                let json = Or_error.ok_exn (Json.of_string body) in
-                (match Json.find_opt json [ "access_token" ] with
+                let json = Jsonaf.of_string body in
+                (match Jsonaf.member "access_token" json with
                 | None -> ()
                 | Some json ->
-                  let token = Json.get_string json in
+                  let token = Jsonaf.string_exn json in
                   Placeholders.add placeholders ~secret:token ~placeholder:"access_token"));
               Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
               |> Interaction.sexp_of_t

@@ -34,6 +34,4 @@ end
 type t =
   | Message of Thing.Message.t
   | Comment of Comment.t
-[@@deriving sexp]
-
-val of_json : Json.t -> t
+[@@deriving sexp, of_jsonaf]

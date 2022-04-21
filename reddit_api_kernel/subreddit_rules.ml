@@ -39,6 +39,6 @@ module Rule = struct
   let priority = required_field "priority" int
 end
 
-let subreddit_rules = required_field "rules" (Json.get_list Rule.of_json)
+let subreddit_rules = required_field "rules" [%of_jsonaf: Rule.t list]
 let site_rules = required_field "site_rules" Fn.id
 let site_rules_flow = required_field "site_rules_flow" Fn.id

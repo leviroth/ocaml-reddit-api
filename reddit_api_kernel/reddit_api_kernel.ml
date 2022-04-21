@@ -2,7 +2,6 @@ module Comment_response = Comment_response
 module Endpoint = Endpoint
 module Id36 = Id36
 module Inbox_item = Inbox_item
-module Json = Json
 module Json_object = Json_object
 module Karma_list = Karma_list
 module Listing = Listing

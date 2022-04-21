@@ -24,7 +24,7 @@ module Revision = struct
   let reason = optional_field "reason" string
   let timestamp = required_field "timestamp" time_sec_since_epoch
   let hidden = required_field "revision_hidden" bool
-  let author = optional_field "author" Thing.User.of_json
+  let author = optional_field "author" [%of_jsonaf: Thing.User.t]
 end
 
 module Permissions = struct
@@ -58,7 +58,7 @@ module Permissions = struct
   end
 
   let level = required_field "permlevel" (int >> Level.of_int_exn)
-  let contributors = required_field "editors" (Json.get_list Thing.User.of_json)
+  let contributors = required_field "editors" [%of_jsonaf: Thing.User.t list]
   let listed = required_field "listed" bool
 end
 
@@ -70,7 +70,7 @@ end)
 
 let may_revise = required_field "may_revise" bool
 let revision_id = required_field "revision_id" (string >> Uuid.of_string)
-let revision_by = required_field "revision_by" Thing.User.of_json
+let revision_by = required_field "revision_by" [%of_jsonaf: Thing.User.t]
 
 let content t markup =
   let field =

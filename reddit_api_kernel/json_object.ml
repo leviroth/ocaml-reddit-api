@@ -2,11 +2,11 @@ open! Core
 include Json_object_intf
 
 module Utils = struct
-  type t = Json.t Map.M(String).t [@@deriving sexp, bin_io]
+  type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
 
   let field_map = Fn.id
-  let of_json = Json.get_map
-  let to_json t = `O (Map.to_alist t)
+  let t_of_jsonaf json = Jsonaf.assoc_list_exn json |> Map.of_alist_exn (module String)
+  let jsonaf_of_t t = `Object (Map.to_alist t)
   let get_field = Map.find
 
   let get_field_exn t field =
@@ -30,10 +30,10 @@ module Utils = struct
     | json -> Some (f json)
   ;;
 
-  let int = Json.get_int
-  let float = Json.get_float
-  let bool = Json.get_bool
-  let string = Json.get_string
+  let int = Jsonaf.int_exn
+  let float = Jsonaf.float_exn
+  let bool = Jsonaf.bool_exn
+  let string = Jsonaf.string_exn
   let username = string >> Username.of_string
   let subreddit_name = string >> Subreddit_name.of_string
   let time_sec_since_epoch = float >> Time_ns.Span.of_sec >> Time_ns.of_span_since_epoch
@@ -45,25 +45,26 @@ include Utils
 module Make_kinded (Param : Kinded_param) = struct
   include Param
 
-  let of_json json =
-    match Option.try_with (fun () -> Ezjsonm.find json [ "kind" ]) with
+  let t_of_jsonaf json =
+    match Jsonaf.member "kind" json with
     | None -> Param.of_data_field json
     | Some (`String kind) ->
       (match String.equal Param.kind kind with
-      | true -> Param.of_data_field (Ezjsonm.find json [ "data" ])
+      | true -> Param.of_data_field (Jsonaf.member_exn "data" json)
       | false ->
         raise_s
           [%message
             "Unexpected JSON object kind"
               ~expected:(Param.kind : string)
-              (json : Json.value)])
+              (json : Jsonaf.t)])
     | Some kind ->
       raise_s
-        [%message
-          "JSON object kind is not a string" (kind : Json.value) (json : Json.value)]
+        [%message "JSON object kind is not a string" (kind : Jsonaf.t) (json : Jsonaf.t)]
   ;;
 
-  let to_json t = `O [ "kind", `String Param.kind; "data", Param.to_data_field t ]
+  let jsonaf_of_t t =
+    `Object [ "kind", `String Param.kind; "data", Param.to_data_field t ]
+  ;;
 end
 
 module Make_kinded_simple (Param : sig
@@ -73,6 +74,6 @@ Make_kinded (struct
   type t = Utils.t
 
   let kind = Param.kind
-  let of_data_field = of_json
-  let to_data_field = to_json
+  let of_data_field = [%of_jsonaf: t]
+  let to_data_field = [%jsonaf_of: t]
 end)
