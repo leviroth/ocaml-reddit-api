@@ -14,9 +14,9 @@ end
 module Request = struct
   module T = struct
     type t =
-      | Get of { uri : Uri_sexp.t }
+      | Get of { uri : Uri_with_string_sexp.t }
       | Post_form of
-          { uri : Uri_sexp.t
+          { uri : Uri_with_string_sexp.t
           ; params : (string * string list) list
           }
     [@@deriving sexp, compare]
@@ -214,7 +214,7 @@ module Parameters = struct
           [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
           list
       | Subreddit_name of Subreddit_name.t list
-      | Url of Uri_sexp.t
+      | Url of Uri_with_string_sexp.t
     [@@deriving sexp]
 
     let params_of_t t =

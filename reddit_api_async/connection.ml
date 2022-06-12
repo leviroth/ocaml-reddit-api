@@ -653,11 +653,11 @@ module For_testing = struct
         module T = struct
           type t =
             | Get of
-                { uri : Uri_sexp.t
+                { uri : Uri_with_string_sexp.t
                 ; headers : Cohttp.Header.t
                 }
             | Post_form of
-                { uri : Uri_sexp.t
+                { uri : Uri_with_string_sexp.t
                 ; headers : Cohttp.Header.t
                 ; params : (string * string list) list
                 }
@@ -793,7 +793,7 @@ module For_testing = struct
             raise_s
               [%message
                 "Test request did not match record"
-                  (uri : Uri_sexp.t)
+                  (uri : Uri_with_string_sexp.t)
                   (headers : Cohttp.Header.t)
                   ~recorded_request:(request : Interaction.Request.t)]
           in
@@ -811,7 +811,7 @@ module For_testing = struct
             raise_s
               [%message
                 "Test request did not match record"
-                  (uri : Uri_sexp.t)
+                  (uri : Uri_with_string_sexp.t)
                   (headers : Cohttp.Header.t)
                   (params : (string * string list) list)
                   ~recorded_request:(request : Interaction.Request.t)]

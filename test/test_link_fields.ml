@@ -10,8 +10,7 @@ let%expect_test "link_fields__url_contents" =
       in
       let contents = Thing.Link.contents link in
       print_s [%sexp (contents : Thing.Link.Contents.t)];
-      [%expect
-        {| (Url ((scheme (https)) (host (i.redd.it)) (path /ap95zxoqleg61.jpg))) |}];
+      [%expect {| (Url https://i.redd.it/ap95zxoqleg61.jpg) |}];
       return ())
 ;;
 

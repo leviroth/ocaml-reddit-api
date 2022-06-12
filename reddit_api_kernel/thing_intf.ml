@@ -62,7 +62,7 @@ module type Thing = sig
 
     module Contents : sig
       type t =
-        | Url of Uri_sexp.t
+        | Url of Uri_with_string_sexp.t
         | Self_text of string
       [@@deriving sexp]
     end
