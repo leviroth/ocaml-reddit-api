@@ -250,9 +250,9 @@ end
 
 module Request : sig
   type t =
-    | Get of { uri : Uri_sexp.t }
+    | Get of { uri : Uri_with_string_sexp.t }
     | Post_form of
-        { uri : Uri_sexp.t
+        { uri : Uri_with_string_sexp.t
         ; params : (string * string list) list
         }
   [@@deriving sexp]

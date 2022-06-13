@@ -76,7 +76,7 @@ module Link = struct
     let of_uri uri =
       match Uri.path uri |> String.split ~on:'/' with
       | "" :: "r" :: _subreddit :: "comments" :: id :: _rest -> of_string id
-      | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_sexp.t)]
+      | _ -> raise_s [%message "Unexpected Uri format" (uri : Uri_with_string_sexp.t)]
     ;;
   end
 
@@ -88,7 +88,7 @@ module Link = struct
 
   module Contents = struct
     type t =
-      | Url of Uri_sexp.t
+      | Url of Uri_with_string_sexp.t
       | Self_text of string
     [@@deriving sexp]
   end
