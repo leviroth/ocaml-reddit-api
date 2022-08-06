@@ -194,9 +194,17 @@ module By_headers = struct
   let update_server_side_info t ~new_server_side_info =
     t.server_side_info <- Some new_server_side_info;
     schedule_reset_at_time t new_server_side_info.reset_time;
-    match new_server_side_info.remaining_api_calls > 0 with
-    | false -> ()
-    | true -> Mvar.set t.ready ()
+    match
+      ( new_server_side_info.remaining_api_calls > 0
+      , Time_ns.equal new_server_side_info.reset_time Time_ns.epoch )
+    with
+    | false, false -> ()
+    | false, true ->
+      Log.Global.info_s
+        [%message
+          "Rate limit exhausted"
+            ~reset_time:(new_server_side_info.reset_time : Time_ns_unix.t)]
+    | true, _ -> Mvar.set t.ready ()
   ;;
 
   let permit_request t =
@@ -227,6 +235,20 @@ module By_headers = struct
         match t.server_side_info with
         | None -> response_server_side_info
         | Some server_side_info ->
+          (match
+             Comparable.lift
+               [%compare: Time_ns.t]
+               ~f:Server_side_info.reset_time
+               server_side_info
+               response_server_side_info
+             |> Ordering.of_int
+           with
+          | Greater | Equal -> ()
+          | Less ->
+            Log.Global.info_s
+              [%message
+                "Rate limit is resetting"
+                  ~old_remaining_api_calls:(server_side_info.remaining_api_calls : int)]);
           Server_side_info.freshest server_side_info response_server_side_info
       in
       update_server_side_info t ~new_server_side_info
