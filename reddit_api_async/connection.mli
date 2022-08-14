@@ -141,7 +141,7 @@ module Error : sig
   [@@deriving sexp_of]
 end
 
-val create : Credentials.t -> user_agent:string -> t
+val create : ?rate_limiter_log:Log.t -> Credentials.t -> user_agent:string -> t
 val call : t -> 'a Endpoint.t -> ('a, Endpoint.Error.t Error.t) Result.t Deferred.t
 val call_exn : t -> 'a Endpoint.t -> 'a Deferred.t
 

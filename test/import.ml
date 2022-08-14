@@ -3,7 +3,11 @@ open! Async
 include Reddit_api_async
 module Time_ns = Time_ns_unix
 
-let () = Time_ns_unix.set_sexp_zone Time_ns.Zone.utc
+let () =
+  Time_ns_unix.set_sexp_zone Time_ns.Zone.utc;
+  let global_log = force Log.Global.log in
+  Log.set_output global_log [ Log.For_testing.create_output ~map_output:Fn.id ]
+;;
 
 let with_cassette cassette_name ~f =
   let credentials =
