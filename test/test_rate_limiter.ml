@@ -49,10 +49,7 @@ let%expect_test _ =
   let ( ^: ) hr min = Time_ns.add Time_ns.epoch (Time_ns.Span.create ~hr ~min ()) in
   let time_source = Time_source.create ~now:(00 ^: 00) () in
   let rate_limiter =
-    Rate_limiter.by_headers
-      ~log:(Log.For_testing.create ~map_output:Fn.id `Debug)
-      ()
-      ~time_source:(Time_source.read_only time_source)
+    Rate_limiter.by_headers ~time_source:(Time_source.read_only time_source)
   in
   let print () =
     print_s

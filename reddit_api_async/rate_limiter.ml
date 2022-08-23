@@ -150,16 +150,15 @@ module By_headers = struct
   type t =
     { ready : (unit, read_write) Mvar.t
     ; time_source : (Time_source.t[@sexp.opaque])
-    ; log : Log.t
     ; mutable reset_event : ((Nothing.t, unit) Time_source.Event.t[@sexp.opaque]) option
     ; mutable server_side_info : Server_side_info.t option
     }
   [@@deriving sexp_of]
 
-  let create ~time_source ~log =
+  let create ~time_source =
     let ready = Mvar.create () in
     Mvar.set ready ();
-    { server_side_info = None; reset_event = None; time_source; ready; log }
+    { server_side_info = None; reset_event = None; time_source; ready }
   ;;
 
   let is_ready { ready; _ } = not (Mvar.is_empty ready)
@@ -202,7 +201,7 @@ module By_headers = struct
     | false, false -> ()
     | false, true ->
       [%log.debug
-        t.log
+        Import.log
           "Rate limit exhausted"
           ~reset_time:(new_server_side_info.reset_time : Time_ns_unix.t)]
     | true, _ -> Mvar.set t.ready ()
@@ -247,7 +246,7 @@ module By_headers = struct
           | Greater | Equal -> ()
           | Less ->
             [%log.debug
-              t.log
+              Import.log
                 "Rate limit is resetting"
                 ~old_remaining_api_calls:(server_side_info.remaining_api_calls : int)]);
           Server_side_info.freshest server_side_info response_server_side_info
@@ -256,13 +255,7 @@ module By_headers = struct
   ;;
 end
 
-let by_headers
-    ?(log = Log.create ~level:`Info ~output:[] ~on_error:`Raise ())
-    ()
-    ~time_source
-  =
-  T ((module By_headers), By_headers.create ~time_source ~log)
-;;
+let by_headers ~time_source = T ((module By_headers), By_headers.create ~time_source)
 
 let with_minimum_delay ~time_source ~delay =
   T ((module With_minimum_delay), With_minimum_delay.create ~time_source ~delay)

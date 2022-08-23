@@ -382,24 +382,20 @@ type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
-let all_rate_limiters ?log () ~time_source =
+let all_rate_limiters ~time_source =
   Rate_limiter.combine
-    [ Rate_limiter.by_headers ?log () ~time_source
+    [ Rate_limiter.by_headers ~time_source
     ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100) ~time_source
     ]
 ;;
 
-let create ?rate_limiter_log credentials ~user_agent =
+let create credentials ~user_agent =
   T
     ( (module Local)
     , Local.create
         credentials
         ~user_agent
-        ~rate_limiter:
-          (all_rate_limiters
-             ?log:rate_limiter_log
-             ()
-             ~time_source:(Time_source.wall_clock ())) )
+        ~rate_limiter:(all_rate_limiters ~time_source:(Time_source.wall_clock ())) )
 ;;
 
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
@@ -880,7 +876,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiter:(all_rate_limiters () ~time_source:Cassette.time_source) )
+              ~rate_limiter:(all_rate_limiters ~time_source:Cassette.time_source) )
       in
       Monitor.protect
         (fun () -> f connection)

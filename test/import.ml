@@ -5,8 +5,8 @@ module Time_ns = Time_ns_unix
 
 let () =
   Time_ns_unix.set_sexp_zone Time_ns.Zone.utc;
-  let global_log = force Log.Global.log in
-  Log.set_output global_log [ Log.For_testing.create_output ~map_output:Fn.id ]
+  Log.set_level Reddit_api_async.log `Debug;
+  Log.set_output Reddit_api_async.log [ Log.For_testing.create_output ~map_output:Fn.id ]
 ;;
 
 let with_cassette cassette_name ~f =

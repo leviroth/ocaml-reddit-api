@@ -3,7 +3,7 @@ open! Async
 
 type t [@@deriving sexp_of]
 
-val by_headers : ?log:Log.t -> unit -> time_source:Time_source.t -> t
+val by_headers : time_source:Time_source.t -> t
 val with_minimum_delay : time_source:Time_source.t -> delay:Time_ns.Span.t -> t
 val combine : t list -> t
 val permit_request : t -> unit Deferred.t
