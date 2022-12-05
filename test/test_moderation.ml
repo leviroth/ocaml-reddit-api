@@ -30,6 +30,9 @@ let%expect_test "log" =
         {| (6fbb7e1a-ef15-11ea-a905-0e73145e80df a0c30278-ef13-11ea-b8fd-0e6edeb4a85b) |}];
       print_s [%sexp (List.map modactions ~f:Mod_action.created : Time_ns.t list)];
       [%expect {| ((2020-09-05 01:16:33.000000000Z) (2020-09-05 01:03:36.000000000Z)) |}];
+      print_s
+        [%sexp (List.map modactions ~f:Mod_action.moderator : Username.t option list)];
+      [%expect {| ((L72_Elite_Kraken) (L72_Elite_Kraken)) |}];
       return ())
 ;;
 

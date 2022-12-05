@@ -16,6 +16,7 @@
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.15.0.
+- Fixed a bug with `Mod_action.moderator`.
 
 ## Removed
 
