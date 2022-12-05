@@ -1,6 +1,6 @@
 open! Core
 
-module Make (Hashable : Hashable.S) : sig
+module Make (Hashable : Hashtbl.Key_plain) : sig
   type t
 
   val create : capacity:int -> t
