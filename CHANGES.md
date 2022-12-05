@@ -4,6 +4,7 @@
 
 - Add various user overview endpoints.
 - Add `Mod_action.compare` and `sexp_of`.
+- Add `Mod_action.target_author`.
 
 ## Changed
 

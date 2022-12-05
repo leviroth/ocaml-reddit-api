@@ -16,6 +16,7 @@ val id : t -> Id.t
 val action : t -> string
 val details : t -> string
 val created : t -> Time_ns.t
+val target_author : t -> Username.t option
 val target_title : t -> string
 val target_fullname : t -> Thing.Fullname.t
 val target_permalink : t -> Uri.t
