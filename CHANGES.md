@@ -3,6 +3,8 @@
 ## Added 
 
 - Add various user overview endpoints.
+- Add `Mod_action.compare` and `sexp_of`.
+- Add `Mod_action.target_author`.
 
 ## Changed
 
@@ -16,6 +18,7 @@
 - Require Jane Street libraries >= v0.15.0.
 - Make `Stream` functions require a `Hashtbl.Key_plain` module instead of the
   larger `Hashable.S`.
+- Fixed a bug with `Mod_action.moderator`.
 
 ## Removed
 
