@@ -3,7 +3,7 @@ open! Async
 open Reddit_api_kernel
 
 val iter
-  :  (module Hashable.S with type t = 'id)
+  :  (module Hashtbl.Key_plain with type t = 'id)
   -> Connection.t
   -> get_listing:(before:'id option -> limit:int -> 'thing list Endpoint.t)
   -> get_before_parameter:('thing -> 'id)
@@ -12,7 +12,7 @@ val iter
   -> _ Deferred.t
 
 val fold
-  :  (module Hashable.S with type t = 'id)
+  :  (module Hashtbl.Key_plain with type t = 'id)
   -> Connection.t
   -> get_listing:(before:'id option -> limit:int -> 'thing list Endpoint.t)
   -> get_before_parameter:('thing -> 'id)
@@ -22,7 +22,7 @@ val fold
   -> _ Deferred.t
 
 val fold_until_finished
-  :  (module Hashable.S with type t = 'id)
+  :  (module Hashtbl.Key_plain with type t = 'id)
   -> Connection.t
   -> get_listing:(before:'id option -> limit:int -> 'thing list Endpoint.t)
   -> get_before_parameter:('thing -> 'id)

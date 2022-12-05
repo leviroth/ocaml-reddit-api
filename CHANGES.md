@@ -16,6 +16,8 @@
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.15.0.
+- Make `Stream` functions require a `Hashtbl.Key_plain` module instead of the
+  larger `Hashable.S`.
 - Fixed a bug with `Mod_action.moderator`.
 
 ## Removed
