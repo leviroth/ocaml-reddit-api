@@ -1,7 +1,7 @@
 open! Core
 
 module Id : sig
-  type t [@@deriving sexp]
+  type t [@@deriving compare, hash, sexp]
 
   val to_uuid : t -> Uuid.t
   val of_uuid : Uuid.t -> t

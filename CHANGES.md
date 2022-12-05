@@ -3,6 +3,7 @@
 ## Added 
 
 - Add various user overview endpoints.
+- Add `Mod_action.compare` and `sexp_of`.
 
 ## Changed
 

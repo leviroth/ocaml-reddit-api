@@ -1,7 +1,7 @@
 open! Core
 
 module Id = struct
-  type t = Uuid.Unstable.t [@@deriving sexp]
+  type t = Uuid.Unstable.t [@@deriving compare, hash, sexp]
 
   let of_uuid = Fn.id
   let to_uuid = Fn.id
