@@ -65,7 +65,7 @@ let%expect_test _ =
     ((is_ready true)
      (rate_limiter
       (By_headers
-       ((ready (())) (time_source <opaque>) (log <opaque>) (reset_event ())
+       ((ready (())) (time_source <opaque>) (reset_event ())
         (server_side_info ()))))
      (time (1970-01-01 00:00:00.000000000Z))) |}];
   (* Initially we can permit one request. *)
@@ -76,8 +76,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event ())
-        (server_side_info ()))))
+       ((ready ()) (time_source <opaque>) (reset_event ()) (server_side_info ()))))
      (time (1970-01-01 00:00:00.000000000Z))) |}];
   (* Receiving a response allows us to send another request. *)
   Rate_limiter.notify_response
@@ -90,7 +89,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event (<opaque>))
+       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))
      (time (1970-01-01 00:00:00.000000000Z))) |}];
@@ -104,7 +103,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event (<opaque>))
+       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))
      (time (1970-01-01 00:00:00.000000000Z))) |}];
@@ -118,8 +117,7 @@ let%expect_test _ =
     ((is_ready true)
      (rate_limiter
       (By_headers
-       ((ready (())) (time_source <opaque>) (log <opaque>)
-        (reset_event (<opaque>))
+       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 10)
            (reset_time (1970-01-01 00:20:00.000000000Z))))))))
@@ -139,7 +137,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event (<opaque>))
+       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))
      (time (1970-01-01 00:00:00.000000000Z))) |}];
@@ -151,8 +149,7 @@ let%expect_test _ =
     ((is_ready true)
      (rate_limiter
       (By_headers
-       ((ready (())) (time_source <opaque>) (log <opaque>)
-        (reset_event (<opaque>))
+       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))
      (time (1970-01-01 00:20:00.000000000Z))) |}];
@@ -170,7 +167,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event (<opaque>))
+       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
      (time (1970-01-01 00:20:00.000000000Z))) |}];
@@ -181,8 +178,7 @@ let%expect_test _ =
     ((is_ready true)
      (rate_limiter
       (By_headers
-       ((ready (())) (time_source <opaque>) (log <opaque>)
-        (reset_event (<opaque>))
+       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
      (time (1970-01-01 00:30:00.000000000Z))) |}];
@@ -197,7 +193,7 @@ let%expect_test _ =
     ((is_ready false)
      (rate_limiter
       (By_headers
-       ((ready ()) (time_source <opaque>) (log <opaque>) (reset_event (<opaque>))
+       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
         (server_side_info
          (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
      (time (1970-01-01 00:31:00.000000000Z))) |}];
