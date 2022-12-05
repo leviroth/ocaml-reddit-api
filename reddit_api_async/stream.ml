@@ -33,7 +33,7 @@ let fold_helper l ~init ~f =
 
 let fold_until_finished
     (type id)
-    (module Id : Hashable.S with type t = id)
+    (module Id : Hashtbl.Key_plain with type t = id)
     connection
     ~get_listing
     ~get_before_parameter
@@ -87,7 +87,7 @@ let fold_until_finished
 
 let fold
     (type id)
-    (module Id : Hashable.S with type t = id)
+    (module Id : Hashtbl.Key_plain with type t = id)
     connection
     ~get_listing
     ~get_before_parameter
@@ -111,7 +111,7 @@ let fold
 
 let iter
     (type id)
-    (module Id : Hashable.S with type t = id)
+    (module Id : Hashtbl.Key_plain with type t = id)
     connection
     ~get_listing
     ~get_before_parameter

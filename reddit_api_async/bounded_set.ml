@@ -1,12 +1,19 @@
 open! Core
 
-module Make (Hashable : Hashable.S) = struct
+module Make (Hashable : Hashtbl.Key_plain) = struct
   type t =
     { capacity : int
-    ; hash_queue : unit Hashable.Hash_queue.t
+    ; hash_queue : (Hashable.t, unit) Hash_queue.t
     }
 
-  let create ~capacity = { capacity; hash_queue = Hashable.Hash_queue.create () }
+  let create ~capacity =
+    { capacity
+    ; hash_queue =
+        Hash_queue.create
+          (let open Hashable in
+          { hash; compare; sexp_of_t })
+    }
+  ;;
 
   let mem { hash_queue; _ } value =
     match Hash_queue.lookup_and_move_to_back hash_queue value with
