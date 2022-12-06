@@ -581,7 +581,7 @@ val comment_replies
     with_listing_params
 
 val subreddit_comments
-  : (subreddit:Subreddit_name.t -> Comment.t Listing.t t) with_listing_params
+  : (unit -> subreddit:Subreddit_name.t -> Comment.t Listing.t t) with_listing_params
 
 (** {2 Moderation } *)
 
