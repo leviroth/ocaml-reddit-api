@@ -8,10 +8,7 @@ module Make (Hashable : Hashtbl.Key_plain) = struct
 
   let create ~capacity =
     { capacity
-    ; hash_queue =
-        Hash_queue.create
-          (let open Hashable in
-          { hash; compare; sexp_of_t })
+    ; hash_queue = Hash_queue.create (Hashtbl.Hashable.of_key (module Hashable))
     }
   ;;
 
