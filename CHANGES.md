@@ -3,6 +3,8 @@
 ## Added 
 
 - Add various user overview endpoints.
+- Add `Mod_action.compare` and `sexp_of`.
+- Add `Mod_action.target_author`.
 
 ## Changed
 
@@ -14,6 +16,11 @@
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.15.0.
+- Make `Stream` functions require a `Hashtbl.Key_plain` module instead of the
+  larger `Hashable.S`.
+- Fix a bug with `Mod_action.moderator`.
+- Change `Stream` to provide one function, `stream`, that returns a pipe,
+  instead of several functions with different interfaces.
 
 ## Removed
 

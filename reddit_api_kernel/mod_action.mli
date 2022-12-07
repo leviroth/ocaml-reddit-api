@@ -1,7 +1,7 @@
 open! Core
 
 module Id : sig
-  type t [@@deriving sexp]
+  type t [@@deriving compare, hash, sexp]
 
   val to_uuid : t -> Uuid.t
   val of_uuid : Uuid.t -> t
@@ -16,6 +16,7 @@ val id : t -> Id.t
 val action : t -> string
 val details : t -> string
 val created : t -> Time_ns.t
+val target_author : t -> Username.t option
 val target_title : t -> string
 val target_fullname : t -> Thing.Fullname.t
 val target_permalink : t -> Uri.t

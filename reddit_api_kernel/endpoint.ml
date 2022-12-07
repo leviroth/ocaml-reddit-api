@@ -1327,7 +1327,7 @@ let comment_replies =
     (handle_json_response [%of_jsonaf: Inbox_item.Comment.t Listing.t])
 ;;
 
-let subreddit_comments' ~listing_params ~subreddit =
+let subreddit_comments' ~listing_params () ~subreddit =
   let endpoint = sprintf !"/r/%{Subreddit_name}/comments" subreddit in
   let params = listing_params in
   get ~endpoint ~params (handle_json_response [%of_jsonaf: Comment.t Listing.t])
