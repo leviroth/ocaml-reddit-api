@@ -5,6 +5,7 @@
 - Add various user overview endpoints.
 - Add `Mod_action.compare` and `sexp_of`.
 - Add `Mod_action.target_author`.
+- Add `sexp_of` to `Json_object` interfaces.
 
 ## Changed
 
