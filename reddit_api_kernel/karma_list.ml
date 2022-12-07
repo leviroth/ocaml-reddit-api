@@ -18,7 +18,7 @@ end
 type t = Entry.t list [@@deriving sexp]
 
 include Json_object.Make_kinded (struct
-  type nonrec t = t
+  type nonrec t = t [@@deriving sexp_of]
 
   let of_data_field json =
     match Jsonaf.list json with

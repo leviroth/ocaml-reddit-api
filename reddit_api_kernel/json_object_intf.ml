@@ -1,6 +1,10 @@
 open! Core
 
-module type S = Jsonaf.Jsonafable.S
+module type S = sig
+  type t [@@deriving sexp_of]
+
+  include Jsonaf.Jsonafable.S with type t := t
+end
 
 module type S_with_fields = sig
   include S
@@ -17,7 +21,7 @@ module type S_with_kind = sig
 end
 
 module type Kinded_param = sig
-  type t
+  type t [@@deriving sexp_of]
 
   val of_data_field : Jsonaf.t -> t
   val to_data_field : t -> Jsonaf.t
