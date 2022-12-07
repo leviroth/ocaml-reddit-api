@@ -1,6 +1,5 @@
 open! Core
 open! Async
-open Reddit_api_kernel
 
 module Backoff : sig
   type t
@@ -17,124 +16,73 @@ end = struct
   let after = Clock_ns.after
 end
 
-open Continue_or_stop
+module State = struct
+  type 'id t =
+    { first_pass : bool
+    ; before : 'id option
+    ; backoff : Backoff.t
+    ; cache_busting_counter : int
+    }
+end
 
-let fold_helper l ~init ~f =
-  let rec loop l ~state ~f =
-    match l with
-    | [] -> return (Continue state)
-    | hd :: tl ->
-      (match%bind f state hd with
-      | Stop final -> return (Stop final)
-      | Continue state -> loop tl ~state ~f)
-  in
-  loop l ~state:init ~f
-;;
-
-let fold_until_finished
+let stream
     (type id)
     (module Id : Hashtbl.Key_plain with type t = id)
     connection
     ~get_listing
     ~get_before_parameter
-    ~init
-    ~f
-    ~on_error
   =
   let module Bounded_set = Bounded_set.Make (Id) in
   let seen = Bounded_set.create ~capacity:300 in
-  let rec loop ?(first_pass = false) state before backoff cache_busting_counter =
-    let limit, cache_busting_counter =
-      match before with
-      | Some _ -> 100, cache_busting_counter
-      | None -> 100 - cache_busting_counter, (cache_busting_counter + 1) mod 30
-    in
-    match%bind Connection.call connection (get_listing ~before ~limit) with
-    | Error response ->
-      (match%bind on_error state response with
-      | Stop result -> return result
-      | Continue state ->
-        let backoff = Backoff.increment backoff in
-        let%bind () = Backoff.after backoff in
-        loop state before backoff cache_busting_counter)
-    | Ok list ->
-      let list =
-        List.filter list ~f:(fun child ->
-            not (Bounded_set.mem seen (get_before_parameter child : id)))
-      in
-      let most_recent_element = List.hd list in
-      let list = List.rev list in
-      List.iter list ~f:(fun child -> Bounded_set.add seen (get_before_parameter child));
-      let continue state =
-        let before = Option.map most_recent_element ~f:get_before_parameter in
-        let backoff =
-          match List.is_empty list with
-          | true -> Backoff.increment backoff
-          | false -> Backoff.initial
-        in
-        let%bind () = Backoff.after backoff in
-        loop state before backoff cache_busting_counter
-      in
-      (match first_pass with
-      | true -> continue state
-      | false ->
-        (match%bind fold_helper list ~init:state ~f with
-        | Stop result -> return result
-        | Continue state -> continue state))
-  in
-  loop ~first_pass:true init None Backoff.initial 0
-;;
-
-let fold
-    (type id)
-    (module Id : Hashtbl.Key_plain with type t = id)
-    connection
-    ~get_listing
-    ~get_before_parameter
-    ~init
-    ~f
-    ~on_error
-  =
-  let continue_after state x ~f =
-    let%bind state = f state x in
-    return (Continue state)
-  in
-  fold_until_finished
-    (module Id)
-    connection
-    ~get_listing
-    ~get_before_parameter
-    ~init
-    ~f:(continue_after ~f)
-    ~on_error:(continue_after ~f:on_error)
-;;
-
-let iter
-    (type id)
-    (module Id : Hashtbl.Key_plain with type t = id)
-    connection
-    ~get_listing
-    ~get_before_parameter
-    ~log
-    ~f
-  =
-  let on_error =
-    match log with
-    | None -> fun () _error -> return ()
-    | Some log ->
-      fun () error ->
-        Log.error_s
-          log
-          [%message
-            "Received error response" (error : Endpoint.Error.t Connection.Error.t)];
-        return ()
-  in
-  fold
-    (module Id)
-    connection
-    ~get_listing
-    ~get_before_parameter
-    ~init:()
-    ~f:(fun () child -> f child)
-    ~on_error
+  Pipe.create_reader ~close_on_exception:false (fun pipe ->
+      Deferred.repeat_until_finished
+        { State.first_pass = true
+        ; before = None
+        ; backoff = Backoff.initial
+        ; cache_busting_counter = 0
+        }
+        (fun ({ first_pass; before; backoff; cache_busting_counter } : Id.t State.t) ->
+          let loop_after_backoff_and_pushback (state : _ State.t) =
+            let%bind () = Backoff.after state.backoff
+            and () = Pipe.pushback pipe in
+            return (`Repeat state)
+          in
+          match Pipe.is_closed pipe with
+          | true -> return (`Finished ())
+          | false ->
+            let limit, cache_busting_counter =
+              match before with
+              | Some _ -> 100, cache_busting_counter
+              | None -> 100 - cache_busting_counter, (cache_busting_counter + 1) mod 30
+            in
+            (match%bind Connection.call connection (get_listing ~before ~limit) with
+            | Error _ as response ->
+              Pipe.write_without_pushback_if_open pipe response;
+              let backoff = Backoff.increment backoff in
+              loop_after_backoff_and_pushback
+                { first_pass; before; backoff; cache_busting_counter }
+            | Ok list_newest_to_oldest ->
+              let list_newest_to_oldest =
+                List.filter list_newest_to_oldest ~f:(fun child ->
+                    not (Bounded_set.mem seen (get_before_parameter child : id)))
+              in
+              List.iter list_newest_to_oldest ~f:(fun child ->
+                  Bounded_set.add seen (get_before_parameter child));
+              (match first_pass with
+              | true -> ()
+              | false ->
+                let list_oldest_to_newest = List.rev list_newest_to_oldest in
+                List.iter list_oldest_to_newest ~f:(fun elt ->
+                    Pipe.write_without_pushback_if_open pipe (Ok elt)));
+              let before =
+                let most_recent_element = List.hd list_newest_to_oldest in
+                Option.map most_recent_element ~f:get_before_parameter
+              in
+              let backoff =
+                match List.is_empty list_newest_to_oldest with
+                | true -> Backoff.increment backoff
+                | false -> Backoff.initial
+              in
+              loop_after_backoff_and_pushback
+                { first_pass = false; before; backoff; cache_busting_counter })))
 ;;
