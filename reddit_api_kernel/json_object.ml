@@ -71,7 +71,7 @@ module Make_kinded_simple (Param : sig
   val kind : string
 end) =
 Make_kinded (struct
-  type t = Utils.t
+  type t = Utils.t [@@deriving sexp_of]
 
   let kind = Param.kind
   let of_data_field = [%of_jsonaf: t]
