@@ -6,5 +6,4 @@ val iter_comments
   :  Retry_manager.t
   -> log:Log.t
   -> comment_response:Comment_response.t
-  -> f:(Thing.Comment.t -> unit Deferred.t)
-  -> unit Deferred.t
+  -> Thing.Comment.t Pipe.Reader.t
