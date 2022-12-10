@@ -16,12 +16,6 @@ let retry_or_log_unexpected retry_manager here endpoint log =
     return None
 ;;
 
-let iter_item_if_comment item ~f =
-  match item with
-  | `More_comments _ -> return ()
-  | `Comment comment -> f comment
-;;
-
 let children item ~retry_manager ~link ~log =
   match item with
   | `Comment comment -> return (Comment.replies comment)
@@ -57,16 +51,23 @@ let iter_comments
     retry_manager
     ~log
     ~comment_response:({ link; comment_forest } : Comment_response.t)
-    ~f
   =
   let link = Link.id link in
   let queue = Queue.of_list comment_forest in
-  Deferred.repeat_until_finished () (fun () ->
-      match Queue.dequeue queue with
-      | None -> return (`Finished ())
-      | Some item ->
-        let%bind () = iter_item_if_comment item ~f in
-        let%bind children = children item ~retry_manager ~link ~log in
-        Queue.enqueue_all queue children;
-        return (`Repeat ()))
+  Pipe.create_reader ~close_on_exception:false (fun writer ->
+      Deferred.repeat_until_finished () (fun () ->
+          match Pipe.is_closed writer with
+          | true -> return (`Finished ())
+          | false ->
+            (match Queue.dequeue queue with
+            | None -> return (`Finished ())
+            | Some item ->
+              let%bind () =
+                match item with
+                | `More_comments _ -> return ()
+                | `Comment comment -> Pipe.write_if_open writer comment
+              in
+              let%bind children = children item ~retry_manager ~link ~log in
+              Queue.enqueue_all queue children;
+              return (`Repeat ()))))
 ;;

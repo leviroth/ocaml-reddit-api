@@ -22,6 +22,7 @@
 - Fix a bug with `Mod_action.moderator`.
 - Change `Stream` to provide one function, `stream`, that returns a pipe,
   instead of several functions with different interfaces.
+- Change `Iter_comments` to return a pipe.
 
 ## Removed
 
