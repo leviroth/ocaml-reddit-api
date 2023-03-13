@@ -1,4 +1,5 @@
 open! Core
+open Jsonaf.Export
 include Relationship_intf
 
 module Common = struct

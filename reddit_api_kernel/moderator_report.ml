@@ -1,4 +1,5 @@
 open! Core
+open Jsonaf.Export
 
 type t =
   { moderator : Username.t option
