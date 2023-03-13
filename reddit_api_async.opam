@@ -9,16 +9,16 @@ homepage: "https://github.com/leviroth/ocaml-reddit-api"
 bug-reports: "https://github.com/leviroth/ocaml-reddit-api/issues"
 depends: [
   "dune" {>= "2.9"}
-  "async" {>= "v0.15.0"}
-  "async_ssl" {>= "v0.15.0"}
+  "async" {>= "v0.16.0"}
+  "async_ssl" {>= "v0.16.0"}
   "cohttp-async" {>= "5.0.0"}
-  "core" {>= "v0.15.0"}
-  "expect_test_helpers_async" {>= "v0.15.0" & with-test}
-  "jsonaf" {>= "v0.15.0"}
-  "ppx_jane" {>= "v0.15.0"}
-  "ppx_jsonaf_conv" {>= "v0.15.0"}
+  "core" {>= "v0.16.0"}
+  "expect_test_helpers_async" {>= "v0.16.0" & with-test}
+  "jsonaf" {>= "v0.16.0"}
+  "ppx_jane" {>= "v0.16.0"}
+  "ppx_jsonaf_conv" {>= "v0.16.0"}
   "reddit_api_kernel" {= version}
-  "sequencer_table" {>= "v0.15.0"}
+  "sequencer_table" {>= "v0.16.0"}
   "odoc" {with-doc}
 ]
 build: [

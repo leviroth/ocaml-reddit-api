@@ -1,4 +1,5 @@
 open! Core
+open Jsonaf.Export
 include Thing_intf
 
 module Make (Param : sig

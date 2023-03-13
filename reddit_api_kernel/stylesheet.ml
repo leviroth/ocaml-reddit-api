@@ -1,4 +1,5 @@
 open! Core
+open Jsonaf.Export
 
 module Image = struct
   include Json_object.Utils
