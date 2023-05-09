@@ -23,6 +23,8 @@
 - Change `Stream` to provide one function, `stream`, that returns a pipe,
   instead of several functions with different interfaces.
 - Change `Iter_comments` to return a pipe.
+- Fix a crash when replying to messages by introducing the new
+  `Endpoint.reply_to_message`.
 
 ## Removed
 

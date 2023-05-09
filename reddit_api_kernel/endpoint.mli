@@ -353,9 +353,17 @@ val add_comment
   :  ?return_rtjson:bool
   -> ?richtext_json:Jsonaf.t
   -> unit
-  -> parent:[< `Link of Link.Id.t | `Comment of Comment.Id.t | `Message of Message.Id.t ]
+  -> parent:[< `Link of Link.Id.t | `Comment of Comment.Id.t ]
   -> text:string
   -> Thing.Comment.t t
+
+val reply_to_message
+  :  ?return_rtjson:bool
+  -> ?richtext_json:Jsonaf.t
+  -> unit
+  -> parent:Message.Id.t
+  -> text:string
+  -> Thing.Message.t t
 
 val delete : id:[< `Link of Link.Id.t | `Comment of Comment.Id.t ] -> unit t
 

@@ -806,23 +806,37 @@ let handle_things_response =
       |> [%of_jsonaf: Thing.Poly.t])
 ;;
 
+let add_reply_endpoint = "/api/comment"
+
+let add_reply_params ?return_rtjson ?richtext_json () ~parent ~text =
+  let open Param_dsl in
+  combine
+    [ api_type
+    ; required' fullname_ "thing_id" parent
+    ; required' string "text" text
+    ; optional' bool "return_rtjson" return_rtjson
+    ; optional' json "richtext_json" richtext_json
+    ]
+;;
+
 let add_comment ?return_rtjson ?richtext_json () ~parent ~text =
-  let endpoint = "/api/comment" in
-  let params =
-    let open Param_dsl in
-    combine
-      [ api_type
-      ; required' fullname_ "thing_id" parent
-      ; required' string "text" text
-      ; optional' bool "return_rtjson" return_rtjson
-      ; optional' json "richtext_json" richtext_json
-      ]
-  in
-  post ~endpoint ~params (fun response ->
+  let params = add_reply_params ?return_rtjson ?richtext_json () ~parent ~text in
+  post ~endpoint:add_reply_endpoint ~params (fun response ->
       match%bind handle_things_response response with
       | `Comment c -> Ok c
       | response ->
         raise_s [%message "Expected comment response" (response : Thing.Poly.t)])
+;;
+
+let reply_to_message ?return_rtjson ?richtext_json () ~parent ~text =
+  let params =
+    add_reply_params ?return_rtjson ?richtext_json () ~parent:(`Message parent) ~text
+  in
+  post ~endpoint:add_reply_endpoint ~params (fun response ->
+      match%bind handle_things_response response with
+      | `Message m -> Ok m
+      | response ->
+        raise_s [%message "Expected message response" (response : Thing.Poly.t)])
 ;;
 
 let delete ~id =
