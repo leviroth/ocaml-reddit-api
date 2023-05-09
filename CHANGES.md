@@ -12,7 +12,10 @@
 - Use `jsonaf` instead of `ezjsonm`.
 - Add explicit interface to `reddit_api_kernel`
   - Expose `foo_intf.ml` contents as `Reddit_api_kernel.Foo`.
-- Pass an explicit `Log.t` in all cases where we previously used `Log.Global`.
+- Expose a library-level `Log.t`, `Reddit_api_async.Logging.log`.
+  - All logging goes through this value instead of `Log.Global`.
+  - The `Log.t` initially has no output, but can have its output set by the
+    application.
 - Rename `Non_transient_error` to `Permanent_error`.
 - Log when `Retry_manager` retries.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
