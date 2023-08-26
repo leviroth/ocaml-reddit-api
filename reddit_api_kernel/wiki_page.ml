@@ -1,4 +1,5 @@
 open! Core
+open Jsonaf.Export
 
 module Id = struct
   type t =

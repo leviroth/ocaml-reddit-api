@@ -1,5 +1,6 @@
 open! Core
 open Thing
+open Jsonaf.Export
 
 module Sequencer = struct
   module T = struct
@@ -63,7 +64,7 @@ module Param_dsl = struct
   let fullname_ = Thing.Fullname.to_string
   let username_ = Username.to_string
   let json = Jsonaf.to_string
-  let time = Time.to_string_iso8601_basic ~zone:Time.Zone.utc
+  let time = Time_ns.to_string_iso8601_basic ~zone:Time_float.Zone.utc
 end
 
 module Parameters = struct

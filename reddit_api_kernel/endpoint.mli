@@ -440,8 +440,8 @@ val submit
   -> ?flair_id:string
   -> ?flair_text:string
   -> ?collection_id:string
-  -> ?event_start:Time.t
-  -> ?event_end:Time.t
+  -> ?event_start:Time_ns.t
+  -> ?event_end:Time_ns.t
   -> ?event_tz:string
   -> unit
   -> subreddit:Subreddit_name.t
