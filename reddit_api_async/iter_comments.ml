@@ -1,22 +1,22 @@
 open! Core
 open! Async
+open! Import
 open Reddit_api_kernel
 open Thing
 
-let retry_or_log_unexpected retry_manager here endpoint log =
+let retry_or_log_unexpected retry_manager here endpoint =
   match%bind Retry_manager.call retry_manager endpoint with
   | Ok v -> return (Some v)
   | Error error ->
-    Log.error_s
+    [%log.error
       log
-      [%message
         "Unexpected response from Reddit"
-          (here : Source_code_position.t)
-          (error : Retry_manager.Permanent_error.t)];
+        (here : Source_code_position.t)
+        (error : Retry_manager.Permanent_error.t)];
     return None
 ;;
 
-let children item ~retry_manager ~link ~log =
+let children item ~retry_manager ~link =
   match item with
   | `Comment comment -> return (Comment.replies comment)
   | `More_comments more_comments ->
@@ -26,13 +26,11 @@ let children item ~retry_manager ~link ~log =
         retry_manager
         [%here]
         (Endpoint.more_children ~link ~more_comments ~sort:New ())
-        log
     | By_parent parent ->
       retry_or_log_unexpected
         retry_manager
         [%here]
         (Endpoint.comments ~comment:parent () ~link)
-        log
       >>| Option.map
             ~f:(fun ({ comment_forest; link = _ } as response : Comment_response.t) ->
               match comment_forest with
@@ -49,7 +47,6 @@ let children item ~retry_manager ~link ~log =
 
 let iter_comments
     retry_manager
-    ~log
     ~comment_response:({ link; comment_forest } : Comment_response.t)
   =
   let link = Link.id link in
@@ -67,7 +64,7 @@ let iter_comments
                 | `More_comments _ -> return ()
                 | `Comment comment -> Pipe.write_if_open writer comment
               in
-              let%bind children = children item ~retry_manager ~link ~log in
+              let%bind children = children item ~retry_manager ~link in
               Queue.enqueue_all queue children;
               return (`Repeat ()))))
 ;;

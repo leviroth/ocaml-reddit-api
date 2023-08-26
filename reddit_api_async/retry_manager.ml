@@ -1,5 +1,6 @@
 open! Core
 open! Async
+open! Import
 open Reddit_api_kernel
 
 module Transience = struct
@@ -145,11 +146,11 @@ let rec call t endpoint =
       return response
     | Transient_error ->
       let request = endpoint.request in
-      Log.Global.error_s
-        [%message
+      [%log.error
+        log
           "Transient error"
-            (request : Endpoint.Request.t)
-            (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
+          (request : Endpoint.Request.t)
+          (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
       on_transient_error t;
       call t endpoint)
 ;;

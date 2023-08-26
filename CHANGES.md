@@ -1,6 +1,6 @@
 # Unreleased
 
-## Added 
+## Added
 
 - Add various user overview endpoints.
 - Add `Mod_action.compare` and `sexp_of`.
@@ -12,9 +12,13 @@
 - Use `jsonaf` instead of `ezjsonm`.
 - Add explicit interface to `reddit_api_kernel`
   - Expose `foo_intf.ml` contents as `Reddit_api_kernel.Foo`.
-- Pass an explicit `Log.t` in all cases where we previously used `Log.Global`.
-- Rename `Non_transient_error` to `Permanent_error`.
+- Expose a library-level `Log.t`, `Reddit_api_async.Logging.log`.
+  - All logging goes through this value instead of `Log.Global`.
+  - The `Log.t` initially has no output, but can have its output set by the
+    application.
 - Log when `Retry_manager` retries.
+- Log, at debug level, when rate limit is exhausted and when it resets.
+- Rename `Non_transient_error` to `Permanent_error`.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.16.0.
 - Make `Stream` functions require a `Hashtbl.Key_plain` module instead of the
