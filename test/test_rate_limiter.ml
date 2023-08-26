@@ -133,6 +133,7 @@ let%expect_test _ =
   print ();
   [%expect
     {|
+    ("Rate limit is resetting"(old_remaining_api_calls 0))
     ((is_ready false)
      (rate_limiter
       (By_headers
@@ -162,6 +163,7 @@ let%expect_test _ =
   print ();
   [%expect
     {|
+    ("Rate limit is resetting"(old_remaining_api_calls 0))
     ((is_ready false)
      (rate_limiter
       (By_headers

@@ -1,6 +1,6 @@
 # Unreleased
 
-## Added 
+## Added
 
 - Add various user overview endpoints.
 - Add `Mod_action.compare` and `sexp_of`.
@@ -16,8 +16,9 @@
   - All logging goes through this value instead of `Log.Global`.
   - The `Log.t` initially has no output, but can have its output set by the
     application.
-- Rename `Non_transient_error` to `Permanent_error`.
 - Log when `Retry_manager` retries.
+- Log, at debug level, when rate limit is exhausted and when it resets.
+- Rename `Non_transient_error` to `Permanent_error`.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.16.0.
 - Make `Stream` functions require a `Hashtbl.Key_plain` module instead of the
