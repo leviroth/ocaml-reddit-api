@@ -21,7 +21,7 @@ let wait_until_ready (T ((module S), t)) = S.wait_until_ready t
 
 module With_minimum_delay = struct
   type t =
-    { ready : (unit, read_write) Mvar.t
+    { wait_until : (Time_ns.Alternate_sexp.t option, read_write) Mvar.t
     ; time_source : (Time_source.t[@sexp.opaque])
     ; delay : Time_ns.Span.t
     }
@@ -30,20 +30,40 @@ module With_minimum_delay = struct
   let kind = "With_minimum_delay"
 
   let create ~delay ~time_source =
-    let ready = Mvar.create () in
-    Mvar.set ready ();
-    { ready; delay; time_source }
+    let wait_until = Mvar.create () in
+    Mvar.set wait_until None;
+    { wait_until; delay; time_source }
   ;;
 
-  let permit_request { ready; delay; time_source } =
-    let%bind () = Mvar.take ready in
-    Deferred.upon (Time_source.after time_source delay) (fun () -> Mvar.set ready ());
+  let permit_request { wait_until; delay; time_source } =
+    let%bind () =
+      match%bind Mvar.take wait_until with
+      | None -> return ()
+      | Some wait_until -> Time_source.at time_source wait_until
+    in
+    Mvar.set wait_until (Some (Time_ns.add (Time_source.now time_source) delay));
     return ()
   ;;
 
   let notify_response (_ : t) (_ : Cohttp.Response.t) = ()
-  let is_ready { ready; _ } = not (Mvar.is_empty ready)
-  let wait_until_ready { ready; _ } = Mvar.value_available ready
+
+  let is_ready { wait_until; time_source; _ } =
+    match Mvar.peek wait_until with
+    | None -> false
+    | Some None -> true
+    | Some (Some wait_until) -> Time_ns.( >= ) (Time_source.now time_source) wait_until
+  ;;
+
+  let wait_until_ready { wait_until; time_source; _ } =
+    let%bind mvar_contents = Mvar.take wait_until in
+    let%bind () =
+      match mvar_contents with
+      | None -> return ()
+      | Some wait_until -> Time_source.at time_source wait_until
+    in
+    Mvar.set wait_until mvar_contents;
+    return ()
+  ;;
 end
 
 module By_headers = struct
