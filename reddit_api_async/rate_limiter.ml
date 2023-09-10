@@ -282,13 +282,34 @@ let with_minimum_delay ~time_source ~delay =
 ;;
 
 module Combined = struct
-  type nonrec t = t list [@@deriving sexp_of]
+  type nonrec t =
+    { ts : t list
+    ; sequencer : unit Throttle.Sequencer.t
+    }
+  [@@deriving sexp_of]
 
   let kind = "Combined"
-  let permit_request ts = Deferred.all_unit (List.map ts ~f:permit_request)
-  let notify_response ts headers = List.iter ts ~f:(fun t -> notify_response t headers)
-  let is_ready ts = List.for_all ts ~f:is_ready
-  let wait_until_ready ts = Deferred.all_unit (List.map ts ~f:wait_until_ready)
+
+  let create ts =
+    let sequencer = Throttle.Sequencer.create () in
+    { ts; sequencer }
+  ;;
+
+  let permit_request { ts; sequencer } =
+    Throttle.enqueue sequencer (fun () ->
+        Deferred.all_unit (List.map ts ~f:permit_request))
+  ;;
+
+  let notify_response { ts; _ } headers =
+    List.iter ts ~f:(fun t -> notify_response t headers)
+  ;;
+
+  let is_ready { ts; _ } = List.for_all ts ~f:is_ready
+
+  let wait_until_ready { ts; sequencer } =
+    Throttle.enqueue sequencer (fun () ->
+        Deferred.all_unit (List.map ts ~f:wait_until_ready))
+  ;;
 end
 
-let combine ts = T ((module Combined), ts)
+let combine ts = T ((module Combined), Combined.create ts)
