@@ -52,32 +52,38 @@ let%expect_test _ =
     Rate_limiter.by_headers ~time_source:(Time_source.read_only time_source)
   in
   let print () =
-    print_s
-      [%sexp
-        { is_ready : bool = Rate_limiter.is_ready rate_limiter
-        ; rate_limiter : Rate_limiter.t
-        ; time : Time_ns.t = Time_source.now time_source
-        }]
+    print_endline
+      (Sexp_pretty.sexp_to_string
+         [%sexp
+           { time : Time_ns.t = Time_source.now time_source
+           ; is_ready : bool = Rate_limiter.is_ready rate_limiter
+           ; rate_limiter : Rate_limiter.t
+           }])
   in
   print ();
   [%expect
     {|
-    ((is_ready true)
-     (rate_limiter
-      (By_headers
-       ((ready (())) (time_source <opaque>) (reset_event ())
-        (server_side_info ()))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready true)
+     (rate_limiter (
+       By_headers (
+         (ready (()))
+         (time_source <opaque>)
+         (reset_event      ())
+         (server_side_info ()))))) |}];
   (* Initially we can permit one request. *)
   let%bind () = Rate_limiter.permit_request rate_limiter in
   print ();
   [%expect
     {|
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event ()) (server_side_info ()))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event      ())
+         (server_side_info ()))))) |}];
   (* Receiving a response allows us to send another request. *)
   Rate_limiter.notify_response
     rate_limiter
@@ -86,13 +92,15 @@ let%expect_test _ =
   print ();
   [%expect
     {|
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))) |}];
   (* Receiving a response for the same reset period will not increase our limit remaining. *)
   Rate_limiter.notify_response
     rate_limiter
@@ -100,13 +108,15 @@ let%expect_test _ =
   print ();
   [%expect
     {|
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:10:00.000000000Z))))))))) |}];
   (* Moving to the next period increases our remaining limit. *)
   Rate_limiter.notify_response
     rate_limiter
@@ -114,14 +124,15 @@ let%expect_test _ =
   print ();
   [%expect
     {|
-    ((is_ready true)
-     (rate_limiter
-      (By_headers
-       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 10)
-           (reset_time (1970-01-01 00:20:00.000000000Z))))))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready true)
+     (rate_limiter (
+       By_headers (
+         (ready (()))
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 10) (reset_time (1970-01-01 00:20:00.000000000Z))))))))) |}];
   (* Exhausting the remaining limit causes us to be not-ready. *)
   let%bind () =
     Deferred.repeat_until_finished 10 (function
@@ -134,25 +145,29 @@ let%expect_test _ =
   [%expect
     {|
     ("Rate limit is resetting"(old_remaining_api_calls 0))
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))
-     (time (1970-01-01 00:00:00.000000000Z))) |}];
+    ((time (1970-01-01 00:00:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))) |}];
   (* Advancing the time allows us to send another request. *)
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 20) in
   print ();
   [%expect
     {|
-    ((is_ready true)
-     (rate_limiter
-      (By_headers
-       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))
-     (time (1970-01-01 00:20:00.000000000Z))) |}];
+    ((time (1970-01-01 00:20:00.000000000Z))
+     (is_ready true)
+     (rate_limiter (
+       By_headers (
+         (ready (()))
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:20:00.000000000Z))))))))) |}];
   (* Advancing past the reset time before we receive a response does not result
      in a double reset. *)
   let%bind () = Rate_limiter.permit_request rate_limiter in
@@ -164,38 +179,68 @@ let%expect_test _ =
   [%expect
     {|
     ("Rate limit is resetting"(old_remaining_api_calls 0))
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
-     (time (1970-01-01 00:20:00.000000000Z))) |}];
+    ((time (1970-01-01 00:20:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 30) in
   print ();
   [%expect
     {|
-    ((is_ready true)
-     (rate_limiter
-      (By_headers
-       ((ready (())) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
-     (time (1970-01-01 00:30:00.000000000Z))) |}];
+    ((time (1970-01-01 00:30:00.000000000Z))
+     (is_ready true)
+     (rate_limiter (
+       By_headers (
+         (ready (()))
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))) |}];
   let%bind () = Rate_limiter.permit_request rate_limiter in
+  print ();
+  [%expect
+    {|
+    ((time (1970-01-01 00:30:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))) |}];
   Rate_limiter.notify_response
     rate_limiter
     (build_header ~server_time:(00 ^: 29) ~limit_remaining:1);
+  print ();
+  [%expect
+    {|
+    ((time (1970-01-01 00:30:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 31) in
   print ();
   [%expect
     {|
-    ((is_ready false)
-     (rate_limiter
-      (By_headers
-       ((ready ()) (time_source <opaque>) (reset_event (<opaque>))
-        (server_side_info
-         (((remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))
-     (time (1970-01-01 00:31:00.000000000Z))) |}];
+    ((time (1970-01-01 00:31:00.000000000Z))
+     (is_ready false)
+     (rate_limiter (
+       By_headers (
+         (ready ())
+         (time_source <opaque>)
+         (reset_event (<opaque>))
+         (server_side_info ((
+           (remaining_api_calls 0) (reset_time (1970-01-01 00:30:00.000000000Z))))))))) |}];
   return ()
 ;;
