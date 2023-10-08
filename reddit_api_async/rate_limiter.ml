@@ -167,79 +167,90 @@ module By_headers = struct
     let freshest = Base.Comparable.max compare_by_inferred_age
   end
 
+  module State = struct
+    type t =
+      | Created
+      | Waiting_on_first_request
+      | Known of Server_side_info.t
+    [@@deriving sexp_of]
+  end
+
   type t =
-    { ready : (unit, read_write) Mvar.t
+    { mutable state : State.t
+    ; updated : (unit, read_write) Bvar.t
     ; time_source : (Time_source.t[@sexp.opaque])
-    ; mutable reset_event : ((Nothing.t, unit) Time_source.Event.t[@sexp.opaque]) option
-    ; mutable server_side_info : Server_side_info.t option
     }
   [@@deriving sexp_of]
 
   let create ~time_source =
-    let ready = Mvar.create () in
-    Mvar.set ready ();
-    { server_side_info = None; reset_event = None; time_source; ready }
+    let updated = Bvar.create () in
+    { time_source; state = Created; updated }
   ;;
 
-  let is_ready { ready; _ } = not (Mvar.is_empty ready)
-  let wait_until_ready { ready; _ } = Mvar.value_available ready
-
-  let rec schedule_reset_at_time t time =
-    let schedule_fresh_event () =
-      t.reset_event
-        <- Some
-             (Time_source.Event.run_at
-                t.time_source
-                time
-                (fun () ->
-                  Mvar.set t.ready ();
-                  (* In case something prevents our first request from receiving
-                     a response, we will periodically allow retries. *)
-                  schedule_reset_at_time t (Time_ns.add time Time_ns.Span.minute))
-                ())
-    in
-    match t.reset_event with
-    | None -> schedule_fresh_event ()
-    | Some event ->
-      let scheduled_time = Time_source.Event.scheduled_at event in
-      (match Time_ns.( < ) scheduled_time time with
-      | false -> ()
-      | true ->
-        (match Time_source.Event.reschedule_at event time with
-        | Ok -> ()
-        | Previously_aborted _ -> .
-        | Previously_happened () -> schedule_fresh_event ()))
+  let is_ready { state; time_source; _ } =
+    match state with
+    | Created -> true
+    | Waiting_on_first_request -> false
+    | Known { remaining_api_calls; reset_time } ->
+      remaining_api_calls > 0 || Time_ns.( >= ) (Time_source.now time_source) reset_time
   ;;
+
+  let wait_until_ready { state; time_source; updated } =
+    Deferred.repeat_until_finished () (fun () ->
+        match state with
+        | Created -> return (`Finished ())
+        | Waiting_on_first_request ->
+          let%bind () = Bvar.wait updated in
+          return (`Repeat ())
+        | Known { remaining_api_calls; reset_time } ->
+          (match
+             remaining_api_calls > 0
+             || Time_ns.( >= ) (Time_source.now time_source) reset_time
+           with
+          | true -> return (`Finished ())
+          | false ->
+            let%bind () =
+              Deferred.any
+                [ (* TODO reset time needs to actually... reset things*)
+                  Time_source.at time_source reset_time
+                ; Bvar.wait updated
+                ]
+            in
+            return (`Repeat ())))
+  ;;
+
+  (* TODO: Allow retries once per minute? *)
 
   let update_server_side_info t ~new_server_side_info =
-    t.server_side_info <- Some new_server_side_info;
-    schedule_reset_at_time t new_server_side_info.reset_time;
+    t.state <- Known new_server_side_info;
+    Bvar.broadcast t.updated ();
     match
       ( new_server_side_info.remaining_api_calls > 0
       , Time_ns.equal new_server_side_info.reset_time Time_ns.epoch )
     with
-    | false, false -> ()
+    | false, false | true, (true | false) -> ()
     | false, true ->
       [%log.debug
         Import.log
           "Rate limit exhausted"
           ~reset_time:(new_server_side_info.reset_time : Time_ns_unix.t)]
-    | true, _ -> Mvar.set t.ready ()
   ;;
 
   let permit_request t =
-    let%bind () = Mvar.take t.ready in
-    (match t.server_side_info with
-    | None -> ()
-    | Some ({ remaining_api_calls; _ } as server_side_info) ->
-      (match remaining_api_calls with
-      | 0 -> ()
-      | n ->
-        let new_server_side_info =
-          { server_side_info with remaining_api_calls = n - 1 }
-        in
-        update_server_side_info t ~new_server_side_info));
-    return ()
+    let%bind () = wait_until_ready t in
+    match t.state with
+    | Waiting_on_first_request -> assert false
+    | Created ->
+      t.state <- Waiting_on_first_request;
+      return ()
+    | Known ({ remaining_api_calls; _ } as server_side_info) ->
+      let new_server_side_info : Server_side_info.t =
+        match remaining_api_calls with
+        | 0 -> server_side_info
+        | n -> { server_side_info with remaining_api_calls = n - 1 }
+      in
+      update_server_side_info t ~new_server_side_info;
+      return ()
   ;;
 
   let notify_response t response =
@@ -249,12 +260,16 @@ module By_headers = struct
       (* We assume that, in the absence of ratelimit headers, we must have hit
          some authentication failure. As a heuristic to avoid getting stuck, we
          immediately reset [t.ready]. *)
-      Mvar.set t.ready ()
+      (* TODO: What to do here? *)
+      t.state <- Created
     | Some response_server_side_info ->
       let new_server_side_info =
-        match t.server_side_info with
-        | None -> response_server_side_info
-        | Some server_side_info ->
+        match t.state with
+        | Created ->
+          (* TODO: this could happen if the module is misused *)
+          assert false
+        | Waiting_on_first_request -> response_server_side_info
+        | Known server_side_info ->
           (match
              Comparable.lift
                [%compare: Time_ns.t]
