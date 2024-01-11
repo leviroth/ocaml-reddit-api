@@ -76,8 +76,7 @@ module By_headers = struct
       }
     [@@deriving sexp, fields]
 
-    let snap_to_nearest_minute time =
-      let interval = Time_ns.Span.minute in
+    let snap_to_nearest interval time =
       let base = Time_ns.epoch in
       let candidates =
         [ Time_ns.prev_multiple ~can_equal_before:true ~interval ~base ~before:time ()
@@ -95,7 +94,8 @@ module By_headers = struct
     let%expect_test _ =
       List.iter [ "2020-11-30 18:48:01.02Z"; "2020-11-30 18:47:59.02Z" ] ~f:(fun time ->
           let time = Time_ns_unix.of_string time in
-          print_s [%sexp (snap_to_nearest_minute time : Time_ns.Alternate_sexp.t)]);
+          print_s
+            [%sexp (snap_to_nearest Time_ns.Span.minute time : Time_ns.Alternate_sexp.t)]);
       [%expect {|
           "2020-11-30 18:48:00Z"
           "2020-11-30 18:48:00Z" |}];
@@ -143,7 +143,10 @@ module By_headers = struct
         let%bind relative_reset_time =
           get_header "X-Ratelimit-Reset" >>| Int.of_string >>| Time_ns.Span.of_int_sec
         in
-        Some (snap_to_nearest_minute (Time_ns.add server_time relative_reset_time))
+        Some
+          (snap_to_nearest
+             Time_ns.Span.minute
+             (Time_ns.add server_time relative_reset_time))
       in
       Some { remaining_api_calls; reset_time }
     ;;
@@ -165,13 +168,26 @@ module By_headers = struct
     ;;
 
     let freshest = Base.Comparable.max compare_by_inferred_age
+
+    let state_at_start_of_window ~representative_time =
+      let reset_time =
+        Time_ns.next_multiple
+          ~can_equal_after:false
+          ~interval:(Time_ns.Span.of_int_min 10)
+          ~base:Time_ns.epoch
+          ~after:representative_time
+          ()
+      in
+      let remaining_api_calls = 996 in
+      { remaining_api_calls; reset_time }
+    ;;
   end
 
   module State = struct
     type t =
       | Created
       | Waiting_on_first_request
-      | Known of Server_side_info.t
+      | Consuming_rate_limit of Server_side_info.t
     [@@deriving sexp_of]
   end
 
@@ -191,38 +207,38 @@ module By_headers = struct
     match state with
     | Created -> true
     | Waiting_on_first_request -> false
-    | Known { remaining_api_calls; reset_time } ->
+    | Consuming_rate_limit { remaining_api_calls; reset_time } ->
       remaining_api_calls > 0 || Time_ns.( >= ) (Time_source.now time_source) reset_time
   ;;
 
-  let wait_until_ready { state; time_source; updated } =
+  let wait_until_ready t =
     Deferred.repeat_until_finished () (fun () ->
-        match state with
+        match t.state with
         | Created -> return (`Finished ())
         | Waiting_on_first_request ->
-          let%bind () = Bvar.wait updated in
+          let%bind () = Bvar.wait t.updated in
           return (`Repeat ())
-        | Known { remaining_api_calls; reset_time } ->
-          (match
-             remaining_api_calls > 0
-             || Time_ns.( >= ) (Time_source.now time_source) reset_time
-           with
-          | true -> return (`Finished ())
+        | Consuming_rate_limit { remaining_api_calls; reset_time } ->
+          let now = Time_source.now t.time_source in
+          (* TODO: Move above? *)
+          (match Time_ns.( >= ) now reset_time with
+          | true ->
+            t.state
+              <- Consuming_rate_limit
+                   (Server_side_info.state_at_start_of_window ~representative_time:now);
+            return (`Finished ())
           | false ->
-            let%bind () =
-              Deferred.any
-                [ (* TODO reset time needs to actually... reset things*)
-                  Time_source.at time_source reset_time
-                ; Bvar.wait updated
-                ]
-            in
-            return (`Repeat ())))
+            (match remaining_api_calls > 0 with
+            | true -> return (`Finished ())
+            | false ->
+              let%bind () = Time_source.at t.time_source reset_time in
+              return (`Repeat ()))))
   ;;
 
   (* TODO: Allow retries once per minute? *)
 
   let update_server_side_info t ~new_server_side_info =
-    t.state <- Known new_server_side_info;
+    t.state <- Consuming_rate_limit new_server_side_info;
     Bvar.broadcast t.updated ();
     match
       ( new_server_side_info.remaining_api_calls > 0
@@ -239,11 +255,11 @@ module By_headers = struct
   let permit_request t =
     let%bind () = wait_until_ready t in
     match t.state with
-    | Waiting_on_first_request -> assert false
+    | Waiting_on_first_request -> (* TODO is this impossible? *) assert false
     | Created ->
       t.state <- Waiting_on_first_request;
       return ()
-    | Known ({ remaining_api_calls; _ } as server_side_info) ->
+    | Consuming_rate_limit ({ remaining_api_calls; _ } as server_side_info) ->
       let new_server_side_info : Server_side_info.t =
         match remaining_api_calls with
         | 0 -> server_side_info
@@ -265,11 +281,9 @@ module By_headers = struct
     | Some response_server_side_info ->
       let new_server_side_info =
         match t.state with
-        | Created ->
-          (* TODO: this could happen if the module is misused *)
-          assert false
+        | Created -> raise_s [%message "[notify_response] called before [permit_request]"]
         | Waiting_on_first_request -> response_server_side_info
-        | Known server_side_info ->
+        | Consuming_rate_limit server_side_info ->
           (match
              Comparable.lift
                [%compare: Time_ns.t]
