@@ -230,8 +230,6 @@ module By_headers = struct
               return (`Repeat ()))))
   ;;
 
-  (* TODO: Allow retries once per minute? *)
-
   let update_server_side_info t ~new_server_side_info =
     (match t.state with
     | State.Created | State.Consuming_rate_limit _ -> ()
@@ -253,7 +251,10 @@ module By_headers = struct
   let permit_request t =
     let%bind () = wait_until_ready t in
     match t.state with
-    | Waiting_on_first_request _ -> (* TODO is this impossible? *) assert false
+    | Waiting_on_first_request _ ->
+      raise_s
+        [%message
+          "Unexpectedly in [Waiting_on_first_request] state after [wait_until_ready]."]
     | Created ->
       let received_response = Ivar.create () in
       t.state <- Waiting_on_first_request { received_response };
@@ -275,7 +276,6 @@ module By_headers = struct
       (* We assume that, in the absence of ratelimit headers, we must have hit
          some authentication failure. As a heuristic to avoid getting stuck, we
          immediately reset [t.ready]. *)
-      (* TODO: What to do here? *)
       t.state <- Created
     | Some response_server_side_info ->
       let new_server_side_info =

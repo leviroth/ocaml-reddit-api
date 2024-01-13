@@ -117,9 +117,11 @@ let%expect_test _ =
   Rate_limiter.notify_response
     rate_limiter
     (build_header ~server_time:(00 ^: 10) ~limit_remaining:10);
+  let%bind () = Log.Global.flushed () in
   print ();
   [%expect
     {|
+    ("Rate limit is resetting"(old_remaining_api_calls 0))
     ((time (1970-01-01 00:00:00.000000000Z))
      (is_ready true)
      (rate_limiter (
@@ -138,10 +140,8 @@ let%expect_test _ =
           return (`Repeat (n - 1)))
   in
   print ();
-  (* TODO It's not actually resetting: It's just exhausted. *)
   [%expect
     {|
-    ("Rate limit is resetting"(old_remaining_api_calls 0))
     ((time (1970-01-01 00:00:00.000000000Z))
      (is_ready false)
      (rate_limiter (
