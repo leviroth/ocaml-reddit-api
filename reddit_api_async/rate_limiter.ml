@@ -186,27 +186,23 @@ module By_headers = struct
   module State = struct
     type t =
       | Created
-      | Waiting_on_first_request
+      | Waiting_on_first_request of { received_response : unit Ivar.t }
       | Consuming_rate_limit of Server_side_info.t
     [@@deriving sexp_of]
   end
 
   type t =
     { mutable state : State.t
-    ; updated : (unit, read_write) Bvar.t
     ; time_source : (Time_source.t[@sexp.opaque])
     }
   [@@deriving sexp_of]
 
-  let create ~time_source =
-    let updated = Bvar.create () in
-    { time_source; state = Created; updated }
-  ;;
+  let create ~time_source = { time_source; state = Created }
 
   let is_ready { state; time_source; _ } =
     match state with
     | Created -> true
-    | Waiting_on_first_request -> false
+    | Waiting_on_first_request _ -> false
     | Consuming_rate_limit { remaining_api_calls; reset_time } ->
       remaining_api_calls > 0 || Time_ns.( >= ) (Time_source.now time_source) reset_time
   ;;
@@ -215,12 +211,11 @@ module By_headers = struct
     Deferred.repeat_until_finished () (fun () ->
         match t.state with
         | Created -> return (`Finished ())
-        | Waiting_on_first_request ->
-          let%bind () = Bvar.wait t.updated in
+        | Waiting_on_first_request { received_response } ->
+          let%bind () = Ivar.read received_response in
           return (`Repeat ())
         | Consuming_rate_limit { remaining_api_calls; reset_time } ->
           let now = Time_source.now t.time_source in
-          (* TODO: Move above? *)
           (match Time_ns.( >= ) now reset_time with
           | true ->
             t.state
@@ -238,8 +233,11 @@ module By_headers = struct
   (* TODO: Allow retries once per minute? *)
 
   let update_server_side_info t ~new_server_side_info =
+    (match t.state with
+    | State.Created | State.Consuming_rate_limit _ -> ()
+    | State.Waiting_on_first_request { received_response } ->
+      Ivar.fill_if_empty received_response ());
     t.state <- Consuming_rate_limit new_server_side_info;
-    Bvar.broadcast t.updated ();
     match
       ( new_server_side_info.remaining_api_calls > 0
       , Time_ns.equal new_server_side_info.reset_time Time_ns.epoch )
@@ -255,9 +253,10 @@ module By_headers = struct
   let permit_request t =
     let%bind () = wait_until_ready t in
     match t.state with
-    | Waiting_on_first_request -> (* TODO is this impossible? *) assert false
+    | Waiting_on_first_request _ -> (* TODO is this impossible? *) assert false
     | Created ->
-      t.state <- Waiting_on_first_request;
+      let received_response = Ivar.create () in
+      t.state <- Waiting_on_first_request { received_response };
       return ()
     | Consuming_rate_limit ({ remaining_api_calls; _ } as server_side_info) ->
       let new_server_side_info : Server_side_info.t =
@@ -282,7 +281,7 @@ module By_headers = struct
       let new_server_side_info =
         match t.state with
         | Created -> raise_s [%message "[notify_response] called before [permit_request]"]
-        | Waiting_on_first_request -> response_server_side_info
+        | Waiting_on_first_request _ -> response_server_side_info
         | Consuming_rate_limit server_side_info ->
           (match
              Comparable.lift

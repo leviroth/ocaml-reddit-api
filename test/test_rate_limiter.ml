@@ -67,7 +67,8 @@ let%expect_test _ =
      (is_ready true)
      (rate_limiter (
        By_headers (
-         (state Created) (updated (has_any_waiters false)) (time_source <opaque>))))) |}];
+         (state       Created)
+         (time_source <opaque>))))) |}];
   (* Initially we can permit one request. *)
   let%bind () = Rate_limiter.permit_request rate_limiter in
   print ();
@@ -77,8 +78,7 @@ let%expect_test _ =
      (is_ready false)
      (rate_limiter (
        By_headers (
-         (state Waiting_on_first_request)
-         (updated (has_any_waiters false))
+         (state (Waiting_on_first_request (received_response Empty)))
          (time_source <opaque>))))) |}];
   (* Receiving a response allows us to send another request. *)
   Rate_limiter.notify_response
@@ -96,7 +96,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 0)
              (reset_time (1970-01-01 00:10:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   (* Receiving a response for the same reset period will not increase our limit remaining. *)
   Rate_limiter.notify_response
@@ -113,7 +112,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 0)
              (reset_time (1970-01-01 00:10:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   (* Moving to the next period increases our remaining limit. *)
   Rate_limiter.notify_response
@@ -130,7 +128,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 10)
              (reset_time (1970-01-01 00:20:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   (* Exhausting the remaining limit causes us to be not-ready. *)
   let%bind () =
@@ -153,7 +150,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 0)
              (reset_time (1970-01-01 00:20:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   let ready_deferred = Rate_limiter.permit_request rate_limiter in
   [%expect {| |}];
@@ -171,7 +167,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 995)
              (reset_time (1970-01-01 00:30:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   (* Advancing past the reset time before we receive a response does not result
      in a double reset. *)
@@ -191,7 +186,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 0)
              (reset_time (1970-01-01 00:30:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 30) in
   print ();
@@ -205,7 +199,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 0)
              (reset_time (1970-01-01 00:30:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   let%bind () = Rate_limiter.permit_request rate_limiter in
   print ();
@@ -219,7 +212,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 995)
              (reset_time (1970-01-01 00:40:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   Rate_limiter.notify_response
     rate_limiter
@@ -235,7 +227,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 995)
              (reset_time (1970-01-01 00:40:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 31) in
   print ();
@@ -249,7 +240,6 @@ let%expect_test _ =
            Consuming_rate_limit (
              (remaining_api_calls 995)
              (reset_time (1970-01-01 00:40:00.000000000Z)))))
-         (updated (has_any_waiters false))
          (time_source <opaque>))))) |}];
   return ()
 ;;

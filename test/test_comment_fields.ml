@@ -27,7 +27,8 @@ let%expect_test "comment_fields" =
         Set.symmetric_diff keys_from_comment_page keys_from_info_page |> Sequence.to_list
       in
       print_s [%sexp (diff : (string, string) Either.t list)];
-      [%expect {|
+      [%expect
+        {|
         ("Rate limit is resetting"(old_remaining_api_calls 995))
         ((First depth)) |}];
       print_s [%sexp (Thing.Comment.depth first_comment : int option)];
