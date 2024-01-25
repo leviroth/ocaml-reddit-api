@@ -1,6 +1,6 @@
 open! Core
 open! Async
-module Synchronous_rate_limiter = Reddit_api_kernel.Rate_limiter
+module Synchronous_rate_limiter = Reddit_api_kernel.Synchronous_rate_limiter
 
 type t =
   { mutable state : Synchronous_rate_limiter.t

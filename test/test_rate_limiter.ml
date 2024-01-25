@@ -50,7 +50,7 @@ let%expect_test _ =
   let time_source = Time_source.create ~now:(00 ^: 00) () in
   let rate_limiter =
     Reddit_api_async.Rate_limiter.of_synchronous
-      Reddit_api_kernel.Rate_limiter.by_headers
+      Reddit_api_kernel.Synchronous_rate_limiter.by_headers
       (Time_source.read_only time_source)
   in
   let print () =

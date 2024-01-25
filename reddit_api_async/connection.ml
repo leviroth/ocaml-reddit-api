@@ -1,8 +1,6 @@
 open! Core
 open! Async
-module Rate_limiter' = Rate_limiter
 open Reddit_api_kernel
-module Rate_limiter = Rate_limiter'
 
 module Credentials = struct
   module Password = struct
@@ -385,7 +383,6 @@ type t = T : (module T with type t = 't) * 't -> t
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
 let all_rate_limiters () =
-  let module Synchronous_rate_limiter = Reddit_api_kernel.Rate_limiter in
   Synchronous_rate_limiter.combine
     [ Synchronous_rate_limiter.by_headers
     ; Synchronous_rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
