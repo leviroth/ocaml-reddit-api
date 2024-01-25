@@ -9,9 +9,9 @@ end
 
 type t [@@deriving sexp_of]
 
-val by_headers : unit -> t
+val by_headers : t
 val with_minimum_delay : delay:Time_ns.Span.t -> t
 val combine : t list -> t
 val wait_until : t -> When_to_send.t
-val sent_request_unchecked : t -> now:Time_ns.t -> unit
-val received_response : t -> Cohttp.Response.t -> unit
+val sent_request_unchecked : t -> now:Time_ns.t -> t
+val received_response : t -> Cohttp.Response.t -> t

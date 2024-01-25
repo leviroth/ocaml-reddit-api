@@ -50,7 +50,7 @@ let%expect_test _ =
   let time_source = Time_source.create ~now:(00 ^: 00) () in
   let rate_limiter =
     Reddit_api_async.Rate_limiter.of_synchronous
-      (Reddit_api_kernel.Rate_limiter.by_headers ())
+      Reddit_api_kernel.Rate_limiter.by_headers
       (Time_source.read_only time_source)
   in
   let print () =
@@ -96,7 +96,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 1)
-             (reset_time (1970-01-01 00:10:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:10:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   let%bind () = Rate_limiter.permit_request rate_limiter in
@@ -110,7 +110,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 0)
-             (reset_time (1970-01-01 00:10:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:10:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   (* Receiving a response for the same reset period will not increase our limit remaining. *)
@@ -127,7 +127,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 0)
-             (reset_time (1970-01-01 00:10:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:10:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   (* Moving to the next period increases our remaining limit. *)
@@ -145,7 +145,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 10)
-             (reset_time (1970-01-01 00:20:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:20:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   (* Exhausting the remaining limit causes us to be not-ready. *)
@@ -166,7 +166,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 0)
-             (reset_time (1970-01-01 00:20:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:20:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   let ready_deferred = Rate_limiter.permit_request rate_limiter in
@@ -184,7 +184,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 995)
-             (reset_time (1970-01-01 00:30:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:30:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   (* Advancing past the reset time before we receive a response does not result
@@ -204,7 +204,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 0)
-             (reset_time (1970-01-01 00:30:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:30:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 30) in
@@ -218,7 +218,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 0)
-             (reset_time (1970-01-01 00:30:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:30:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   let%bind () = Rate_limiter.permit_request rate_limiter in
@@ -232,7 +232,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 995)
-             (reset_time (1970-01-01 00:40:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:40:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   Rate_limiter.notify_response
@@ -248,7 +248,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 995)
-             (reset_time (1970-01-01 00:40:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:40:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   let%bind () = Time_source.advance_by_alarms time_source ~to_:(00 ^: 31) in
@@ -262,7 +262,7 @@ let%expect_test _ =
          By_headers (
            Consuming_rate_limit (
              (remaining_api_calls 995)
-             (reset_time (1970-01-01 00:40:00.000000000Z))))))
+             (reset_time          "1970-01-01 00:40:00Z")))))
        (response_received (has_any_waiters false))
        (time_source <opaque>)))) |}];
   return ()

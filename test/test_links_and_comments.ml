@@ -27,7 +27,7 @@ let%expect_test "unsave" =
       let%bind () = Connection.call_exn connection (Endpoint.unsave ~id) in
       (* Unsave is idempotent *)
       let%bind () = Connection.call_exn connection (Endpoint.unsave ~id) in
-      [%expect {| ("Rate limit is resetting"(old_remaining_api_calls 995)) |}];
+      [%expect {| |}];
       return ())
 ;;
 
@@ -41,7 +41,7 @@ let%expect_test "send_replies" =
       let%bind () =
         Connection.call_exn connection (Endpoint.send_replies ~id ~enabled:false)
       in
-      [%expect {| ("Rate limit is resetting"(old_remaining_api_calls 995)) |}];
+      [%expect {| |}];
       return ())
 ;;
 
@@ -54,7 +54,7 @@ let%expect_test "set_contest_mode" =
       let%bind () =
         Connection.call_exn connection (Endpoint.set_contest_mode ~link ~enabled:false)
       in
-      [%expect {| ("Rate limit is resetting"(old_remaining_api_calls 995)) |}];
+      [%expect {| |}];
       return ())
 ;;
 
@@ -86,9 +86,6 @@ let%expect_test "vote" =
       let%bind () =
         Connection.call_exn connection (Endpoint.vote () ~target ~direction:Up)
       in
-      [%expect
-        {|
-        ("Rate limit is resetting"(old_remaining_api_calls 995))
-        ("Rate limit is resetting"(old_remaining_api_calls 995)) |}];
+      [%expect {| |}];
       return ())
 ;;

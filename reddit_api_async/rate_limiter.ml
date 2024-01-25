@@ -3,7 +3,7 @@ open! Async
 module Synchronous_rate_limiter = Reddit_api_kernel.Rate_limiter
 
 type t =
-  { state : Synchronous_rate_limiter.t
+  { mutable state : Synchronous_rate_limiter.t
   ; response_received : (unit, read_write) Bvar.t
   ; time_source : (Time_source.t[@sexp.opaque])
   }
@@ -43,13 +43,14 @@ let permit_request t =
       match is_ready t with
       | false -> return (`Repeat ())
       | true ->
-        Synchronous_rate_limiter.sent_request_unchecked
-          t.state
-          ~now:(Time_source.now t.time_source);
+        t.state
+          <- Synchronous_rate_limiter.sent_request_unchecked
+               t.state
+               ~now:(Time_source.now t.time_source);
         return (`Finished ()))
 ;;
 
 let notify_response t response =
-  Synchronous_rate_limiter.received_response t.state response;
+  t.state <- Synchronous_rate_limiter.received_response t.state response;
   Bvar.broadcast t.response_received ()
 ;;

@@ -19,6 +19,6 @@ let%expect_test "set_subreddit_sticky" =
           connection
           (Endpoint.set_subreddit_sticky () ~link ~sticky_state:Unsticky)
       in
-      [%expect {| ("Rate limit is resetting"(old_remaining_api_calls 995)) |}];
+      [%expect {| |}];
       return ())
 ;;

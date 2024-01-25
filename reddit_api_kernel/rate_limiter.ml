@@ -12,20 +12,26 @@ module type Basic = sig
 
   val kind : string
   val wait_until : t -> When_to_send.t
-  val sent_request_unchecked : t -> now:Time_ns.t -> unit
-  val received_response : t -> Cohttp.Response.t -> unit
+  val sent_request_unchecked : t -> now:Time_ns.t -> t
+  val received_response : t -> Cohttp.Response.t -> t
 end
 
 type t = T : (module Basic with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module S), t)) : Sexp.t = List [ Atom S.kind; [%sexp_of: S.t] t ]
 let wait_until (T ((module S), t)) = S.wait_until t
-let sent_request_unchecked (T ((module S), t)) = S.sent_request_unchecked t
-let received_response (T ((module S), t)) = S.received_response t
+
+let sent_request_unchecked (T (((module M) as m), t)) ~now =
+  T (m, M.sent_request_unchecked t ~now)
+;;
+
+let received_response (T (((module M) as m), t)) response =
+  T (m, M.received_response t response)
+;;
 
 module With_minimum_delay = struct
   type t =
-    { mutable last_request : Time_ns.Alternate_sexp.t option
+    { last_request : Time_ns.Alternate_sexp.t option
     ; delay : Time_ns.Span.t
     }
   [@@deriving sexp_of]
@@ -39,8 +45,8 @@ module With_minimum_delay = struct
     | Some time -> After (Time_ns.add time t.delay)
   ;;
 
-  let sent_request_unchecked t ~now = t.last_request <- Some (Time_ns.add now t.delay)
-  let received_response (_ : t) (_ : Cohttp.Response.t) = ()
+  let sent_request_unchecked t ~now = { t with last_request = Some now }
+  let received_response t (_ : Cohttp.Response.t) = t
 end
 
 module By_headers = struct
@@ -158,20 +164,14 @@ module By_headers = struct
     ;;
   end
 
-  module State = struct
-    type t =
-      | Created
-      | Waiting_on_first_request
-      | Consuming_rate_limit of Server_side_info.t
-    [@@deriving sexp_of]
-  end
+  type t =
+    | Created
+    | Waiting_on_first_request
+    | Consuming_rate_limit of Server_side_info.t
+  [@@deriving sexp_of]
 
-  type t = State.t ref [@@deriving sexp_of]
-
-  let create () = ref State.Created
-
-  let wait_until (t : t) : When_to_send.t =
-    match !t with
+  let wait_until t : When_to_send.t =
+    match t with
     | Created -> Now
     | Waiting_on_first_request -> Check_after_receiving_response
     | Consuming_rate_limit { remaining_api_calls; reset_time } ->
@@ -180,52 +180,45 @@ module By_headers = struct
       | false -> After reset_time)
   ;;
 
-  let sent_request_unchecked (t : t) ~now =
-    let new_state : State.t =
-      match !t with
-      | Created -> Waiting_on_first_request
-      | Waiting_on_first_request ->
-        raise_s
-          [%message
-            "[sent_request_unchecked] illegally called in [Waiting_on_first_request] \
-             state."]
-      | Consuming_rate_limit server_side_info ->
-        let base_server_side_info =
-          match Time_ns.( <= ) server_side_info.reset_time now with
-          | false -> server_side_info
-          | true -> Server_side_info.state_at_start_of_window ~representative_time:now
-        in
-        Consuming_rate_limit
-          { base_server_side_info with
-            remaining_api_calls = base_server_side_info.remaining_api_calls - 1
-          }
-    in
-    t := new_state
+  let sent_request_unchecked t ~now =
+    match t with
+    | Created -> Waiting_on_first_request
+    | Waiting_on_first_request ->
+      raise_s
+        [%message
+          "[sent_request_unchecked] illegally called in [Waiting_on_first_request] state."]
+    | Consuming_rate_limit server_side_info ->
+      let base_server_side_info =
+        match Time_ns.( <= ) server_side_info.reset_time now with
+        | false -> server_side_info
+        | true -> Server_side_info.state_at_start_of_window ~representative_time:now
+      in
+      Consuming_rate_limit
+        { base_server_side_info with
+          remaining_api_calls = base_server_side_info.remaining_api_calls - 1
+        }
   ;;
 
-  let received_response (t : t) response =
+  let received_response t response =
     let headers = Cohttp.Response.headers response in
-    let new_state : State.t =
-      match Server_side_info.t_of_headers headers with
-      | None ->
-        (* We assume that, in the absence of ratelimit headers, we must have hit
+    match Server_side_info.t_of_headers headers with
+    | None ->
+      (* We assume that, in the absence of ratelimit headers, we must have hit
          some authentication failure. As a heuristic to avoid getting stuck, we
          immediately reset [t.ready]. *)
-        Created
-      | Some response_server_side_info ->
-        (match !t with
-        | Created ->
-          raise_s [%message "[received_response] called before [sent_request_unchecked]."]
-        | Waiting_on_first_request -> Consuming_rate_limit response_server_side_info
-        | Consuming_rate_limit server_side_info ->
-          Consuming_rate_limit
-            (Server_side_info.freshest server_side_info response_server_side_info))
-    in
-    t := new_state
+      Created
+    | Some response_server_side_info ->
+      (match t with
+      | Created ->
+        raise_s [%message "[received_response] called before [sent_request_unchecked]."]
+      | Waiting_on_first_request -> Consuming_rate_limit response_server_side_info
+      | Consuming_rate_limit server_side_info ->
+        Consuming_rate_limit
+          (Server_side_info.freshest server_side_info response_server_side_info))
   ;;
 end
 
-let by_headers () = T ((module By_headers), By_headers.create ())
+let by_headers = T ((module By_headers), Created)
 
 let with_minimum_delay ~delay =
   T ((module With_minimum_delay), With_minimum_delay.create ~delay)
@@ -251,10 +244,10 @@ module Combined = struct
     | None -> Now
   ;;
 
-  let sent_request_unchecked ts ~now = List.iter ts ~f:(sent_request_unchecked ~now)
+  let sent_request_unchecked ts ~now = List.map ts ~f:(sent_request_unchecked ~now)
 
   let received_response ts response =
-    List.iter ts ~f:(fun t -> received_response t response)
+    List.map ts ~f:(fun t -> received_response t response)
   ;;
 end
 
