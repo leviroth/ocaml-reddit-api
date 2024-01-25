@@ -1,6 +1,8 @@
 open! Core
 open! Async
+module Rate_limiter' = Rate_limiter
 open Reddit_api_kernel
+module Rate_limiter = Rate_limiter'
 
 module Credentials = struct
   module Password = struct
@@ -382,20 +384,19 @@ type t = T : (module T with type t = 't) * 't -> t
 
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
-let all_rate_limiters ~time_source =
-  Rate_limiter.combine
-    [ Rate_limiter.by_headers ~time_source
-    ; Rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100) ~time_source
+let all_rate_limiters () =
+  let module Synchronous_rate_limiter = Reddit_api_kernel.Rate_limiter in
+  Synchronous_rate_limiter.combine
+    [ Synchronous_rate_limiter.by_headers ()
+    ; Synchronous_rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
     ]
 ;;
 
 let create credentials ~user_agent =
-  T
-    ( (module Local)
-    , Local.create
-        credentials
-        ~user_agent
-        ~rate_limiter:(all_rate_limiters ~time_source:(Time_source.wall_clock ())) )
+  let rate_limiter =
+    Rate_limiter.of_synchronous (all_rate_limiters ()) (Time_source.wall_clock ())
+  in
+  T ((module Local), Local.create credentials ~user_agent ~rate_limiter)
 ;;
 
 let get ?sequence (T ((module T), t)) = T.get ?sequence t
@@ -869,6 +870,9 @@ module For_testing = struct
         | true -> reading filename placeholders
         | false -> recording filename placeholders
       in
+      let rate_limiter =
+        Rate_limiter.of_synchronous (all_rate_limiters ()) Cassette.time_source
+      in
       let connection =
         T
           ( (module Local)
@@ -876,7 +880,7 @@ module For_testing = struct
               (module Cassette)
               credentials
               ~time_source:Cassette.time_source
-              ~rate_limiter:(all_rate_limiters ~time_source:Cassette.time_source) )
+              ~rate_limiter )
       in
       Monitor.protect
         (fun () -> f connection)
