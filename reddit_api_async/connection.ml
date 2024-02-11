@@ -383,15 +383,15 @@ type t = T : (module T with type t = 't) * 't -> t
 let sexp_of_t (T ((module T), t)) = T.sexp_of_t t
 
 let all_rate_limiters =
-  Synchronous_rate_limiter.combine
-    [ Synchronous_rate_limiter.by_headers
-    ; Synchronous_rate_limiter.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
+  Rate_limiter_state_machine.combine
+    [ Rate_limiter_state_machine.by_headers
+    ; Rate_limiter_state_machine.with_minimum_delay ~delay:(Time_ns.Span.of_int_ms 100)
     ]
 ;;
 
 let create credentials ~user_agent =
   let rate_limiter =
-    Rate_limiter.of_synchronous all_rate_limiters (Time_source.wall_clock ())
+    Rate_limiter.of_state_machine all_rate_limiters (Time_source.wall_clock ())
   in
   T ((module Local), Local.create credentials ~user_agent ~rate_limiter)
 ;;
@@ -868,7 +868,7 @@ module For_testing = struct
         | false -> recording filename placeholders
       in
       let rate_limiter =
-        Rate_limiter.of_synchronous all_rate_limiters Cassette.time_source
+        Rate_limiter.of_state_machine all_rate_limiters Cassette.time_source
       in
       let connection =
         T

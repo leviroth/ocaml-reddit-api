@@ -1,22 +1,22 @@
 open! Core
 open! Async
-module Synchronous_rate_limiter = Reddit_api_kernel.Synchronous_rate_limiter
+module Rate_limiter_state_machine = Reddit_api_kernel.Rate_limiter_state_machine
 
 type t =
-  { mutable state : Synchronous_rate_limiter.t
+  { mutable state : Rate_limiter_state_machine.t
   ; response_received : (unit, read_write) Bvar.t
   ; time_source : (Time_source.t[@sexp.opaque])
   }
 [@@deriving sexp_of]
 
-let of_synchronous state time_source =
+let of_state_machine state time_source =
   let response_received = Bvar.create () in
   { state; response_received; time_source }
 ;;
 
 let is_ready t =
   let now = Time_source.now t.time_source in
-  match Synchronous_rate_limiter.wait_until t.state with
+  match Rate_limiter_state_machine.wait_until t.state with
   | Now -> true
   | Check_after_receiving_response -> false
   | After time -> Time_ns.( >= ) now time
@@ -24,7 +24,7 @@ let is_ready t =
 
 let wait_until_ready t =
   Deferred.repeat_until_finished () (fun () ->
-      match Synchronous_rate_limiter.wait_until t.state with
+      match Rate_limiter_state_machine.wait_until t.state with
       | Now -> return (`Finished ())
       | After time ->
         (match Time_ns.( >= ) (Time_source.now t.time_source) time with
@@ -44,13 +44,13 @@ let permit_request t =
       | false -> return (`Repeat ())
       | true ->
         t.state
-          <- Synchronous_rate_limiter.sent_request_unchecked
+          <- Rate_limiter_state_machine.sent_request_unchecked
                t.state
                ~now:(Time_source.now t.time_source);
         return (`Finished ()))
 ;;
 
 let notify_response t response =
-  t.state <- Synchronous_rate_limiter.received_response t.state response;
+  t.state <- Rate_limiter_state_machine.received_response t.state response;
   Bvar.broadcast t.response_received ()
 ;;
