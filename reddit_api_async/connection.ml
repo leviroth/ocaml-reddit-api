@@ -97,7 +97,7 @@ module Local = struct
       type t =
         | No_outstanding_request of Access_token.t option
         | Outstanding_request of
-            (Access_token.t, Access_token_request_error.t) Result.t Ivar.t
+            (Access_token.t, Access_token_request_error.t) Result.t Deferred.t
       [@@deriving sexp_of]
     end
 
@@ -177,7 +177,7 @@ module Local = struct
     let access_token t ~cohttp_client_wrapper ~now =
       let get_token () =
         let ivar = Ivar.create () in
-        t.access_token <- Outstanding_request ivar;
+        t.access_token <- Outstanding_request (Ivar.read ivar);
         let%bind result = get_token cohttp_client_wrapper t.credentials in
         t.access_token <- No_outstanding_request (Result.ok result);
         Ivar.fill ivar result;
@@ -185,7 +185,7 @@ module Local = struct
       in
       let%bind result =
         match t.access_token with
-        | Outstanding_request ivar -> Ivar.read ivar
+        | Outstanding_request deferred -> deferred
         | No_outstanding_request None -> get_token ()
         | No_outstanding_request (Some access_token) ->
           (match Access_token.is_almost_expired access_token ~now with
