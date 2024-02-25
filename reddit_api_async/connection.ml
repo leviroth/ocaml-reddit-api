@@ -113,61 +113,67 @@ module Local = struct
       { credentials; access_token = No_outstanding_request None }
     ;;
 
-    let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) credentials =
-      match%bind
-        let open Deferred.Result.Let_syntax in
-        let%bind response, body =
-          let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
-          let headers = Credentials.auth_header credentials in
-          let params = Credentials.access_token_request_params credentials in
-          Cohttp_client_wrapper.post_form ~headers uri ~params
-        in
-        let%bind body_string =
-          Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
-        in
-        return (response, body_string)
-      with
+    let get_token_raw_response
+        (module Cohttp_client_wrapper : Cohttp_client_wrapper)
+        credentials
+      =
+      let open Deferred.Result.Let_syntax in
+      let%bind response, body =
+        let uri = Uri.of_string "https://www.reddit.com/api/v1/access_token" in
+        let headers = Credentials.auth_header credentials in
+        let params = Credentials.access_token_request_params credentials in
+        Cohttp_client_wrapper.post_form ~headers uri ~params
+      in
+      let%bind body_string =
+        Monitor.try_with (fun () -> Cohttp_async.Body.to_string body)
+      in
+      return (response, body_string)
+    ;;
+
+    let access_token_of_response response body_string
+        : (Access_token.t, Access_token_request_error.t) Result.t
+      =
+      match Cohttp.Response.status response with
+      | `Bad_request | `Unauthorized ->
+        Error
+          (Token_request_rejected { response; body = Cohttp.Body.of_string body_string })
+      | `OK ->
+        (match Jsonaf.parse body_string with
+        | Error error ->
+          Error
+            (Json_parsing_error
+               { error; response; body = Cohttp.Body.of_string body_string })
+        | Ok response_json ->
+          let token =
+            Jsonaf.member_exn "access_token" response_json |> Jsonaf.string_exn
+          in
+          let expiration =
+            let additional_seconds =
+              Jsonaf.member_exn "expires_in" response_json
+              |> Jsonaf.float_exn
+              |> Time_ns.Span.of_sec
+            in
+            let current_time =
+              match Cohttp.Header.get response.headers "Date" with
+              | Some date_string -> Util.parse_http_header_date date_string
+              | None ->
+                raise_s
+                  [%message
+                    "Could not determine auth token expiration time: the response did \
+                     not include a Date header"]
+            in
+            Time_ns.add current_time additional_seconds
+          in
+          Ok { token; expiration })
+      | _ ->
+        Error (Other_http_error { response; body = Cohttp.Body.of_string body_string })
+    ;;
+
+    let get_token cohttp_client_wrapper credentials =
+      match%bind get_token_raw_response cohttp_client_wrapper credentials with
       | Error exn -> return (Error (Access_token_request_error.Cohttp_raised exn))
       | Ok (response, body_string) ->
-        let result : (Access_token.t, Access_token_request_error.t) Result.t =
-          match Cohttp.Response.status response with
-          | `Bad_request | `Unauthorized ->
-            Error
-              (Token_request_rejected
-                 { response; body = Cohttp.Body.of_string body_string })
-          | `OK ->
-            (match Jsonaf.parse body_string with
-            | Error error ->
-              Error
-                (Json_parsing_error
-                   { error; response; body = Cohttp.Body.of_string body_string })
-            | Ok response_json ->
-              let token =
-                Jsonaf.member_exn "access_token" response_json |> Jsonaf.string_exn
-              in
-              let expiration =
-                let additional_seconds =
-                  Jsonaf.member_exn "expires_in" response_json
-                  |> Jsonaf.float_exn
-                  |> Time_ns.Span.of_sec
-                in
-                let current_time =
-                  match Cohttp.Header.get response.headers "Date" with
-                  | Some date_string -> Util.parse_http_header_date date_string
-                  | None ->
-                    raise_s
-                      [%message
-                        "Could not determine auth token expiration time: the response \
-                         did not include a Date header"]
-                in
-                Time_ns.add current_time additional_seconds
-              in
-              Ok { token; expiration })
-          | _ ->
-            Error
-              (Other_http_error { response; body = Cohttp.Body.of_string body_string })
-        in
-        return result
+        return (access_token_of_response response body_string)
     ;;
 
     let access_token t ~cohttp_client_wrapper ~time_source =
