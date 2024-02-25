@@ -113,11 +113,7 @@ module Local = struct
       { credentials; access_token = No_outstanding_request None }
     ;;
 
-    let get_token
-        (module Cohttp_client_wrapper : Cohttp_client_wrapper)
-        credentials
-        ~time_source
-      =
+    let get_token (module Cohttp_client_wrapper : Cohttp_client_wrapper) credentials =
       match%bind
         let open Deferred.Result.Let_syntax in
         let%bind response, body =
@@ -155,7 +151,16 @@ module Local = struct
                   |> Jsonaf.float_exn
                   |> Time_ns.Span.of_sec
                 in
-                Time_ns.add (Time_source.now time_source) additional_seconds
+                let current_time =
+                  match Cohttp.Header.get response.headers "Date" with
+                  | Some date_string -> Util.parse_http_header_date date_string
+                  | None ->
+                    raise_s
+                      [%message
+                        "Could not determine auth token expiration time: the response \
+                         did not include a Date header"]
+                in
+                Time_ns.add current_time additional_seconds
               in
               Ok { token; expiration })
           | _ ->
@@ -169,7 +174,7 @@ module Local = struct
       let get_token () =
         let ivar = Ivar.create () in
         t.access_token <- Outstanding_request ivar;
-        let%bind result = get_token cohttp_client_wrapper t.credentials ~time_source in
+        let%bind result = get_token cohttp_client_wrapper t.credentials in
         t.access_token <- No_outstanding_request (Result.ok result);
         Ivar.fill ivar result;
         return result

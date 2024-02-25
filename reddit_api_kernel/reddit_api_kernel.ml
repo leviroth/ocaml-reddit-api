@@ -22,4 +22,5 @@ module Thing_kind = Thing_kind
 module Uri_with_string_sexp = Uri_with_string_sexp
 module User_list = User_list
 module Username = Username
+module Util = Util
 module Wiki_page = Wiki_page

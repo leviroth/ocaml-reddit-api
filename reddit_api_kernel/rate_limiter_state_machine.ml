@@ -84,35 +84,6 @@ module By_headers = struct
           "2020-11-30 18:48:00Z" |}]
     ;;
 
-    let parse_http_header_date date_string =
-      Scanf.sscanf
-        date_string
-        "%3s, %2d %3s %4d %2d:%2d:%2d GMT"
-        (fun day_of_week d month y hr min sec ->
-          let day_of_week = Day_of_week.of_string day_of_week in
-          let month = Month.of_string month in
-          let date = Date.create_exn ~y ~m:month ~d in
-          (match Day_of_week.equal day_of_week (Date.day_of_week date) with
-          | true -> ()
-          | false ->
-            raise_s
-              [%message
-                "HTTP response: Day of week did not match parsed date"
-                  (day_of_week : Day_of_week.t)
-                  (date : Date.t)
-                  (date_string : string)]);
-          let ofday = Time_ns.Ofday.create ~hr ~min ~sec () in
-          Time_ns.of_date_ofday date ofday ~zone:Time_float.Zone.utc)
-    ;;
-
-    let%expect_test _ =
-      print_s
-        [%sexp
-          (parse_http_header_date "Wed, 21 Oct 2015 07:28:00 GMT"
-            : Time_ns.Alternate_sexp.t)];
-      [%expect {| "2015-10-21 07:28:00Z" |}]
-    ;;
-
     let t_of_headers headers =
       let open Option.Let_syntax in
       let get_header header = Cohttp.Header.get headers header in
@@ -120,7 +91,7 @@ module By_headers = struct
         get_header "X-Ratelimit-Remaining" >>| Float.of_string >>| Int.of_float
       in
       let%bind reset_time =
-        let%bind server_time = get_header "Date" >>| parse_http_header_date in
+        let%bind server_time = get_header "Date" >>| Util.parse_http_header_date in
         let%bind relative_reset_time =
           get_header "X-Ratelimit-Reset" >>| Int.of_string >>| Time_ns.Span.of_int_sec
         in
