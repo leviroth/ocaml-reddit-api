@@ -15,7 +15,7 @@ let with_cassette cassette_name ~f =
   let credentials =
     match Sys.getenv "CREDENTIALS" with
     | Some credential_path ->
-      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Connection.Credentials.t]
+      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Credentials.t]
     | None ->
       Password
         { username = "TEST_USERNAME"

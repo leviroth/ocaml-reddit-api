@@ -31,6 +31,7 @@
 - Revamp rate limiter. The rate limiter is now built on top of a synchronous
   state machine with a small async wrapper. We eliminate various async
   background jobs.
+- Move `Credentials` from `Reddit_api_async.Connection` to `Reddit_api_kernel`.
 
 ## Removed
 

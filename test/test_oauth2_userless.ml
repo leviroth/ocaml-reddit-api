@@ -6,7 +6,7 @@ let with_cassette cassette_name ~f ~is_confidential =
   let credentials =
     match Sys.getenv "CREDENTIALS_USERLESS" with
     | Some credential_path ->
-      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Connection.Credentials.t]
+      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Credentials.t]
     | None ->
       (match is_confidential with
       | true ->
