@@ -165,7 +165,7 @@ module Local = struct
         return result
     ;;
 
-    let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
+    let access_token t ~cohttp_client_wrapper ~time_source =
       let get_token () =
         let ivar = Ivar.create () in
         t.access_token <- Outstanding_request ivar;
@@ -186,8 +186,7 @@ module Local = struct
       match result with
       | Error _ as error -> return error
       | Ok { token; _ } ->
-        return
-          (Ok (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)))
+        return (Ok (Cohttp.Header.init_with "Authorization" (sprintf "bearer %s" token)))
     ;;
   end
 
@@ -232,17 +231,12 @@ module Local = struct
       ?sequence
       { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
       ~f
-      ~headers:initial_headers
     =
     let run () =
       repeat_until_finished_with_result () (fun () ->
           let open Deferred.Result.Let_syntax in
           let%bind headers =
-            Auth.add_access_token
-              auth
-              ~headers:initial_headers
-              ~cohttp_client_wrapper
-              ~time_source
+            Auth.access_token auth ~cohttp_client_wrapper ~time_source
             |> Deferred.Result.map_error ~f:(fun error ->
                    Error.Access_token_request_error error)
           in
@@ -273,16 +267,14 @@ module Local = struct
 
   let post_form ?sequence t uri ~params =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
-    let headers = Cohttp.Header.init () in
-    handle_request ?sequence t ~headers ~f:(fun headers ->
+    handle_request ?sequence t ~f:(fun headers ->
         Cohttp_client_wrapper.post_form ~headers ~params uri
         |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
 
   let get ?sequence t uri =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
-    let headers = Cohttp.Header.init () in
-    handle_request ?sequence t ~headers ~f:(fun headers ->
+    handle_request ?sequence t ~f:(fun headers ->
         Cohttp_client_wrapper.get ~headers uri
         |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
