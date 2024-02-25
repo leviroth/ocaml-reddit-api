@@ -87,10 +87,8 @@ module Local = struct
         }
       [@@deriving sexp]
 
-      let is_almost_expired { expiration; _ } ~time_source =
-        let time_with_padding =
-          Time_ns.add (Time_source.now time_source) (Time_ns.Span.of_int_sec 10)
-        in
+      let is_almost_expired { expiration; _ } ~now =
+        let time_with_padding = Time_ns.add now (Time_ns.Span.of_int_sec 10) in
         Time_ns.( <= ) expiration time_with_padding
       ;;
     end
@@ -176,7 +174,7 @@ module Local = struct
         return (access_token_of_response response body_string)
     ;;
 
-    let access_token t ~cohttp_client_wrapper ~time_source =
+    let access_token t ~cohttp_client_wrapper ~now =
       let get_token () =
         let ivar = Ivar.create () in
         t.access_token <- Outstanding_request ivar;
@@ -190,7 +188,7 @@ module Local = struct
         | Outstanding_request ivar -> Ivar.read ivar
         | No_outstanding_request None -> get_token ()
         | No_outstanding_request (Some access_token) ->
-          (match Access_token.is_almost_expired access_token ~time_source with
+          (match Access_token.is_almost_expired access_token ~now with
           | false -> return (Ok access_token)
           | true -> get_token ())
       in
@@ -247,7 +245,8 @@ module Local = struct
       repeat_until_finished_with_result () (fun () ->
           let open Deferred.Result.Let_syntax in
           let%bind headers =
-            Auth.access_token auth ~cohttp_client_wrapper ~time_source
+            let now = Time_source.now time_source in
+            Auth.access_token auth ~cohttp_client_wrapper ~now
             |> Deferred.Result.map_error ~f:(fun error ->
                    Error.Access_token_request_error error)
           in
