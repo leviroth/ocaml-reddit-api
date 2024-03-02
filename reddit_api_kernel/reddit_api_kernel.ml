@@ -8,6 +8,7 @@ module Listing = Listing
 module Mod_action = Mod_action
 module Moderator_report = Moderator_report
 module Modmail = Modmail
+module Rate_limiter_state_machine = Rate_limiter_state_machine
 module Relationship = Relationship
 module Stylesheet = Stylesheet
 module Submit_text = Submit_text

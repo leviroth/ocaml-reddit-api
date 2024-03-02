@@ -3,9 +3,11 @@ open! Async
 
 type t [@@deriving sexp_of]
 
-val by_headers : time_source:Time_source.t -> t
-val with_minimum_delay : time_source:Time_source.t -> delay:Time_ns.Span.t -> t
-val combine : t list -> t
+val of_state_machine
+  :  Reddit_api_kernel.Rate_limiter_state_machine.t
+  -> Time_source.t
+  -> t
+
 val permit_request : t -> unit Deferred.t
 val notify_response : t -> Cohttp.Response.t -> unit
 val is_ready : t -> bool

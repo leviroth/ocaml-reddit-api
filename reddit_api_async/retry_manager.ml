@@ -127,10 +127,10 @@ let check_server t =
 
 let on_transient_error t =
   match t.state with
-  | Waiting_for_issue_resolution _ -> ()
+  | Waiting_for_issue_resolution _ -> return ()
   | Working_normally ->
     t.state <- Waiting_for_issue_resolution { finished = Ivar.create () };
-    don't_wait_for (check_server t)
+    check_server t
 ;;
 
 let rec call t endpoint =
@@ -151,6 +151,6 @@ let rec call t endpoint =
           "Transient error"
           (request : Endpoint.Request.t)
           (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
-      on_transient_error t;
+      let%bind () = on_transient_error t in
       call t endpoint)
 ;;

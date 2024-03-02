@@ -17,7 +17,6 @@
   - The `Log.t` initially has no output, but can have its output set by the
     application.
 - Log when `Retry_manager` retries.
-- Log, at debug level, when rate limit is exhausted and when it resets.
 - Rename `Non_transient_error` to `Permanent_error`.
 - Rename `Json_object.Util.time` => `time_sec_since_epoch`.
 - Require Jane Street libraries >= v0.16.0.
@@ -29,6 +28,9 @@
 - Change `Iter_comments` to return a pipe.
 - Fix a crash when replying to messages by introducing the new
   `Endpoint.reply_to_message`.
+- Revamp rate limiter. The rate limiter is now built on top of a synchronous
+  state machine with a small async wrapper. We eliminate various async
+  background jobs.
 
 ## Removed
 
