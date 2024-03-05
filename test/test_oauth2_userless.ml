@@ -17,7 +17,7 @@ let with_cassette cassette_name ~f ~is_confidential =
           { client_id = "TEST_CLIENT_ID"; device_id = Some "TEST_DEVICE_ID" })
   in
   let filename = "cassettes" ^/ sprintf "%s.sexp" cassette_name in
-  Connection.For_testing.with_cassette filename ~credentials ~f
+  Recording_connection.with_cassette filename ~credentials ~f
 ;;
 
 let%expect_test "userless_confidential" =

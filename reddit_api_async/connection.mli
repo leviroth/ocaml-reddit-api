@@ -103,11 +103,26 @@ module Remote : sig
 end
 
 module For_testing : sig
-  val with_cassette
-    :  Filename.t
-    -> credentials:Credentials.t
-    -> f:(t -> 'a Deferred.t)
-    -> 'a Deferred.t
+  module type Cohttp_client_wrapper = sig
+    val get
+      :  Uri.t
+      -> headers:Cohttp.Header.t
+      -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+
+    val post_form
+      :  Uri.t
+      -> headers:Cohttp.Header.t
+      -> params:(string * string list) list
+      -> (Cohttp.Response.t * Cohttp_async.Body.t, Exn.t) Deferred.Result.t
+  end
+
+  val live_cohttp_client : user_agent:string -> (module Cohttp_client_wrapper)
+
+  val create
+    :  (module Cohttp_client_wrapper)
+    -> Credentials.t
+    -> time_source:Time_source.t
+    -> t
 
   val set_access_token : t -> token:string -> expiration:Time_ns.t -> unit
 end

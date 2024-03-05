@@ -25,7 +25,7 @@ let with_cassette cassette_name ~f =
         }
   in
   let filename = "cassettes" ^/ sprintf "%s.sexp" cassette_name in
-  Connection.For_testing.with_cassette filename ~credentials ~f
+  Recording_connection.with_cassette filename ~credentials ~f
 ;;
 
 let get_link_exn connection id =
