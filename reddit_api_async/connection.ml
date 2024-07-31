@@ -2,6 +2,38 @@ open! Core
 open! Async
 open Reddit_api_kernel
 
+module Metrics = struct
+  let requests_sent =
+    Prometheus.Counter.v
+      "reddit_api_async_requests_sent_total"
+      ~help:"Requests sent to Reddit"
+  ;;
+
+  let access_token_request_errors =
+    Prometheus.Counter.v
+      "reddit_api_async_access_token_refresh_errors_total"
+      ~help:"Errors while fetching an OAuth2 access token"
+  ;;
+
+  let cohttp_exceptions =
+    Prometheus.Counter.v
+      "reddit_api_async_cohttp_exceptions_total"
+      ~help:"Exceptions raised by Cohttp"
+  ;;
+
+  let endpoint_errors =
+    Prometheus.Counter.v
+      "reddit_api_async_endpoint_errors_total"
+      ~help:"Errors encountered when handling responses from Reddit API endpoints"
+  ;;
+
+  let ok_responses =
+    Prometheus.Counter.v
+      "reddit_api_async_ok_responses_total"
+      ~help:"Successful responses from Reddit"
+  ;;
+end
+
 module Credentials = struct
   module Password = struct
     type t =
@@ -412,14 +444,22 @@ let call_raw t ({ request; sequencer = sequence; handle_response = _ } : _ Endpo
 ;;
 
 let call t api =
+  Prometheus.Counter.inc_one Metrics.requests_sent;
   match%bind call_raw t api with
-  | Error (Access_token_request_error _) as error -> return error
+  | Error (Access_token_request_error _) as error ->
+    Prometheus.Counter.inc_one Metrics.access_token_request_errors;
+    return error
   | Error (Endpoint_error exn) ->
+    Prometheus.Counter.inc_one Metrics.cohttp_exceptions;
     return (Error (Error.Endpoint_error (Endpoint.Error.Cohttp_raised exn)))
-  | Ok (response, body) ->
-    api.handle_response (response, body)
-    |> Result.map_error ~f:(fun error -> Error.Endpoint_error error)
-    |> return
+  | Ok response ->
+    (match api.handle_response response with
+    | Ok _ as result ->
+      Prometheus.Counter.inc_one Metrics.ok_responses;
+      return result
+    | Error error ->
+      Prometheus.Counter.inc_one Metrics.endpoint_errors;
+      return (Error (Error.Endpoint_error error)))
 ;;
 
 let call_exn t api =
