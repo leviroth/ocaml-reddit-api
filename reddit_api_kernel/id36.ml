@@ -13,8 +13,8 @@ module M = struct
       match Int63.equal i Int63.zero with
       | true ->
         (match acc with
-        | [] -> "0"
-        | _ -> String.of_char_list acc)
+         | [] -> "0"
+         | _ -> String.of_char_list acc)
       | false ->
         let current_place = Option.value_exn (Int63.to_int Int63.O.(i % base)) in
         let character =
@@ -33,11 +33,11 @@ module M = struct
       let convert_to_offset base_char = Char.to_int c - Char.to_int base_char in
       Int63.of_int
         (match Char.is_alpha c with
-        | true -> convert_to_offset 'a' + 10
-        | false -> convert_to_offset '0')
+         | true -> convert_to_offset 'a' + 10
+         | false -> convert_to_offset '0')
     in
     String.fold t ~init:Int63.zero ~f:(fun acc c ->
-        Int63.O.((acc * base) + convert_char c))
+      Int63.O.((acc * base) + convert_char c))
   ;;
 
   let sexp_of_t t = to_string t |> sexp_of_string

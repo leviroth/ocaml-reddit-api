@@ -4,8 +4,8 @@ module Comment = struct
   include Json_object.Utils
 
   include Json_object.Make_kinded_simple (struct
-    let kind = "t1"
-  end)
+      let kind = "t1"
+    end)
 
   module Type = struct
     type t =
@@ -32,22 +32,21 @@ module Comment = struct
 
   let parent_id =
     required_field "parent_id" (fun json ->
-        let id_string = string json in
-        match Thing.Fullname.of_string id_string with
-        | (`Comment _ | `Link _) as v -> v
-        | _ ->
-          raise_s
-            [%message "Unexpected Inbox.Comment.parent_id kind" (id_string : string)])
+      let id_string = string json in
+      match Thing.Fullname.of_string id_string with
+      | (`Comment _ | `Link _) as v -> v
+      | _ ->
+        raise_s [%message "Unexpected Inbox.Comment.parent_id kind" (id_string : string)])
   ;;
 
   let new_ = required_field "new" bool
 
   let type_ =
     required_field "type" (fun json : Type.t ->
-        match string json with
-        | "post_reply" -> Link_reply
-        | "comment_reply" -> Comment_reply
-        | type_ -> raise_s [%message "Unrecognized Inbox.Comment.t type" (type_ : string)])
+      match string json with
+      | "post_reply" -> Link_reply
+      | "comment_reply" -> Comment_reply
+      | type_ -> raise_s [%message "Unrecognized Inbox.Comment.t type" (type_ : string)])
   ;;
 
   let link_id = required_field "context" (uri >> Thing.Link.Id.of_uri)

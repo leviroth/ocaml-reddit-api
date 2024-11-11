@@ -182,8 +182,8 @@ module Parameters = struct
       | Self body ->
         [ "kind", [ "self" ]
         ; (match body with
-          | Markdown markdown -> "text", [ markdown ]
-          | Richtext_json json -> "richtext_json", [ Jsonaf.to_string json ])
+           | Markdown markdown -> "text", [ markdown ]
+           | Richtext_json json -> "richtext_json", [ Jsonaf.to_string json ])
         ]
       | Crosspost link_id ->
         [ "kind", [ "crosspost" ]
@@ -213,7 +213,7 @@ module Parameters = struct
     type t =
       | Id of
           [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
-          list
+            list
       | Subreddit_name of Subreddit_name.t list
       | Url of Uri_with_string_sexp.t
     [@@deriving sexp]
@@ -297,10 +297,10 @@ module Parameters = struct
     let params_of_t t =
       [ ( "how"
         , [ (match t with
-            | Mod -> "yes"
-            | Admin -> "admin"
-            | Special -> "special"
-            | Undistinguish -> "no")
+             | Mod -> "yes"
+             | Admin -> "admin"
+             | Special -> "special"
+             | Undistinguish -> "no")
           ] )
       ]
     ;;
@@ -317,11 +317,11 @@ module Parameters = struct
     let params_of_t t =
       [ ( "sort"
         , [ (match t with
-            | Relevance -> "relevance"
-            | Hot -> "hot"
-            | Top -> "top"
-            | New -> "new"
-            | Comments -> "comments")
+             | Relevance -> "relevance"
+             | Hot -> "hot"
+             | Top -> "top"
+             | New -> "new"
+             | Comments -> "comments")
           ] )
       ]
     ;;
@@ -356,9 +356,9 @@ module Parameters = struct
     let params_of_t t =
       [ ( "link_type"
         , [ (match t with
-            | Any -> "any"
-            | Link -> "link"
-            | Self -> "self")
+             | Any -> "any"
+             | Link -> "link"
+             | Self -> "self")
           ] )
       ]
     ;;
@@ -595,7 +595,7 @@ let parse_json_response response body =
   let body_string = Cohttp.Body.to_string body in
   Jsonaf.parse body_string
   |> Result.map_error ~f:(fun error ->
-         Error.Json_parsing_error { error; response; body_string })
+    Error.Json_parsing_error { error; response; body_string })
 ;;
 
 let map t ~f =
@@ -654,45 +654,45 @@ let handle_json_response f (response, body) =
       | [] -> Some json
       | field :: rest ->
         (match Jsonaf.member field json with
-        | None -> None
-        | Some value -> find_repeated value rest)
+         | None -> None
+         | Some value -> find_repeated value rest)
     in
     let errors =
       match find_repeated json [ "json"; "errors" ] with
       | None -> None
       | Some list ->
-        (match Jsonaf.list_exn list with
-         | [] -> None
-         | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success)
-          : Json_response_error.t list option)
+        ((match Jsonaf.list_exn list with
+          | [] -> None
+          | errors -> Some (List.map errors ~f:Json_response_error.of_json_http_success))
+         : Json_response_error.t list option)
     in
     (match errors with
-    | Some errors -> Error (Error.Json_response_errors errors)
-    | None -> Ok (f json))
+     | Some errors -> Error (Error.Json_response_errors errors)
+     | None -> Ok (f json))
   | `Bad_request ->
     (match Jsonaf.member "reason" json with
-    | None -> Error (Http_error { response; body })
-    | Some reason ->
-      let error = Jsonaf.string_exn reason in
-      let error_type =
-        Jsonaf.member "error_type" json |> Option.map ~f:Jsonaf.string_exn
-      in
-      let details = Jsonaf.string_exn (Jsonaf.member_exn "explanation" json) in
-      let fields =
-        match Jsonaf.member "fields" json with
-        | None -> []
-        | Some json -> [%of_jsonaf: string list] json
-      in
-      Error (Json_response_errors [ { error_type; error; details; fields } ]))
+     | None -> Error (Http_error { response; body })
+     | Some reason ->
+       let error = Jsonaf.string_exn reason in
+       let error_type =
+         Jsonaf.member "error_type" json |> Option.map ~f:Jsonaf.string_exn
+       in
+       let details = Jsonaf.string_exn (Jsonaf.member_exn "explanation" json) in
+       let fields =
+         match Jsonaf.member "fields" json with
+         | None -> []
+         | Some json -> [%of_jsonaf: string list] json
+       in
+       Error (Json_response_errors [ { error_type; error; details; fields } ]))
 ;;
 
 let assert_no_errors = handle_json_response (const ())
 
 let ignore_empty_object =
   handle_json_response (fun json ->
-      match json with
-      | `Object [] -> ()
-      | _ -> raise_s [%message "Unexpected JSON response" (json : Jsonaf.t)])
+    match json with
+    | `Object [] -> ()
+    | _ -> raise_s [%message "Unexpected JSON response" (json : Jsonaf.t)])
 ;;
 
 let link_or_comment_of_json json =
@@ -715,12 +715,12 @@ let get_subreddit_listing = get_listing [%of_jsonaf: Subreddit.t]
 
 let get_tropy_list =
   handle_json_response (fun json ->
-      match json with
-      | `Object
-          [ ("kind", `String "TrophyList")
-          ; ("data", `Object [ ("trophies", `Array trophies) ])
-          ] -> List.map trophies ~f:[%of_jsonaf: Award.t]
-      | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Jsonaf.t)])
+    match json with
+    | `Object
+        [ ("kind", `String "TrophyList")
+        ; ("data", `Object [ ("trophies", `Array trophies) ])
+        ] -> List.map trophies ~f:[%of_jsonaf: Award.t]
+    | _ -> raise_s [%message "Unexpected \"TrophyList\" JSON" (json : Jsonaf.t)])
 ;;
 
 let me = get ~endpoint:"/api/v1/me" ~params:[] (handle_json_response [%of_jsonaf: User.t])
@@ -772,14 +772,14 @@ let messaging = prefs "messaging" (handle_json_response userlist)
 let trusted = prefs "trusted" (handle_json_response userlist)
 
 let select_flair
-    ?background_color
-    ?css_class
-    ?flair_template_id
-    ?text
-    ?text_color
-    ()
-    ~subreddit
-    ~target
+  ?background_color
+  ?css_class
+  ?flair_template_id
+  ?text
+  ?text_color
+  ()
+  ~subreddit
+  ~target
   =
   let endpoint = optional_subreddit_endpoint ~subreddit "/api/selectflair" in
   let params =
@@ -798,12 +798,12 @@ let select_flair
 
 let handle_things_response =
   handle_json_response (fun json ->
-      Jsonaf.member_exn "json" json
-      |> Jsonaf.member_exn "data"
-      |> Jsonaf.member_exn "things"
-      |> Jsonaf.list_exn
-      |> List.hd_exn
-      |> [%of_jsonaf: Thing.Poly.t])
+    Jsonaf.member_exn "json" json
+    |> Jsonaf.member_exn "data"
+    |> Jsonaf.member_exn "things"
+    |> Jsonaf.list_exn
+    |> List.hd_exn
+    |> [%of_jsonaf: Thing.Poly.t])
 ;;
 
 let add_reply_endpoint = "/api/comment"
@@ -822,10 +822,9 @@ let add_reply_params ?return_rtjson ?richtext_json () ~parent ~text =
 let add_comment ?return_rtjson ?richtext_json () ~parent ~text =
   let params = add_reply_params ?return_rtjson ?richtext_json () ~parent ~text in
   post ~endpoint:add_reply_endpoint ~params (fun response ->
-      match%bind handle_things_response response with
-      | `Comment c -> Ok c
-      | response ->
-        raise_s [%message "Expected comment response" (response : Thing.Poly.t)])
+    match%bind handle_things_response response with
+    | `Comment c -> Ok c
+    | response -> raise_s [%message "Expected comment response" (response : Thing.Poly.t)])
 ;;
 
 let reply_to_message ?return_rtjson ?richtext_json () ~parent ~text =
@@ -833,10 +832,9 @@ let reply_to_message ?return_rtjson ?richtext_json () ~parent ~text =
     add_reply_params ?return_rtjson ?richtext_json () ~parent:(`Message parent) ~text
   in
   post ~endpoint:add_reply_endpoint ~params (fun response ->
-      match%bind handle_things_response response with
-      | `Message m -> Ok m
-      | response ->
-        raise_s [%message "Expected message response" (response : Thing.Poly.t)])
+    match%bind handle_things_response response with
+    | `Message m -> Ok m
+    | response -> raise_s [%message "Expected message response" (response : Thing.Poly.t)])
 ;;
 
 let delete ~id =
@@ -861,10 +859,10 @@ let edit ?return_rtjson ?richtext_json () ~id ~text =
       ]
   in
   post ~endpoint ~params (fun response ->
-      match%bind handle_things_response response with
-      | (`Link _ | `Comment _) as v -> Ok v
-      | response ->
-        raise_s [%message "Expected link or comment response" (response : Thing.Poly.t)])
+    match%bind handle_things_response response with
+    | (`Link _ | `Comment _) as v -> Ok v
+    | response ->
+      raise_s [%message "Expected link or comment response" (response : Thing.Poly.t)])
 ;;
 
 let simple_toggle verb fullnames k direction =
@@ -889,13 +887,13 @@ let info query =
   let endpoint = optional_subreddit_endpoint "/api/info" in
   let params = Info_query.params_of_t query in
   get ~endpoint ~params (fun response ->
-      let handle_json json =
-        let thing = [%of_jsonaf: Thing.Poly.t] json in
-        match thing with
-        | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
-        | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.Poly.t)]
-      in
-      get_listing handle_json response >>| Listing.children)
+    let handle_json json =
+      let thing = [%of_jsonaf: Thing.Poly.t] json in
+      match thing with
+      | (`Link _ | `Comment _ | `Subreddit _) as thing -> thing
+      | _ -> raise_s [%message "Unexpected kind in listing" (thing : Thing.Poly.t)]
+    in
+    get_listing handle_json response >>| Listing.children)
 ;;
 
 let lock' ~id = simple_toggle' "lock" id ignore_empty_object
@@ -922,24 +920,24 @@ let more_children ?limit_children () ~link ~more_comments ~sort =
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         Jsonaf.member_exn "json" json
-         |> Jsonaf.member_exn "data"
-         |> Jsonaf.member_exn "things"
-         |> [%of_jsonaf: comment_or_more list]))
+       Jsonaf.member_exn "json" json
+       |> Jsonaf.member_exn "data"
+       |> Jsonaf.member_exn "things"
+       |> [%of_jsonaf: comment_or_more list]))
 ;;
 
 let report
-    ?from_modmail
-    ?from_help_desk
-    ?additional_info
-    ?custom_text
-    ?other_reason
-    ?rule_reason
-    ?site_reason
-    ?sr_name
-    ()
-    ~target
-    ~reason
+  ?from_modmail
+  ?from_help_desk
+  ?additional_info
+  ?custom_text
+  ?other_reason
+  ?rule_reason
+  ?site_reason
+  ?sr_name
+  ()
+  ~target
+  ~reason
   =
   let endpoint = "/api/report" in
   let params =
@@ -1047,21 +1045,21 @@ let store_visits ~links =
 ;;
 
 let submit
-    ?ad
-    ?nsfw
-    ?resubmit
-    ?sendreplies
-    ?spoiler
-    ?flair_id
-    ?flair_text
-    ?collection_id
-    ?event_start
-    ?event_end
-    ?event_tz
-    ()
-    ~subreddit
-    ~title
-    ~kind
+  ?ad
+  ?nsfw
+  ?resubmit
+  ?sendreplies
+  ?spoiler
+  ?flair_id
+  ?flair_text
+  ?collection_id
+  ?event_start
+  ?event_end
+  ?event_tz
+  ()
+  ~subreddit
+  ~title
+  ~kind
   =
   let endpoint = "/api/submit" in
   let params =
@@ -1089,10 +1087,10 @@ let submit
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         let json = Jsonaf.member_exn "json" json |> Jsonaf.member_exn "data" in
-         let id = Jsonaf.member_exn "id" json |> Jsonaf.string_exn |> Link.Id.of_string in
-         let url = Jsonaf.member_exn "url" json |> Jsonaf.string_exn |> Uri.of_string in
-         id, url))
+       let json = Jsonaf.member_exn "json" json |> Jsonaf.member_exn "data" in
+       let id = Jsonaf.member_exn "id" json |> Jsonaf.string_exn |> Link.Id.of_string in
+       let url = Jsonaf.member_exn "url" json |> Jsonaf.string_exn |> Uri.of_string in
+       id, url))
 ;;
 
 let vote ?rank () ~direction ~target =
@@ -1129,18 +1127,18 @@ let links_by_id ~links =
 ;;
 
 let comments
-    ?subreddit
-    ?comment
-    ?context
-    ?depth
-    ?limit
-    ?showedits
-    ?showmore
-    ?sort
-    ?threaded
-    ?truncate
-    ()
-    ~link
+  ?subreddit
+  ?comment
+  ?context
+  ?depth
+  ?limit
+  ?showedits
+  ?showmore
+  ?sort
+  ?threaded
+  ?truncate
+  ()
+  ~link
   =
   let endpoint =
     optional_subreddit_endpoint ?subreddit (sprintf !"/comments/%{Link.Id}" link)
@@ -1163,17 +1161,16 @@ let comments
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         match Jsonaf.list_exn json with
-         | [ link_json; comment_forest_json ] ->
-           let link =
-             [%of_jsonaf: Link.t Listing.t] link_json |> Listing.children |> List.hd_exn
-           in
-           let comment_forest =
-             [%of_jsonaf: comment_or_more Listing.t] comment_forest_json
-             |> Listing.children
-           in
-           { Comment_response.link; comment_forest }
-         | json -> raise_s [%message "Expected two-item response" (json : Jsonaf.t list)]))
+       match Jsonaf.list_exn json with
+       | [ link_json; comment_forest_json ] ->
+         let link =
+           [%of_jsonaf: Link.t Listing.t] link_json |> Listing.children |> List.hd_exn
+         in
+         let comment_forest =
+           [%of_jsonaf: comment_or_more Listing.t] comment_forest_json |> Listing.children
+         in
+         { Comment_response.link; comment_forest }
+       | json -> raise_s [%message "Expected two-item response" (json : Jsonaf.t list)]))
 ;;
 
 let duplicates' ~listing_params ?crossposts_only ?sort () ~link =
@@ -1192,12 +1189,12 @@ let duplicates' ~listing_params ?crossposts_only ?sort () ~link =
 let duplicates = with_listing_params duplicates'
 
 let basic_post_listing'
-    endpoint_part
-    ~listing_params
-    ?include_categories
-    ?subreddit
-    ()
-    ~extra_params
+  endpoint_part
+  ~listing_params
+  ?include_categories
+  ?subreddit
+  ()
+  ~extra_params
   =
   let endpoint = optional_subreddit_endpoint ?subreddit endpoint_part in
   let params =
@@ -1420,17 +1417,17 @@ let distinguish ?sticky () ~id ~how =
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         let thing =
-           Jsonaf.member_exn "json" json
-           |> Jsonaf.member_exn "data"
-           |> Jsonaf.member_exn "things"
-           |> Jsonaf.list_exn
-           |> List.hd_exn
-           |> [%of_jsonaf: Thing.Poly.t]
-         in
-         match thing with
-         | (`Comment _ | `Link _) as thing -> thing
-         | _ -> raise_s [%message "Expected comment or link" (thing : Thing.Poly.t)]))
+       let thing =
+         Jsonaf.member_exn "json" json
+         |> Jsonaf.member_exn "data"
+         |> Jsonaf.member_exn "things"
+         |> Jsonaf.list_exn
+         |> List.hd_exn
+         |> [%of_jsonaf: Thing.Poly.t]
+       in
+       match thing with
+       | (`Comment _ | `Link _) as thing -> thing
+       | _ -> raise_s [%message "Expected comment or link" (thing : Thing.Poly.t)]))
 ;;
 
 let ignore_reports' ~id = simple_toggle' "ignore_reports" id ignore_empty_object
@@ -1488,15 +1485,15 @@ let reply_modmail_conversation ~body ~conversation_id ~hide_author ~internal =
 ;;
 
 let search'
-    ~listing_params
-    ?category
-    ?include_facets
-    ?restrict_to_subreddit
-    ?since
-    ?sort
-    ?types
-    ()
-    ~query
+  ~listing_params
+  ?category
+  ?include_facets
+  ?restrict_to_subreddit
+  ?since
+  ?sort
+  ?types
+  ()
+  ~query
   =
   let subreddit_part, restrict_param =
     match restrict_to_subreddit with
@@ -1522,54 +1519,52 @@ let search'
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         let to_link_opt thing =
-           match thing with
-           | `Link link -> Some link
-           | _ -> None
+       let to_link_opt thing =
+         match thing with
+         | `Link link -> Some link
+         | _ -> None
+       in
+       let to_user_or_subreddit_opt thing =
+         match thing with
+         | (`User _ | `Subreddit _) as v -> Some v
+         | _ -> None
+       in
+       let listings =
+         let jsons =
+           match json with
+           | `Object _ as json -> [ json ]
+           | `Array listings -> listings
+           | _ -> raise_s [%message "Unexpected search response" (json : Jsonaf.t)]
          in
-         let to_user_or_subreddit_opt thing =
-           match thing with
-           | (`User _ | `Subreddit _) as v -> Some v
-           | _ -> None
-         in
-         let listings =
-           let jsons =
-             match json with
-             | `Object _ as json -> [ json ]
-             | `Array listings -> listings
-             | _ -> raise_s [%message "Unexpected search response" (json : Jsonaf.t)]
-           in
-           List.map jsons ~f:[%of_jsonaf: Thing.Poly.t Listing.t]
-         in
-         let find_kinded_listing extract_subkind error_message =
-           List.find_map listings ~f:(fun listing ->
-               (* If the first element belongs in one of the result listings... *)
-               match
-                 Listing.children listing
-                 |> List.hd
-                 |> Option.bind ~f:extract_subkind
-                 |> Option.is_some
-               with
-               | false -> None
-               | true ->
-                 (* ...then expect them all to be in that listing. *)
-                 Some
-                   (Listing.map listing ~f:(fun thing ->
-                        match extract_subkind thing with
-                        | Some v -> v
-                        | None -> raise_s [%message error_message (json : Jsonaf.t)])))
-         in
-         let link_listing =
-           find_kinded_listing
-             to_link_opt
-             "Expected only links in search response listing"
-         in
-         let user_or_subreddit_listing =
-           find_kinded_listing
-             to_user_or_subreddit_opt
-             "Expected only users or subreddits in search response listing"
-         in
-         link_listing, user_or_subreddit_listing))
+         List.map jsons ~f:[%of_jsonaf: Thing.Poly.t Listing.t]
+       in
+       let find_kinded_listing extract_subkind error_message =
+         List.find_map listings ~f:(fun listing ->
+           (* If the first element belongs in one of the result listings... *)
+           match
+             Listing.children listing
+             |> List.hd
+             |> Option.bind ~f:extract_subkind
+             |> Option.is_some
+           with
+           | false -> None
+           | true ->
+             (* ...then expect them all to be in that listing. *)
+             Some
+               (Listing.map listing ~f:(fun thing ->
+                  match extract_subkind thing with
+                  | Some v -> v
+                  | None -> raise_s [%message error_message (json : Jsonaf.t)])))
+       in
+       let link_listing =
+         find_kinded_listing to_link_opt "Expected only links in search response listing"
+       in
+       let user_or_subreddit_listing =
+         find_kinded_listing
+           to_user_or_subreddit_opt
+           "Expected only users or subreddits in search response listing"
+       in
+       link_listing, user_or_subreddit_listing))
 ;;
 
 let search = with_listing_params search'
@@ -1639,55 +1634,55 @@ let search_subreddits_by_name ?exact ?include_over_18 ?include_unadvertisable ()
     ~endpoint
     ~params
     (handle_json_response (fun json ->
-         Jsonaf.member_exn "names" json
-         |> [%of_jsonaf: string list]
-         |> List.map ~f:Subreddit_name.of_string))
+       Jsonaf.member_exn "names" json
+       |> [%of_jsonaf: string list]
+       |> List.map ~f:Subreddit_name.of_string))
 ;;
 
 let create_or_edit_subreddit
-    ?comment_score_hide_mins
-    ?wiki_edit_age
-    ?wiki_edit_karma
-    ()
-    ~all_original_content
-    ~allow_discovery
-    ~allow_images
-    ~allow_post_crossposts
-    ~allow_top
-    ~allow_videos
-    ~api_type
-    ~collapse_deleted_comments
-    ~crowd_control_mode
-    ~description
-    ~disable_contributor_requests
-    ~exclude_banned_modqueue
-    ~free_form_reports
-    ~g_recaptcha_response
-    ~header_title
-    ~hide_ads
-    ~key_color
-    ~lang
-    ~link_type
-    ~name
-    ~original_content_tag_enabled
-    ~over_18
-    ~public_description
-    ~restrict_commenting
-    ~restrict_posting
-    ~show_media
-    ~show_media_preview
-    ~spam_comments
-    ~spam_links
-    ~spam_selfposts
-    ~spoilers_enabled
-    ~subreddit
-    ~submit_link_label
-    ~submit_text
-    ~submit_text_label
-    ~suggested_comment_sort
-    ~title
-    ~type_
-    ~wiki_mode
+  ?comment_score_hide_mins
+  ?wiki_edit_age
+  ?wiki_edit_karma
+  ()
+  ~all_original_content
+  ~allow_discovery
+  ~allow_images
+  ~allow_post_crossposts
+  ~allow_top
+  ~allow_videos
+  ~api_type
+  ~collapse_deleted_comments
+  ~crowd_control_mode
+  ~description
+  ~disable_contributor_requests
+  ~exclude_banned_modqueue
+  ~free_form_reports
+  ~g_recaptcha_response
+  ~header_title
+  ~hide_ads
+  ~key_color
+  ~lang
+  ~link_type
+  ~name
+  ~original_content_tag_enabled
+  ~over_18
+  ~public_description
+  ~restrict_commenting
+  ~restrict_posting
+  ~show_media
+  ~show_media_preview
+  ~spam_comments
+  ~spam_links
+  ~spam_selfposts
+  ~spoilers_enabled
+  ~subreddit
+  ~submit_link_label
+  ~submit_text
+  ~submit_text_label
+  ~suggested_comment_sort
+  ~title
+  ~type_
+  ~wiki_mode
   =
   let endpoint = "/api/site_admin" in
   let params =
@@ -1746,12 +1741,12 @@ let submit_text ~subreddit =
 ;;
 
 let subreddit_autocomplete
-    ?limit
-    ?include_categories
-    ?include_over_18
-    ?include_profiles
-    ()
-    ~query
+  ?limit
+  ?include_categories
+  ?include_over_18
+  ?include_profiles
+  ()
+  ~query
   =
   let endpoint = "/api/subreddit_autocomplete_v2" in
   let params =
@@ -1857,11 +1852,11 @@ let get_subreddits' ~listing_params ?include_categories () ~relationship =
 let get_subreddits = with_listing_params get_subreddits'
 
 let search_subreddits_by_title_and_description'
-    ~listing_params
-    ?show_users
-    ?sort
-    ()
-    ~query
+  ~listing_params
+  ?show_users
+  ?sort
+  ()
+  ~query
   =
   let endpoint = "/subreddits/search" in
   let params =
@@ -1925,24 +1920,24 @@ let user_comments =
 
 let user_private_overview ~endpoint_suffix =
   overview_gen ~endpoint_suffix ~handle_response:(fun response ->
-      match get_link_listing response with
-      | Ok v -> Ok (`Listing v)
-      | Error (Http_error { response = { status = `Forbidden; _ }; _ }) -> Ok `Private
-      | Error _ as error -> error)
+    match get_link_listing response with
+    | Ok v -> Ok (`Listing v)
+    | Error (Http_error { response = { status = `Forbidden; _ }; _ }) -> Ok `Private
+    | Error _ as error -> error)
 ;;
 
 let user_upvoted = user_private_overview ~endpoint_suffix:"upvoted"
 let user_downvoted = user_private_overview ~endpoint_suffix:"downvoted"
 
 let logged_in_user_overview
-    ~endpoint_suffix
-    ~handle_response
-    ?pagination
-    ?count
-    ?limit
-    ?show_all
-    ()
-    ~logged_in_username
+  ~endpoint_suffix
+  ~handle_response
+  ?pagination
+  ?count
+  ?limit
+  ?show_all
+  ()
+  ~logged_in_username
   =
   (overview_gen ~endpoint_suffix ~handle_response)
     ?pagination
@@ -1988,15 +1983,15 @@ let list_user_subreddits' ~listing_params ?include_categories () ~sort =
 let list_user_subreddits = with_listing_params list_user_subreddits'
 
 let add_relationship
-    ?subreddit
-    ?note
-    ?ban_reason
-    ?ban_message
-    ?ban_context
-    ()
-    ~relationship
-    ~username
-    ~duration
+  ?subreddit
+  ?note
+  ?ban_reason
+  ?ban_message
+  ?ban_context
+  ()
+  ~relationship
+  ~username
+  ~duration
   =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/friend" in
   let params =
@@ -2046,11 +2041,11 @@ let add_wiki_editor = add_or_remove_wiki_editor ~act:"add"
 let remove_wiki_editor = add_or_remove_wiki_editor ~act:"del"
 
 let edit_wiki_page
-    ?previous
-    ?reason
-    ()
-    ~content
-    ~page:({ subreddit; page } : Wiki_page.Id.t)
+  ?previous
+  ?reason
+  ()
+  ~content
+  ~page:({ subreddit; page } : Wiki_page.Id.t)
   =
   let endpoint = optional_subreddit_endpoint ?subreddit "/api/wiki/edit" in
   let params =
@@ -2063,14 +2058,14 @@ let edit_wiki_page
       ]
   in
   post ~endpoint ~params (fun (response, body) ->
-      match Cohttp.Response.status response with
-      | `Conflict ->
-        let%bind json = parse_json_response response body in
-        Ok (Error ([%of_jsonaf: Wiki_page.Edit_conflict.t] json))
-      | _ ->
-        (match ignore_empty_object (response, body) with
-        | Ok () -> Ok (Ok ())
-        | Error _ as error -> error))
+    match Cohttp.Response.status response with
+    | `Conflict ->
+      let%bind json = parse_json_response response body in
+      Ok (Error ([%of_jsonaf: Wiki_page.Edit_conflict.t] json))
+    | _ ->
+      (match ignore_empty_object (response, body) with
+       | Ok () -> Ok (Ok ())
+       | Error _ as error -> error))
 ;;
 
 let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision
@@ -2087,12 +2082,12 @@ let toggle_wiki_revision_visibility ~page:({ subreddit; page } : Wiki_page.Id.t)
     ~endpoint
     ~params
     (handle_json_response (function
-        | `Object [ ("status", `True) ] -> `Became_hidden
-        | `Object [ ("status", `False) ] -> `Became_visible
-        | json ->
-          raise_s
-            [%message
-              "Unexpected toggle_wiki_revision_visibility response" (json : Jsonaf.t)]))
+      | `Object [ ("status", `True) ] -> `Became_hidden
+      | `Object [ ("status", `False) ] -> `Became_visible
+      | json ->
+        raise_s
+          [%message
+            "Unexpected toggle_wiki_revision_visibility response" (json : Jsonaf.t)]))
 ;;
 
 let revert_wiki_page ~page:({ subreddit; page } : Wiki_page.Id.t) ~revision =
@@ -2122,7 +2117,7 @@ let wiki_pages ?subreddit () =
     ~endpoint
     ~params:[]
     (handle_json_response (fun json ->
-         Jsonaf.member_exn "data" json |> [%of_jsonaf: string list]))
+       Jsonaf.member_exn "data" json |> [%of_jsonaf: string list]))
 ;;
 
 let subreddit_wiki_revisions' ~listing_params ?subreddit () =

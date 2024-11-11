@@ -186,12 +186,12 @@ let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper
 
     let get uri ~headers =
       Monitor.try_with (fun () ->
-          Cohttp_async.Client.get uri ~headers:(add_user_agent headers))
+        Cohttp_async.Client.get uri ~headers:(add_user_agent headers))
     ;;
 
     let post_form uri ~headers ~params =
       Monitor.try_with (fun () ->
-          Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params)
+        Cohttp_async.Client.post_form uri ~headers:(add_user_agent headers) ~params)
     ;;
   end)
 ;;
@@ -232,9 +232,9 @@ module Local = struct
     ;;
 
     let get_token
-        (module Cohttp_client_wrapper : Cohttp_client_wrapper)
-        credentials
-        ~time_source
+      (module Cohttp_client_wrapper : Cohttp_client_wrapper)
+      credentials
+      ~time_source
       =
       match%bind
         let open Deferred.Result.Let_syntax in
@@ -259,23 +259,23 @@ module Local = struct
                  { response; body = Cohttp.Body.of_string body_string })
           | `OK ->
             (match Jsonaf.parse body_string with
-            | Error error ->
-              Error
-                (Json_parsing_error
-                   { error; response; body = Cohttp.Body.of_string body_string })
-            | Ok response_json ->
-              let token =
-                Jsonaf.member_exn "access_token" response_json |> Jsonaf.string_exn
-              in
-              let expiration =
-                let additional_seconds =
-                  Jsonaf.member_exn "expires_in" response_json
-                  |> Jsonaf.float_exn
-                  |> Time_ns.Span.of_sec
-                in
-                Time_ns.add (Time_source.now time_source) additional_seconds
-              in
-              Ok { token; expiration })
+             | Error error ->
+               Error
+                 (Json_parsing_error
+                    { error; response; body = Cohttp.Body.of_string body_string })
+             | Ok response_json ->
+               let token =
+                 Jsonaf.member_exn "access_token" response_json |> Jsonaf.string_exn
+               in
+               let expiration =
+                 let additional_seconds =
+                   Jsonaf.member_exn "expires_in" response_json
+                   |> Jsonaf.float_exn
+                   |> Time_ns.Span.of_sec
+                 in
+                 Time_ns.add (Time_source.now time_source) additional_seconds
+               in
+               Ok { token; expiration })
           | _ ->
             Error
               (Other_http_error { response; body = Cohttp.Body.of_string body_string })
@@ -298,8 +298,8 @@ module Local = struct
         | No_outstanding_request None -> get_token ()
         | No_outstanding_request (Some access_token) ->
           (match Access_token.is_almost_expired access_token ~time_source with
-          | false -> return (Ok access_token)
-          | true -> get_token ())
+           | false -> return (Ok access_token)
+           | true -> get_token ())
       in
       match result with
       | Error _ as error -> return error
@@ -335,53 +335,53 @@ module Local = struct
   ;;
 
   let repeat_until_finished_with_result
-      (state : 'state)
-      (f : 'state -> ([ `Repeat of 'state | `Finished of 'ok ], 'error) Deferred.Result.t)
-      : ('ok, 'error) Deferred.Result.t
+    (state : 'state)
+    (f : 'state -> ([ `Repeat of 'state | `Finished of 'ok ], 'error) Deferred.Result.t)
+    : ('ok, 'error) Deferred.Result.t
     =
     Deferred.repeat_until_finished state (fun state ->
-        match%bind f state with
-        | Ok (`Repeat state) -> return (`Repeat state)
-        | Ok (`Finished result) -> return (`Finished (Ok result))
-        | Error result -> return (`Finished (Error result)))
+      match%bind f state with
+      | Ok (`Repeat state) -> return (`Repeat state)
+      | Ok (`Finished result) -> return (`Finished (Ok result))
+      | Error result -> return (`Finished (Error result)))
   ;;
 
   let handle_request
-      ?sequence
-      { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
-      ~f
-      ~headers:initial_headers
+    ?sequence
+    { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
+    ~f
+    ~headers:initial_headers
     =
     let run () =
       repeat_until_finished_with_result () (fun () ->
-          let open Deferred.Result.Let_syntax in
-          let%bind headers =
-            Auth.add_access_token
-              auth
-              ~headers:initial_headers
-              ~cohttp_client_wrapper
-              ~time_source
-            |> Deferred.Result.map_error ~f:(fun error ->
-                   Error.Access_token_request_error error)
-          in
-          let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
-          let%bind ((response, _body) as result) = f headers in
-          let authorization_failed =
-            match Cohttp.Response.status response with
-            | `Unauthorized ->
-              (match
-                 Cohttp.Header.get (Cohttp.Response.headers response) "www-authenticate"
-               with
-              | Some "Bearer realm=\"reddit\", error=\"invalid_token\"" -> true
-              | Some _ | None -> false)
-            | _ -> false
-          in
-          Rate_limiter.notify_response rate_limiter response;
-          match authorization_failed with
-          | false -> return (`Finished result)
-          | true ->
-            auth.access_token <- No_outstanding_request None;
-            return (`Repeat ()))
+        let open Deferred.Result.Let_syntax in
+        let%bind headers =
+          Auth.add_access_token
+            auth
+            ~headers:initial_headers
+            ~cohttp_client_wrapper
+            ~time_source
+          |> Deferred.Result.map_error ~f:(fun error ->
+            Error.Access_token_request_error error)
+        in
+        let%bind () = Deferred.ok (Rate_limiter.permit_request rate_limiter) in
+        let%bind ((response, _body) as result) = f headers in
+        let authorization_failed =
+          match Cohttp.Response.status response with
+          | `Unauthorized ->
+            (match
+               Cohttp.Header.get (Cohttp.Response.headers response) "www-authenticate"
+             with
+             | Some "Bearer realm=\"reddit\", error=\"invalid_token\"" -> true
+             | Some _ | None -> false)
+          | _ -> false
+        in
+        Rate_limiter.notify_response rate_limiter response;
+        match authorization_failed with
+        | false -> return (`Finished result)
+        | true ->
+          auth.access_token <- No_outstanding_request None;
+          return (`Repeat ()))
     in
     match sequence with
     | None -> run ()
@@ -393,16 +393,16 @@ module Local = struct
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     handle_request ?sequence t ~headers ~f:(fun headers ->
-        Cohttp_client_wrapper.post_form ~headers ~params uri
-        |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
+      Cohttp_client_wrapper.post_form ~headers ~params uri
+      |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
 
   let get ?sequence t uri =
     let (module Cohttp_client_wrapper) = t.cohttp_client_wrapper in
     let headers = Cohttp.Header.init () in
     handle_request ?sequence t ~headers ~f:(fun headers ->
-        Cohttp_client_wrapper.get ~headers uri
-        |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
+      Cohttp_client_wrapper.get ~headers uri
+      |> Deferred.Result.map_error ~f:(fun exn -> Error.Endpoint_error exn))
   ;;
 
   let set_access_token t ~token ~expiration =
@@ -454,12 +454,12 @@ let call t api =
     return (Error (Error.Endpoint_error (Endpoint.Error.Cohttp_raised exn)))
   | Ok response ->
     (match api.handle_response response with
-    | Ok _ as result ->
-      Prometheus.Counter.inc_one Metrics.ok_responses;
-      return result
-    | Error error ->
-      Prometheus.Counter.inc_one Metrics.endpoint_errors;
-      return (Error (Error.Endpoint_error error)))
+     | Ok _ as result ->
+       Prometheus.Counter.inc_one Metrics.ok_responses;
+       return result
+     | Error error ->
+       Prometheus.Counter.inc_one Metrics.endpoint_errors;
+       return (Error (Error.Endpoint_error error)))
 ;;
 
 let call_exn t api =
@@ -618,12 +618,12 @@ module Remote = struct
 
     let get =
       Rpc.Rpc.implement Protocol.get (fun t (sequence, uri) ->
-          get_body (get ?sequence t uri))
+        get_body (get ?sequence t uri))
     ;;
 
     let post_form =
       Rpc.Rpc.implement Protocol.post_form (fun t (sequence, uri, params) ->
-          get_body (post_form ?sequence t uri ~params))
+        get_body (post_form ?sequence t uri ~params))
     ;;
 
     let implementations =
@@ -670,12 +670,12 @@ module For_testing = struct
 
     let filter_string t string =
       Hashtbl.fold t ~init:string ~f:(fun ~key:placeholder ~data:secret string ->
-          String.substr_replace_all string ~pattern:secret ~with_:placeholder)
+        String.substr_replace_all string ~pattern:secret ~with_:placeholder)
     ;;
 
     let insert_dummy_strings t string =
       Hashtbl.fold t ~init:string ~f:(fun ~key:placeholder ~data:secret string ->
-          String.substr_replace_all string ~pattern:placeholder ~with_:secret)
+        String.substr_replace_all string ~pattern:placeholder ~with_:secret)
     ;;
   end
 
@@ -783,19 +783,19 @@ module For_testing = struct
         let seal () =
           printf "Please move the following to test/%s\n\n" filename;
           Queue.iter queue ~f:(fun interaction ->
-              (match is_access_token_interaction interaction with
-              | false -> ()
-              | true ->
-                let _, body = interaction.response in
-                let json = Jsonaf.of_string body in
-                (match Jsonaf.member "access_token" json with
+            (match is_access_token_interaction interaction with
+             | false -> ()
+             | true ->
+               let _, body = interaction.response in
+               let json = Jsonaf.of_string body in
+               (match Jsonaf.member "access_token" json with
                 | None -> ()
                 | Some json ->
                   let token = Jsonaf.string_exn json in
                   Placeholders.add placeholders ~secret:token ~placeholder:"access_token"));
-              Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
-              |> Interaction.sexp_of_t
-              |> Sexp.output_mach Out_channel.stdout);
+            Interaction.map interaction ~f:(Placeholders.filter_string placeholders)
+            |> Interaction.sexp_of_t
+            |> Sexp.output_mach Out_channel.stdout);
           printf "\n\nPlease move the above to test/%s" filename
         ;;
 
@@ -807,9 +807,9 @@ module For_testing = struct
       (module struct
         let queue : Interaction.t Queue.t =
           In_channel.with_file filename ~f:(fun in_channel ->
-              Sexp.input_sexps in_channel
-              |> List.map ~f:Interaction.t_of_sexp
-              |> Queue.of_list)
+            Sexp.input_sexps in_channel
+            |> List.map ~f:Interaction.t_of_sexp
+            |> Queue.of_list)
         ;;
 
         let dequeue_response () =
@@ -842,8 +842,8 @@ module For_testing = struct
           | Post_form _ -> fail ()
           | Get request ->
             (match Uri.equal uri request.uri && headers_equal headers request.headers with
-            | false -> fail ()
-            | true -> return (Ok response))
+             | false -> fail ()
+             | true -> return (Ok response))
         ;;
 
         let post_form uri ~headers ~params =
@@ -865,8 +865,8 @@ module For_testing = struct
                && headers_equal headers request.headers
                && [%equal: (string * string list) list] params request.params
              with
-            | false -> fail ()
-            | true -> return (Ok response))
+             | false -> fail ()
+             | true -> return (Ok response))
         ;;
 
         let seal () = assert (Queue.is_empty queue)
@@ -881,25 +881,25 @@ module For_testing = struct
     let with_t filename ~credentials ~f =
       let placeholders = Placeholders.create () in
       (match (credentials : Credentials.t) with
-      | Password { client_id; client_secret; username; password } ->
-        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
-        Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
-        Placeholders.add placeholders ~secret:password ~placeholder:"password";
-        Placeholders.add placeholders ~secret:username ~placeholder:"username"
-      | Refresh_token { client_id; client_secret; refresh_token } ->
-        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
-        Option.iter client_secret ~f:(fun secret ->
-            Placeholders.add placeholders ~secret ~placeholder:"client_secret");
-        Placeholders.add placeholders ~secret:refresh_token ~placeholder:"refresh_token"
-      | Userless_confidential { client_id; client_secret } ->
-        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
-        Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret"
-      | Userless_public ({ client_id; device_id = _ } as public_credentials) ->
-        Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
-        Placeholders.add
-          placeholders
-          ~secret:(Credentials.Userless_public.device_id_or_default public_credentials)
-          ~placeholder:"device_id");
+       | Password { client_id; client_secret; username; password } ->
+         Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+         Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret";
+         Placeholders.add placeholders ~secret:password ~placeholder:"password";
+         Placeholders.add placeholders ~secret:username ~placeholder:"username"
+       | Refresh_token { client_id; client_secret; refresh_token } ->
+         Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+         Option.iter client_secret ~f:(fun secret ->
+           Placeholders.add placeholders ~secret ~placeholder:"client_secret");
+         Placeholders.add placeholders ~secret:refresh_token ~placeholder:"refresh_token"
+       | Userless_confidential { client_id; client_secret } ->
+         Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+         Placeholders.add placeholders ~secret:client_secret ~placeholder:"client_secret"
+       | Userless_public ({ client_id; device_id = _ } as public_credentials) ->
+         Placeholders.add placeholders ~secret:client_id ~placeholder:"client_id";
+         Placeholders.add
+           placeholders
+           ~secret:(Credentials.Userless_public.device_id_or_default public_credentials)
+           ~placeholder:"device_id");
       Placeholders.add
         placeholders
         ~secret:(Credentials.basic_auth_string credentials)

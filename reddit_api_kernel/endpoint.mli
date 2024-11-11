@@ -67,7 +67,7 @@ module Parameters : sig
     type t =
       | Id of
           [ `Link of Link.Id.t | `Comment of Comment.Id.t | `Subreddit of Subreddit.Id.t ]
-          list
+            list
       | Subreddit_name of Subreddit_name.t list
       | Url of Uri.t
     [@@deriving sexp]
@@ -264,8 +264,8 @@ module Json_response_error : sig
   type t =
     { error : string (** An all-caps string acting as an identifier for the error. *)
     ; error_type : string option
-          (** An all-caps string identifying a category of errors. May
-              encompass many different [error] values. *)
+    (** An all-caps string identifying a category of errors. May
+        encompass many different [error] values. *)
     ; details : string (** A human-readable explanation of the error. *)
     ; fields : string list (** A list of HTTP parameters with erroneous values. *)
     }
@@ -279,8 +279,7 @@ end
     responses indicating an illegal operation, such as permission errors.
 
     It does not include programming errors within [Reddit_api_kernel]; if we
-    can't parse a response, we raise instead of returning an error value.
-*)
+    can't parse a response, we raise instead of returning an error value. *)
 module Error : sig
   type t =
     | Cohttp_raised of Exn.t
@@ -293,19 +292,17 @@ module Error : sig
         { response : Cohttp.Response.t
         ; body : Cohttp.Body.t
         }
-        (** An [Http_error] represents an HTTP response with an error status for
-            which we have not parsed details from the JSON body.
+    (** An [Http_error] represents an HTTP response with an error status for
+        which we have not parsed details from the JSON body.
 
-            [400 Bad Request] responses come with parseable JSON details, so
-            they are included under [Json_response_errors] instead.
-        *)
+        [400 Bad Request] responses come with parseable JSON details, so
+        they are included under [Json_response_errors] instead. *)
     | Json_response_errors of Json_response_error.t list
   [@@deriving sexp_of]
 end
 
 (** A [t] represents the combinaton of an HTTP request to Reddit and a function
-    for turning the HTTP response into a typed representation.
-*)
+    for turning the HTTP response into a typed representation. *)
 type 'a t =
   { request : Request.t
   ; handle_response : Cohttp.Response.t * Cohttp.Body.t -> ('a, Error.t) Result.t
@@ -317,14 +314,13 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 (** A value of type [_ with_listing_params] is a function with optional
     arguments representing Reddit's "listing" pagination protocol.
 
-    @see <https://www.reddit.com/dev/api#listings> Reddit's listing docs
-*)
+    @see <https://www.reddit.com/dev/api#listings> Reddit's listing docs *)
 type 'a with_listing_params :=
   ?pagination:Listing.Pagination.t -> ?count:int -> ?limit:int -> ?show_all:unit -> 'a
 
-(** {1 Endpoints } *)
+(** {1 Endpoints} *)
 
-(** {2 Account } *)
+(** {2 Account} *)
 
 val me : User.t t
 val karma : Karma_list.t t
@@ -334,7 +330,7 @@ val blocked : (unit -> User_list.t t) with_listing_params
 val messaging : (unit -> User_list.t t) with_listing_params
 val trusted : (unit -> User_list.t t) with_listing_params
 
-(** {2 Flair } *)
+(** {2 Flair} *)
 
 val select_flair
   :  ?background_color:Color.t
@@ -347,7 +343,7 @@ val select_flair
   -> target:Flair_target.t
   -> unit t
 
-(** {2 Links and comments } *)
+(** {2 Links and comments} *)
 
 val add_comment
   :  ?return_rtjson:bool
@@ -470,10 +466,10 @@ val info
      | `Link of Thing.Link.t
      | `Subreddit of Thing.Subreddit.t
      ]
-     list
-     t
+       list
+       t
 
-(** {2 Listings } *)
+(** {2 Listings} *)
 
 val best : (?include_categories:bool -> unit -> Link.t Listing.t t) with_listing_params
 val links_by_id : links:Link.Id.t list -> Link.t Listing.t t
@@ -499,7 +495,7 @@ val duplicates
      -> unit
      -> link:Link.Id.t
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val hot
   : (?location:string
@@ -507,21 +503,21 @@ val hot
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val new_
   : (?include_categories:bool
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val rising
   : (?include_categories:bool
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val top
   : (?since:Historical_span.t
@@ -529,7 +525,7 @@ val top
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val controversial
   : (?since:Historical_span.t
@@ -537,11 +533,11 @@ val controversial
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> Link.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val random : ?subreddit:Subreddit_name.t -> unit -> Link.Id.t t
 
-(** {2 Private messages } *)
+(** {2 Private messages} *)
 
 val block_author : id:[< `Comment of Comment.Id.t | `Message of Message.Id.t ] -> unit t
 val collapse_message : messages:Message.Id.t list -> unit t
@@ -566,7 +562,7 @@ val inbox
      -> unit
      -> mark_read:bool
      -> Inbox_item.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val unread
   : (?include_categories:bool
@@ -574,11 +570,11 @@ val unread
      -> unit
      -> mark_read:bool
      -> Inbox_item.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val sent
   : (?include_categories:bool -> ?mid:string -> unit -> Message.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val comment_replies
   : (?include_categories:bool
@@ -586,12 +582,12 @@ val comment_replies
      -> unit
      -> mark_read:bool
      -> Inbox_item.Comment.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val subreddit_comments
   : (unit -> subreddit:Subreddit_name.t -> Comment.t Listing.t t) with_listing_params
 
-(** {2 Moderation } *)
+(** {2 Moderation} *)
 
 val log
   : (?mod_filter:Mod_filter.t
@@ -599,7 +595,7 @@ val log
      -> ?type_:string
      -> unit
      -> Mod_action.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val reports
   : (?location:string
@@ -607,7 +603,7 @@ val reports
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val spam
   : (?location:string
@@ -615,7 +611,7 @@ val spam
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val modqueue
   : (?location:string
@@ -623,7 +619,7 @@ val modqueue
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val unmoderated
   : (?location:string
@@ -631,7 +627,7 @@ val unmoderated
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val edited
   : (?location:string
@@ -639,7 +635,7 @@ val edited
      -> ?subreddit:Subreddit_name.t
      -> unit
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val accept_moderator_invite
   :  subreddit:Subreddit_name.t
@@ -663,7 +659,7 @@ val mute_message_author : message:Message.Id.t -> unit t
 val unmute_message_author : message:Message.Id.t -> unit t
 val stylesheet : subreddit:Subreddit_name.t -> Stylesheet.t t
 
-(** {2 New modmail } *)
+(** {2 New modmail} *)
 
 val create_modmail_conversation
   :  subject:string
@@ -680,7 +676,7 @@ val reply_modmail_conversation
   -> internal:bool
   -> Modmail.Conversation.t t
 
-(** {2 Search } *)
+(** {2 Search} *)
 
 val search
   : (?category:string
@@ -693,10 +689,10 @@ val search
      -> query:string
      -> (Thing.Link.t Listing.t option
         * [ `Subreddit of Thing.Subreddit.t | `User of Thing.User.t ] Listing.t option)
-        t)
-    with_listing_params
+          t)
+      with_listing_params
 
-(** {2 Subreddits } *)
+(** {2 Subreddits} *)
 
 val banned
   : (?include_categories:bool
@@ -704,7 +700,7 @@ val banned
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Ban.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val muted
   : (?include_categories:bool
@@ -712,7 +708,7 @@ val muted
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Mute.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val wiki_banned
   : (?include_categories:bool
@@ -720,7 +716,7 @@ val wiki_banned
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Ban.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val contributors
   : (?include_categories:bool
@@ -728,7 +724,7 @@ val contributors
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Contributor.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val wiki_contributors
   : (?include_categories:bool
@@ -736,7 +732,7 @@ val wiki_contributors
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Contributor.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val moderators
   : (?include_categories:bool
@@ -744,7 +740,7 @@ val moderators
      -> unit
      -> subreddit:Subreddit_name.t
      -> Relationship.Moderator.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val delete_subreddit_image
   :  subreddit:Subreddit_name.t
@@ -832,7 +828,7 @@ val subscribe
 
 val search_users
   : (?sort:Relevance_or_activity.t -> unit -> query:string -> User.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val about_subreddit : subreddit:Subreddit_name.t -> Subreddit.t t
 
@@ -852,7 +848,7 @@ val get_subreddits
      -> unit
      -> relationship:Subreddit_relationship.t
      -> Subreddit.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val search_subreddits_by_title_and_description
   : (?show_users:bool
@@ -860,7 +856,7 @@ val search_subreddits_by_title_and_description
      -> unit
      -> query:string
      -> Subreddit.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val list_subreddits
   : (?include_categories:bool
@@ -868,9 +864,9 @@ val list_subreddits
      -> unit
      -> sort:Subreddit_listing_sort.t
      -> Subreddit.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
-(** {2 Users } *)
+(** {2 Users} *)
 
 val about_user : username:Username.t -> User.t t
 
@@ -878,7 +874,7 @@ val user_overview
   : (unit
      -> username:Username.t
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val user_submitted
   : (unit -> username:Username.t -> Link.t Listing.t t) with_listing_params
@@ -888,11 +884,11 @@ val user_comments
 
 val user_upvoted
   : (unit -> username:Username.t -> [ `Listing of Link.t Listing.t | `Private ] t)
-    with_listing_params
+      with_listing_params
 
 val user_downvoted
   : (unit -> username:Username.t -> [ `Listing of Link.t Listing.t | `Private ] t)
-    with_listing_params
+      with_listing_params
 
 val user_hidden
   : (unit -> logged_in_username:Username.t -> Link.t Listing.t t) with_listing_params
@@ -901,13 +897,13 @@ val user_saved
   : (unit
      -> logged_in_username:Username.t
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val user_gilded
   : (unit
      -> username:Username.t
      -> [ `Link of Link.t | `Comment of Comment.t ] Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val user_trophies : username:Username.t -> Award.t list t
 
@@ -916,7 +912,7 @@ val list_user_subreddits
      -> unit
      -> sort:User_subreddit_sort.t
      -> Subreddit.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val add_relationship
   :  ?subreddit:Subreddit_name.t
@@ -937,7 +933,7 @@ val remove_relationship
   -> username:Username.t
   -> unit t
 
-(** {2 Wiki } *)
+(** {2 Wiki} *)
 
 val add_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit t
 val remove_wiki_editor : page:Wiki_page.Id.t -> user:Username.t -> unit t
@@ -964,7 +960,7 @@ val wiki_pages : ?subreddit:Subreddit_name.t -> unit -> string list t
 
 val subreddit_wiki_revisions
   : (?subreddit:Subreddit_name.t -> unit -> Wiki_page.Revision.t Listing.t t)
-    with_listing_params
+      with_listing_params
 
 val wiki_page_revisions
   : (unit -> page:Wiki_page.Id.t -> Wiki_page.Revision.t Listing.t t) with_listing_params

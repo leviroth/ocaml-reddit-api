@@ -54,6 +54,6 @@ module type Json_object = sig
   module Make_kinded (Param : Kinded_param) : S_with_kind with type t := Param.t
 
   module Make_kinded_simple (Param : sig
-    val kind : string
-  end) : S_with_kind with type t := Utils.t
+      val kind : string
+    end) : S_with_kind with type t := Utils.t
 end

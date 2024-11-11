@@ -16,8 +16,8 @@ end
 include Json_object.Utils
 
 include Json_object.Make_kinded_simple (struct
-  let kind = "modaction"
-end)
+    let kind = "modaction"
+  end)
 
 let id = required_field "id" (string >> Id.of_json_string)
 let action = required_field "action" string

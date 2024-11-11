@@ -37,6 +37,6 @@ let get_link_exn connection id =
   in
   return
     (match link with
-    | `Link link -> link
-    | _ -> raise_s [%message "Unexpected response item"])
+     | `Link link -> link
+     | _ -> raise_s [%message "Unexpected response item"])
 ;;

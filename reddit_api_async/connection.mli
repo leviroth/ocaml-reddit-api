@@ -8,18 +8,18 @@
     writing a long-running process and want to just retry forever on transient
     errors.
 
-    {1 Authentication }
+    {1 Authentication}
 
     [Connection] currently supports a subset of Reddit's OAuth2 app types via
     the {!module:Credentials} module. See
     {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types} Reddit's
     documentation on app types}.
 
-    {1 Rate-limiting behavior }
+    {1 Rate-limiting behavior}
 
     [Connection] enforces two different forms of rate-limiting:
 
-    {2 HTTP rate-limiting headers }
+    {2 HTTP rate-limiting headers}
 
     Reddit tracks API usage and requires that a client make no more than 600
     requests in a 10 minute period.
@@ -31,13 +31,11 @@
     run in parallel, accounting for each others' quota usage without explicit
     coordination.
 
-    {2 Minimum time between requests }
+    {2 Minimum time between requests}
 
     In order to abide by /u/kemitche's
-    {{:https://www.reddit.com/r/redditdev/comments/1yxrp7/formal_ratelimiting_headers/}
-    request} to "be reasonable" and not slam all 600 requests in as quickly as
-    possible, [Connection] also enforces a 100ms delay between requests.
-*)
+    {{:https://www.reddit.com/r/redditdev/comments/1yxrp7/formal_ratelimiting_headers/} request} to "be reasonable" and not slam all 600 requests in as quickly as
+    possible, [Connection] also enforces a 100ms delay between requests. *)
 
 open! Core
 open! Async
@@ -45,11 +43,12 @@ open Reddit_api_kernel
 
 module Credentials : sig
   (** [Password] credentials correspond to Reddit's
-      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#script}"script"}
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#script} "script"}
       app type.
 
-      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2 > The
-      RFC 6749 section describing the corresponding access token request. *)
+      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-4.3.2 >
+        The
+        RFC 6749 section describing the corresponding access token request. *)
   module Password : sig
     type t =
       { client_id : string
@@ -61,23 +60,25 @@ module Credentials : sig
   end
 
   (** [Refresh_token] credentials correspond to Reddit's
-      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#web-app}"web app"}
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#web-app} "web app"}
       and
-      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#installed-app}"installed-app"}
+      {{:https://github.com/reddit-archive/reddit/wiki/oauth2-app-types#installed-app} "installed-app"}
       app types.
 
       @see < https://praw.readthedocs.io/en/stable/tutorials/refresh_token.html
-      > {{:https://praw.readthedocs.io/}PRAW}'s documentation on refresh tokens
-      for advice on obtaining a refresh token, which is currently outside the
-      scope of this project.
+      >
+        {{:https://praw.readthedocs.io/} PRAW}'s documentation on refresh tokens
+        for advice on obtaining a refresh token, which is currently outside the
+        scope of this project.
 
-      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-6 > The RFC
-      6749 section describing the corresponding access token request. *)
+      @see < https://datatracker.ietf.org/doc/html/rfc6749#section-6 >
+        The RFC
+        6749 section describing the corresponding access token request. *)
   module Refresh_token : sig
     type t =
       { client_id : string
       ; client_secret : string option
-            (** This field is present for web apps and absent for installed apps. *)
+      (** This field is present for web apps and absent for installed apps. *)
       ; refresh_token : string
       }
     [@@deriving sexp]

@@ -1,6 +1,5 @@
 (** An inbox item is either a {!type:Thing.Message.t} or else a representation
-    of a comment with different fields from a {!Thing.Comment.t}.
-*)
+    of a comment with different fields from a {!Thing.Comment.t}. *)
 
 open! Core
 

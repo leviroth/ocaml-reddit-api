@@ -32,8 +32,8 @@ module Permissions = struct
   include Json_object.Utils
 
   include Json_object.Make_kinded_simple (struct
-    let kind = "wikipagesettings"
-  end)
+      let kind = "wikipagesettings"
+    end)
 
   module Level = struct
     type t =
@@ -66,8 +66,8 @@ end
 include Json_object.Utils
 
 include Json_object.Make_kinded_simple (struct
-  let kind = "wikipage"
-end)
+    let kind = "wikipage"
+  end)
 
 let may_revise = required_field "may_revise" bool
 let revision_id = required_field "revision_id" (string >> Uuid.of_string)

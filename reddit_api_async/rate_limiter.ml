@@ -24,30 +24,30 @@ let is_ready t =
 
 let wait_until_ready t =
   Deferred.repeat_until_finished () (fun () ->
-      match Rate_limiter_state_machine.wait_until t.state with
-      | Now -> return (`Finished ())
-      | After time ->
-        (match Time_ns.( >= ) (Time_source.now t.time_source) time with
-        | true -> return (`Finished ())
-        | false ->
-          let%bind () = Time_source.at t.time_source time in
-          return (`Repeat ()))
-      | Check_after_receiving_response ->
-        let%bind () = Bvar.wait t.response_received in
-        return (`Repeat ()))
+    match Rate_limiter_state_machine.wait_until t.state with
+    | Now -> return (`Finished ())
+    | After time ->
+      (match Time_ns.( >= ) (Time_source.now t.time_source) time with
+       | true -> return (`Finished ())
+       | false ->
+         let%bind () = Time_source.at t.time_source time in
+         return (`Repeat ()))
+    | Check_after_receiving_response ->
+      let%bind () = Bvar.wait t.response_received in
+      return (`Repeat ()))
 ;;
 
 let permit_request t =
   Deferred.repeat_until_finished () (fun () ->
-      let%bind () = wait_until_ready t in
-      match is_ready t with
-      | false -> return (`Repeat ())
-      | true ->
-        t.state
-          <- Rate_limiter_state_machine.sent_request_unchecked
-               t.state
-               ~now:(Time_source.now t.time_source);
-        return (`Finished ()))
+    let%bind () = wait_until_ready t in
+    match is_ready t with
+    | false -> return (`Repeat ())
+    | true ->
+      t.state
+      <- Rate_limiter_state_machine.sent_request_unchecked
+           t.state
+           ~now:(Time_source.now t.time_source);
+      return (`Finished ()))
 ;;
 
 let notify_response t response =

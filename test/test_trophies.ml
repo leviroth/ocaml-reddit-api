@@ -4,10 +4,10 @@ open! Import
 
 let%expect_test _ =
   with_cassette "trophies" ~f:(fun connection ->
-      let%bind trophies = Connection.call_exn connection Endpoint.trophies in
-      print_s [%message "" (trophies : Thing.Award.t list)];
-      [%expect
-        {|
+    let%bind trophies = Connection.call_exn connection Endpoint.trophies in
+    print_s [%message "" (trophies : Thing.Award.t list)];
+    [%expect
+      {|
         (trophies
          (((award_id (String v)) (description (String "Since January 2021"))
            (granted_at (Number 1609678143))
@@ -25,19 +25,19 @@ let%expect_test _ =
            (icon_70
             (String https://www.redditstatic.com/awards2/verified_email-70.png))
            (id (String 1qr5eq)) (name (String "Verified Email")) (url Null)))) |}];
-      return ())
+    return ())
 ;;
 
 let%expect_test _ =
   with_cassette "user_trophies" ~f:(fun connection ->
-      let%bind trophies =
-        Connection.call_exn
-          connection
-          (Endpoint.user_trophies ~username:(Username.of_string "spez"))
-      in
-      print_s [%message "" ~trophies:(List.take trophies 5 : Thing.Award.t list)];
-      [%expect
-        {|
+    let%bind trophies =
+      Connection.call_exn
+        connection
+        (Endpoint.user_trophies ~username:(Username.of_string "spez"))
+    in
+    print_s [%message "" ~trophies:(List.take trophies 5 : Thing.Award.t list)];
+    [%expect
+      {|
         (trophies
          (((award_id Null) (description Null) (granted_at (Number 1591416000))
            (icon_40
@@ -68,5 +68,5 @@ let%expect_test _ =
            (url
             (String
              /r/announcements/comments/gxas21/upcoming_changes_to_our_content_policy_our_board/ft0ekhk/?context=5#ft0ekhk))))) |}];
-      return ())
+    return ())
 ;;

@@ -20,15 +20,15 @@ let%expect_test "roundtrip: string -> int -> string" =
     | "0" -> string
     | _ ->
       (match string.[0] with
-      | '0' -> drop_unnecessary_zeroes_from_string (String.drop_prefix string 1)
-      | _ -> string)
+       | '0' -> drop_unnecessary_zeroes_from_string (String.drop_prefix string 1)
+       | _ -> string)
   in
   Quickcheck.test
     (Int.gen_incl 1 11
-    |> Quickcheck.Generator.bind ~f:(fun length ->
-           String.gen_with_length
-             length
-             (Quickcheck.Generator.union [ Char.gen_lowercase; Char.gen_digit ])))
+     |> Quickcheck.Generator.bind ~f:(fun length ->
+       String.gen_with_length
+         length
+         (Quickcheck.Generator.union [ Char.gen_lowercase; Char.gen_digit ])))
     ~f:(fun string ->
       assert (
         String.equal
@@ -54,7 +54,7 @@ let%expect_test "roundtrip: string -> int -> string" =
 
 let%expect_test "prefixes" =
   List.iter [ "0"; "a1"; "aklzj"; "t1_0"; "t1_a1"; "t1_aklzj" ] ~f:(fun test_case ->
-      Thing.Comment.Id.of_string test_case |> [%sexp_of: Thing.Comment.Id.t] |> print_s);
+    Thing.Comment.Id.of_string test_case |> [%sexp_of: Thing.Comment.Id.t] |> print_s);
   [%expect {|
     0
     a1

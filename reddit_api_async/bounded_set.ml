@@ -24,7 +24,7 @@ module Make (Hashable : Hashtbl.Key_plain) = struct
     | false ->
       Hash_queue.enqueue_back_exn hash_queue value ();
       (match Hash_queue.length hash_queue > capacity with
-      | false -> ()
-      | true -> Hash_queue.drop hash_queue `front)
+       | false -> ()
+       | true -> Hash_queue.drop hash_queue `front)
   ;;
 end

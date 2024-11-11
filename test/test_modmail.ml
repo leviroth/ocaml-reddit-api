@@ -4,19 +4,19 @@ open! Import
 
 let%expect_test "create_modmail_conversation" =
   with_cassette "create_modmail_conversation" ~f:(fun connection ->
-      let%bind conversation =
-        Connection.call_exn
-          connection
-          (Endpoint.create_modmail_conversation
-             ~subject:"Test subject"
-             ~body:"Test body"
-             ~subreddit:(Subreddit_name.of_string "ThirdRealm")
-             ~to_:(User (Username.of_string "BJO_test_user"))
-             ~hide_author:false)
-      in
-      print_s [%sexp (conversation : Modmail.Conversation.t)];
-      [%expect
-        {|
+    let%bind conversation =
+      Connection.call_exn
+        connection
+        (Endpoint.create_modmail_conversation
+           ~subject:"Test subject"
+           ~body:"Test body"
+           ~subreddit:(Subreddit_name.of_string "ThirdRealm")
+           ~to_:(User (Username.of_string "BJO_test_user"))
+           ~hide_author:false)
+    in
+    print_s [%sexp (conversation : Modmail.Conversation.t)];
+    [%expect
+      {|
         ((conversation
           (Object
            ((isAuto False)
@@ -53,25 +53,25 @@ let%expect_test "create_modmail_conversation" =
                (isInternal False) (date (String 2020-07-26T21:18:43.146061+00:00))
                (bodyMarkdown (String "Test body")) (id (String osvgj))))))))
          (modActions (Object ()))) |}];
-      return ())
+    return ())
 ;;
 
 let%expect_test "reply_modmail_conversation" =
   with_cassette "reply_modmail_conversation" ~f:(fun connection ->
-      let%bind conversation =
-        Connection.call_exn
-          connection
-          (Endpoint.reply_modmail_conversation
-             ~conversation_id:(Modmail.Conversation.Id.of_string "fsv44")
-             ~body:"Message body"
-             ~hide_author:false
-             ~internal:false)
-      in
-      print_s
-        [%sexp
-          { conversation_id : Modmail.Conversation.Id.t =
-              Modmail.Conversation.id conversation
-          }];
-      [%expect {| ((conversation_id fsv44)) |}];
-      return ())
+    let%bind conversation =
+      Connection.call_exn
+        connection
+        (Endpoint.reply_modmail_conversation
+           ~conversation_id:(Modmail.Conversation.Id.of_string "fsv44")
+           ~body:"Message body"
+           ~hide_author:false
+           ~internal:false)
+    in
+    print_s
+      [%sexp
+        { conversation_id : Modmail.Conversation.Id.t =
+            Modmail.Conversation.id conversation
+        }];
+    [%expect {| ((conversation_id fsv44)) |}];
+    return ())
 ;;

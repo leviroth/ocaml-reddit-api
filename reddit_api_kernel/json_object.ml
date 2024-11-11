@@ -50,13 +50,13 @@ module Make_kinded (Param : Kinded_param) = struct
     | None -> Param.of_data_field json
     | Some (`String kind) ->
       (match String.equal Param.kind kind with
-      | true -> Param.of_data_field (Jsonaf.member_exn "data" json)
-      | false ->
-        raise_s
-          [%message
-            "Unexpected JSON object kind"
-              ~expected:(Param.kind : string)
-              (json : Jsonaf.t)])
+       | true -> Param.of_data_field (Jsonaf.member_exn "data" json)
+       | false ->
+         raise_s
+           [%message
+             "Unexpected JSON object kind"
+               ~expected:(Param.kind : string)
+               (json : Jsonaf.t)])
     | Some kind ->
       raise_s
         [%message "JSON object kind is not a string" (kind : Jsonaf.t) (json : Jsonaf.t)]
@@ -68,12 +68,12 @@ module Make_kinded (Param : Kinded_param) = struct
 end
 
 module Make_kinded_simple (Param : sig
-  val kind : string
-end) =
+    val kind : string
+  end) =
 Make_kinded (struct
-  type t = Utils.t [@@deriving sexp_of]
+    type t = Utils.t [@@deriving sexp_of]
 
-  let kind = Param.kind
-  let of_data_field = [%of_jsonaf: t]
-  let to_data_field = [%jsonaf_of: t]
-end)
+    let kind = Param.kind
+    let of_data_field = [%of_jsonaf: t]
+    let to_data_field = [%jsonaf_of: t]
+  end)

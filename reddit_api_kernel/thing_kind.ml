@@ -71,16 +71,16 @@ let of_polymorphic_tag_with_uniform_data = function
 ;;
 
 let to_polymorphic_tag
-    t
-    ~data
-    ~award
-    ~comment
-    ~link
-    ~message
-    ~modmail_conversation
-    ~more_comments
-    ~subreddit
-    ~user
+  t
+  ~data
+  ~award
+  ~comment
+  ~link
+  ~message
+  ~modmail_conversation
+  ~more_comments
+  ~subreddit
+  ~user
   =
   match t with
   | Comment -> `Comment (comment data)

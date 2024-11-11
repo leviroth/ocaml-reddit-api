@@ -3,14 +3,14 @@ open Jsonaf.Export
 include Thing_intf
 
 module Make (Param : sig
-  val kind : Thing_kind.t
-end) =
+    val kind : Thing_kind.t
+  end) =
 struct
   include Json_object.Utils
 
   include Json_object.Make_kinded_simple (struct
-    let kind = Thing_kind.to_string Param.kind
-  end)
+      let kind = Thing_kind.to_string Param.kind
+    end)
 
   type t = Jsonaf.t Map.M(String).t [@@deriving sexp]
 
@@ -21,15 +21,15 @@ struct
       include Id36
 
       include Identifiable.Make (struct
-        include Id36
+          include Id36
 
-        let module_name = sprintf "%s.Id" module_name
+          let module_name = sprintf "%s.Id" module_name
 
-        let of_string s =
-          let prefix = sprintf !"%{Thing_kind}_" Param.kind in
-          Id36.of_string (String.chop_prefix_if_exists s ~prefix)
-        ;;
-      end)
+          let of_string s =
+            let prefix = sprintf !"%{Thing_kind}_" Param.kind in
+            Id36.of_string (String.chop_prefix_if_exists s ~prefix)
+          ;;
+        end)
     end
 
     include T
@@ -61,15 +61,15 @@ struct
     required_field
       "permalink"
       (string
-      >> Uri.of_string
-      >> Uri.with_uri ~scheme:(Some "https") ~host:(Some "reddit.com"))
+       >> Uri.of_string
+       >> Uri.with_uri ~scheme:(Some "https") ~host:(Some "reddit.com"))
   ;;
 end
 
 module Link = struct
   include Make (struct
-    let kind = Thing_kind.Link
-  end)
+      let kind = Thing_kind.Link
+    end)
 
   module Id = struct
     include (Id : module type of Id)
@@ -103,8 +103,8 @@ end
 
 module Comment' = struct
   include Make (struct
-    let kind = Thing_kind.Comment
-  end)
+      let kind = Thing_kind.Comment
+    end)
 
   module Score = struct
     type t =
@@ -128,34 +128,34 @@ module Comment' = struct
 end
 
 module Message = Make (struct
-  let kind = Thing_kind.Message
-end)
+    let kind = Thing_kind.Message
+  end)
 
 module Subreddit = struct
   include Make (struct
-    let kind = Thing_kind.Subreddit
-  end)
+      let kind = Thing_kind.Subreddit
+    end)
 
   let name = required_field "display_name" subreddit_name
 end
 
 module User = struct
   include Make (struct
-    let kind = Thing_kind.User
-  end)
+      let kind = Thing_kind.User
+    end)
 
   let name = required_field "name" username
   let subreddit = required_field "subreddit" [%of_jsonaf: Subreddit.t]
 end
 
 module Award = Make (struct
-  let kind = Thing_kind.Award
-end)
+    let kind = Thing_kind.Award
+  end)
 
 module More_comments = struct
   include Make (struct
-    let kind = Thing_kind.More_comments
-  end)
+      let kind = Thing_kind.More_comments
+    end)
 
   module Details = struct
     module By_children = struct
@@ -179,8 +179,8 @@ module More_comments = struct
 end
 
 module Modmail_conversation = Make (struct
-  let kind = Thing_kind.Modmail_conversation
-end)
+    let kind = Thing_kind.Modmail_conversation
+  end)
 
 module Fullname = struct
   module M = struct
@@ -253,7 +253,7 @@ module Comment = struct
       [%of_jsonaf: Poly.t Listing.t] json
       |> Listing.children
       |> List.map ~f:(function
-             | (`Comment _ | `More_comments _) as v -> v
-             | _ -> assert false)
+        | (`Comment _ | `More_comments _) as v -> v
+        | _ -> assert false)
   ;;
 end

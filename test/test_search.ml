@@ -7,23 +7,23 @@ let children_of_optional_listing opt = Option.to_list opt |> List.bind ~f:Listin
 let print_links links =
   let children = children_of_optional_listing links in
   List.iter children ~f:(fun link ->
-      print_s [%sexp (Thing.Link.id link : Thing.Link.Id.t)])
+    print_s [%sexp (Thing.Link.id link : Thing.Link.Id.t)])
 ;;
 
 let print_users_and_subreddits listing =
   let children = children_of_optional_listing listing in
   List.iter children ~f:(fun thing ->
-      print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)])
+    print_s [%sexp (Thing.Poly.fullname thing : Thing.Fullname.t)])
 ;;
 
 let%expect_test "search" =
   with_cassette "search" ~f:(fun connection ->
-      let%bind links, users_and_subreddits =
-        Connection.call_exn connection (Endpoint.search () ~query:"ocaml")
-      in
-      print_links links;
-      [%expect
-        {|
+    let%bind links, users_and_subreddits =
+      Connection.call_exn connection (Endpoint.search () ~query:"ocaml")
+    in
+    print_links links;
+    [%expect
+      {|
         ihn5kn
         idh5be
         idq8tq
@@ -49,26 +49,26 @@ let%expect_test "search" =
         i6e9gz
         i4mtbv
         icqrut |}];
-      print_users_and_subreddits users_and_subreddits;
-      [%expect];
-      return ())
+    print_users_and_subreddits users_and_subreddits;
+    [%expect];
+    return ())
 ;;
 
 let%expect_test "search__subreddits" =
   with_cassette "search__subreddits" ~f:(fun connection ->
-      let%bind links, users_and_subreddits =
-        Connection.call_exn
-          connection
-          (Endpoint.search
-             ()
-             ~types:(Set.singleton (module Endpoint.Parameters.Search_type) Subreddit)
-             ~query:"ocaml")
-      in
-      print_links links;
-      [%expect];
-      print_users_and_subreddits users_and_subreddits;
-      [%expect
-        {|
+    let%bind links, users_and_subreddits =
+      Connection.call_exn
+        connection
+        (Endpoint.search
+           ()
+           ~types:(Set.singleton (module Endpoint.Parameters.Search_type) Subreddit)
+           ~query:"ocaml")
+    in
+    print_links links;
+    [%expect];
+    print_users_and_subreddits users_and_subreddits;
+    [%expect
+      {|
         (Subreddit 2qh60)
         (Subreddit 2qh36)
         (Subreddit 3fcct)
@@ -94,22 +94,22 @@ let%expect_test "search__subreddits" =
         (Subreddit 2sslb)
         (Subreddit 3cmf4)
         (Subreddit 3cv1n) |}];
-      return ())
+    return ())
 ;;
 
 let%expect_test "search__all" =
   with_cassette "search__all" ~f:(fun connection ->
-      let%bind links, users_and_subreddits =
-        Connection.call_exn
-          connection
-          (Endpoint.search
-             ()
-             ~types:Endpoint.Parameters.Search_type.(Set.of_list all)
-             ~query:"spez")
-      in
-      print_links links;
-      [%expect
-        {|
+    let%bind links, users_and_subreddits =
+      Connection.call_exn
+        connection
+        (Endpoint.search
+           ()
+           ~types:Endpoint.Parameters.Search_type.(Set.of_list all)
+           ~query:"spez")
+    in
+    print_links links;
+    [%expect
+      {|
         ipiwyi
         iav0ir
         ipjm8d
@@ -132,11 +132,11 @@ let%expect_test "search__all" =
         h7uh5b
         iot9mx
         ig4086 |}];
-      print_users_and_subreddits users_and_subreddits;
-      [%expect
-        {|
+    print_users_and_subreddits users_and_subreddits;
+    [%expect
+      {|
         (Subreddit 2qij9)
         (User 1w72)
         (Subreddit 3glzb) |}];
-      return ())
+    return ())
 ;;

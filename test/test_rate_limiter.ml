@@ -151,10 +151,10 @@ let%expect_test _ =
   (* Exhausting the remaining limit causes us to be not-ready. *)
   let%bind () =
     Deferred.repeat_until_finished 10 (function
-        | 0 -> return (`Finished ())
-        | n ->
-          let%bind () = Rate_limiter.permit_request rate_limiter in
-          return (`Repeat (n - 1)))
+      | 0 -> return (`Finished ())
+      | n ->
+        let%bind () = Rate_limiter.permit_request rate_limiter in
+        return (`Repeat (n - 1)))
   in
   print ();
   [%expect

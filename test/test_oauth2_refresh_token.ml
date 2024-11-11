@@ -20,27 +20,27 @@ let with_cassette cassette_name ~f =
 
 let%expect_test "oauth2_refresh_token" =
   with_cassette "oauth2_refresh_token" ~f:(fun connection ->
-      let%bind link = get_link_exn connection "odlsl2" in
-      print_s
-        [%sexp
-          { id : Thing.Link.Id.t = Thing.Link.id link
-          ; title : string = Thing.Link.title link
-          }];
-      [%expect {| ((id odlsl2) (title test)) |}];
-      return ())
+    let%bind link = get_link_exn connection "odlsl2" in
+    print_s
+      [%sexp
+        { id : Thing.Link.Id.t = Thing.Link.id link
+        ; title : string = Thing.Link.title link
+        }];
+    [%expect {| ((id odlsl2) (title test)) |}];
+    return ())
 ;;
 
 let%expect_test "oauth2_refresh_token_insufficient_scope" =
   let%bind () =
     with_cassette "oauth2_refresh_token_insufficient_scope" ~f:(fun connection ->
-        Expect_test_helpers_async.show_raise_async (fun () ->
-            let%bind link = get_link_exn connection "odlsl2" in
-            print_s
-              [%sexp
-                { id : Thing.Link.Id.t = Thing.Link.id link
-                ; title : string = Thing.Link.title link
-                }];
-            return ()))
+      Expect_test_helpers_async.show_raise_async (fun () ->
+        let%bind link = get_link_exn connection "odlsl2" in
+        print_s
+          [%sexp
+            { id : Thing.Link.Id.t = Thing.Link.id link
+            ; title : string = Thing.Link.title link
+            }];
+        return ()))
   in
   [%expect
     {|
@@ -88,9 +88,9 @@ let%expect_test "oauth2_refresh_token_insufficient_scope" =
 let%expect_test "oauth2_refresh_token__bad_token" =
   let%bind () =
     with_cassette "oauth2_refresh_token__bad_token" ~f:(fun connection ->
-        Expect_test_helpers_async.show_raise_async (fun () ->
-            let%bind _link = get_link_exn connection "odlsl2" in
-            return ()))
+      Expect_test_helpers_async.show_raise_async (fun () ->
+        let%bind _link = get_link_exn connection "odlsl2" in
+        return ()))
   in
   [%expect
     {|
@@ -134,20 +134,20 @@ let%expect_test "oauth2_refresh_token__bad_token" =
 
 let%expect_test "oauth2_expired_access_token" =
   with_cassette "oauth2_expired_access_token" ~f:(fun connection ->
-      (* Note this is a bit of a hack: the test time source is currently also
-        pinned to [Time_ns.max_value_representable], but the implementation
-        details of [Auth.is_almsot_expired] are such that we will not treat the
-        token as expired, and we will make an actual request (as desired). *)
-      Connection.For_testing.set_access_token
-        connection
-        ~token:"71814082-xYAyuuglNJA8Br9B4Sot-Ws5CBi6BA"
-        ~expiration:Time_ns.max_value_representable;
-      let%bind link = get_link_exn connection "odlsl2" in
-      print_s
-        [%sexp
-          { id : Thing.Link.Id.t = Thing.Link.id link
-          ; title : string = Thing.Link.title link
-          }];
-      [%expect {| ((id odlsl2) (title test)) |}];
-      return ())
+    (* Note this is a bit of a hack: the test time source is currently also
+       pinned to [Time_ns.max_value_representable], but the implementation
+       details of [Auth.is_almsot_expired] are such that we will not treat the
+       token as expired, and we will make an actual request (as desired). *)
+    Connection.For_testing.set_access_token
+      connection
+      ~token:"71814082-xYAyuuglNJA8Br9B4Sot-Ws5CBi6BA"
+      ~expiration:Time_ns.max_value_representable;
+    let%bind link = get_link_exn connection "odlsl2" in
+    print_s
+      [%sexp
+        { id : Thing.Link.Id.t = Thing.Link.id link
+        ; title : string = Thing.Link.title link
+        }];
+    [%expect {| ((id odlsl2) (title test)) |}];
+    return ())
 ;;

@@ -18,14 +18,14 @@ end
 type t = Entry.t list [@@deriving sexp]
 
 include Json_object.Make_kinded (struct
-  type nonrec t = t [@@deriving sexp_of]
+    type nonrec t = t [@@deriving sexp_of]
 
-  let of_data_field json =
-    match Jsonaf.list json with
-    | Some entries -> List.map entries ~f:[%of_jsonaf: Entry.t]
-    | None -> raise_s [%message "Invalid [Karma_list] JSON" (json : Jsonaf.t)]
-  ;;
+    let of_data_field json =
+      match Jsonaf.list json with
+      | Some entries -> List.map entries ~f:[%of_jsonaf: Entry.t]
+      | None -> raise_s [%message "Invalid [Karma_list] JSON" (json : Jsonaf.t)]
+    ;;
 
-  let to_data_field t = `Array (List.map t ~f:[%jsonaf_of: Entry.t])
-  let kind = "KarmaList"
-end)
+    let to_data_field t = `Array (List.map t ~f:[%jsonaf_of: Entry.t])
+    let kind = "KarmaList"
+  end)

@@ -70,15 +70,15 @@ module By_headers = struct
         candidates
         ~compare:
           (Comparable.lift Time_ns.Span.compare ~f:(fun time' ->
-               Time_ns.abs_diff time time'))
+             Time_ns.abs_diff time time'))
       |> Option.value_exn
     ;;
 
     let%expect_test _ =
       List.iter [ "2020-11-30 18:48:01.02Z"; "2020-11-30 18:47:59.02Z" ] ~f:(fun time ->
-          let time = Time_ns.of_string_with_utc_offset time in
-          print_s
-            [%sexp (snap_to_nearest Time_ns.Span.minute time : Time_ns.Alternate_sexp.t)]);
+        let time = Time_ns.of_string_with_utc_offset time in
+        print_s
+          [%sexp (snap_to_nearest Time_ns.Span.minute time : Time_ns.Alternate_sexp.t)]);
       [%expect {|
           "2020-11-30 18:48:00Z"
           "2020-11-30 18:48:00Z" |}]
@@ -89,27 +89,27 @@ module By_headers = struct
         date_string
         "%3s, %2d %3s %4d %2d:%2d:%2d GMT"
         (fun day_of_week d month y hr min sec ->
-          let day_of_week = Day_of_week.of_string day_of_week in
-          let month = Month.of_string month in
-          let date = Date.create_exn ~y ~m:month ~d in
-          (match Day_of_week.equal day_of_week (Date.day_of_week date) with
-          | true -> ()
-          | false ->
-            raise_s
-              [%message
-                "HTTP response: Day of week did not match parsed date"
-                  (day_of_week : Day_of_week.t)
-                  (date : Date.t)
-                  (date_string : string)]);
-          let ofday = Time_ns.Ofday.create ~hr ~min ~sec () in
-          Time_ns.of_date_ofday date ofday ~zone:Time_float.Zone.utc)
+           let day_of_week = Day_of_week.of_string day_of_week in
+           let month = Month.of_string month in
+           let date = Date.create_exn ~y ~m:month ~d in
+           (match Day_of_week.equal day_of_week (Date.day_of_week date) with
+            | true -> ()
+            | false ->
+              raise_s
+                [%message
+                  "HTTP response: Day of week did not match parsed date"
+                    (day_of_week : Day_of_week.t)
+                    (date : Date.t)
+                    (date_string : string)]);
+           let ofday = Time_ns.Ofday.create ~hr ~min ~sec () in
+           Time_ns.of_date_ofday date ofday ~zone:Time_float.Zone.utc)
     ;;
 
     let%expect_test _ =
       print_s
         [%sexp
           (parse_http_header_date "Wed, 21 Oct 2015 07:28:00 GMT"
-            : Time_ns.Alternate_sexp.t)];
+           : Time_ns.Alternate_sexp.t)];
       [%expect {| "2015-10-21 07:28:00Z" |}]
     ;;
 
@@ -176,8 +176,8 @@ module By_headers = struct
     | Waiting_on_first_request -> Check_after_receiving_response
     | Consuming_rate_limit { remaining_api_calls; reset_time } ->
       (match remaining_api_calls > 0 with
-      | true -> Now
-      | false -> After reset_time)
+       | true -> Now
+       | false -> After reset_time)
   ;;
 
   let sent_request_unchecked t ~now =
@@ -209,12 +209,12 @@ module By_headers = struct
       Created
     | Some response_server_side_info ->
       (match t with
-      | Created ->
-        raise_s [%message "[received_response] called before [sent_request_unchecked]."]
-      | Waiting_on_first_request -> Consuming_rate_limit response_server_side_info
-      | Consuming_rate_limit server_side_info ->
-        Consuming_rate_limit
-          (Server_side_info.freshest server_side_info response_server_side_info))
+       | Created ->
+         raise_s [%message "[received_response] called before [sent_request_unchecked]."]
+       | Waiting_on_first_request -> Consuming_rate_limit response_server_side_info
+       | Consuming_rate_limit server_side_info ->
+         Consuming_rate_limit
+           (Server_side_info.freshest server_side_info response_server_side_info))
   ;;
 end
 
@@ -234,11 +234,11 @@ module Combined = struct
     match
       List.map ts ~f:wait_until
       |> List.max_elt ~compare:(fun a b ->
-             match a, b with
-             | Now, _ -> -1
-             | _, Now -> 1
-             | After a, After b -> Time_ns.compare a b
-             | _, _ -> 0)
+        match a, b with
+        | Now, _ -> -1
+        | _, Now -> 1
+        | After a, After b -> Time_ns.compare a b
+        | _, _ -> 0)
     with
     | Some v -> v
     | None -> Now
