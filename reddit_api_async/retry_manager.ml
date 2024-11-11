@@ -104,7 +104,7 @@ let on_permanent_response t =
   match t.state with
   | Working_normally -> ()
   | Waiting_for_issue_resolution { finished } ->
-    Ivar.fill finished ();
+    Ivar.fill_exn finished ();
     t.state <- Working_normally
 ;;
 
@@ -114,7 +114,7 @@ let check_server t =
       match Permanent_error.classify_response response, t.state with
       | Permanent _, Working_normally -> return (`Finished ())
       | Permanent _, Waiting_for_issue_resolution { finished } ->
-        Ivar.fill finished ();
+        Ivar.fill_exn finished ();
         t.state <- Working_normally;
         return (`Finished ())
       | Transient_error, Working_normally ->

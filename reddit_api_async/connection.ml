@@ -289,7 +289,7 @@ module Local = struct
         t.access_token <- Outstanding_request ivar;
         let%bind result = get_token cohttp_client_wrapper t.credentials ~time_source in
         t.access_token <- No_outstanding_request (Result.ok result);
-        Ivar.fill ivar result;
+        Ivar.fill_exn ivar result;
         return result
       in
       let%bind result =
@@ -571,6 +571,7 @@ module Remote = struct
         ~bin_query:[%bin_type_class: Endpoint.Sequencer.t option * Uri.t]
         ~bin_response:
           [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
+        ~include_in_error_count:Result
     ;;
 
     let post_form =
@@ -582,6 +583,7 @@ module Remote = struct
             Endpoint.Sequencer.t option * Uri.t * (string * string list) list]
         ~bin_response:
           [%bin_type_class: (Cohttp_response.t * string, Exn.t Error.t) Result.t]
+        ~include_in_error_count:Result
     ;;
   end
 
@@ -628,6 +630,7 @@ module Remote = struct
       Rpc.Implementations.create_exn
         ~implementations:[ get; post_form ]
         ~on_unknown_rpc:`Close_connection
+        ~on_exception:Close_connection
     ;;
 
     let serve t ~where_to_listen =
