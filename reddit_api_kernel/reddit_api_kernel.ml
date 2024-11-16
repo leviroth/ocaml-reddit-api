@@ -1,4 +1,5 @@
 module Comment_response = Comment_response
+module Credentials = Credentials
 module Endpoint = Endpoint
 module Id36 = Id36
 module Inbox_item = Inbox_item

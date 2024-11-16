@@ -6,7 +6,7 @@ let with_cassette cassette_name ~f =
   let credentials =
     match Sys.getenv "CREDENTIALS_REFRESH_TOKEN" with
     | Some credential_path ->
-      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Connection.Credentials.t]
+      Sexp.load_sexp_conv_exn credential_path [%of_sexp: Credentials.t]
     | None ->
       Refresh_token
         { client_id = "TEST_CLIENT_ID"
