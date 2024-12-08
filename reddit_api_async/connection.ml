@@ -113,39 +113,6 @@ let live_cohttp_client library_client_user_agent : (module Cohttp_client_wrapper
 
 module Local = struct
   module Auth = struct
-    module Access_token = struct
-      type t =
-        { token : string
-        ; expiration : Time_ns_unix.t
-        }
-      [@@deriving sexp]
-
-      let is_almost_expired { expiration; _ } ~time_source =
-        let time_with_padding =
-          Time_ns.add (Time_source.now time_source) (Time_ns.Span.of_int_sec 10)
-        in
-        Time_ns.( <= ) expiration time_with_padding
-      ;;
-    end
-
-    module Access_token_state = struct
-      type t =
-        | No_outstanding_request of Access_token.t option
-        | Outstanding_request of
-            (Access_token.t, Access_token_request_error.t) Result.t Deferred.t
-      [@@deriving sexp_of]
-    end
-
-    type t =
-      { credentials : Credentials.t
-      ; mutable access_token : Access_token_state.t
-      }
-    [@@deriving sexp_of]
-
-    let create credentials () =
-      { credentials; access_token = No_outstanding_request None }
-    ;;
-
     let get_token
       (module Cohttp_client_wrapper : Cohttp_client_wrapper)
       credentials
@@ -166,7 +133,11 @@ module Local = struct
       with
       | Error exn -> return (Error (Access_token_request_error.Cohttp_raised exn))
       | Ok (response, body_string) ->
-        let result : (Access_token.t, Access_token_request_error.t) Result.t =
+        let result
+          : ( Connection_state_machine.Access_token.t
+              , Access_token_request_error.t )
+              Result.t
+          =
           match Cohttp.Response.status response with
           | `Bad_request | `Unauthorized ->
             Error
@@ -198,35 +169,36 @@ module Local = struct
         return result
     ;;
 
-    let add_access_token t ~headers ~cohttp_client_wrapper ~time_source =
-      let get_token () =
-        let ivar = Ivar.create () in
-        t.access_token <- Outstanding_request (Ivar.read ivar);
-        let%bind result = get_token cohttp_client_wrapper t.credentials ~time_source in
-        t.access_token <- No_outstanding_request (Result.ok result);
-        Ivar.fill_exn ivar result;
-        return result
-      in
-      let%bind result =
-        match t.access_token with
-        | Outstanding_request deferred -> deferred
-        | No_outstanding_request None -> get_token ()
-        | No_outstanding_request (Some access_token) ->
-          (match Access_token.is_almost_expired access_token ~time_source with
-           | false -> return (Ok access_token)
-           | true -> get_token ())
-      in
-      match result with
-      | Error _ as error -> return error
-      | Ok { token; _ } ->
-        return
-          (Ok (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)))
-    ;;
+    (* TODO *)
+    (* let add_access_token t ~headers ~cohttp_client_wrapper ~time_source = *)
+    (*   let get_token () = *)
+    (*     let ivar = Ivar.create () in *)
+    (*     t.access_token <- Outstanding_request (Ivar.read ivar); *)
+    (*     let%bind result = get_token cohttp_client_wrapper t.credentials ~time_source in *)
+    (*     t.access_token <- No_outstanding_request (Result.ok result); *)
+    (*     Ivar.fill_exn ivar result; *)
+    (*     return result *)
+    (*   in *)
+    (*   let%bind result = *)
+    (*     match t.access_token with *)
+    (*     | Outstanding_request deferred -> deferred *)
+    (*     | No_outstanding_request None -> get_token () *)
+    (*     | No_outstanding_request (Some access_token) -> *)
+    (*       (match Access_token.is_almost_expired access_token ~time_source with *)
+    (*        | false -> return (Ok access_token) *)
+    (*        | true -> get_token ()) *)
+    (*   in *)
+    (*   match result with *)
+    (*   | Error _ as error -> return error *)
+    (*   | Ok { token; _ } -> *)
+    (*     return *)
+    (*       (Ok (Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token))) *)
+    (* ;; *)
   end
 
   type t =
-    { auth : Auth.t
-    ; rate_limiter : Rate_limiter.t
+    { mutable state_machine : Connection_state_machine.t
+    ; check : (unit, read_write) Bvar.t
     ; cohttp_client_wrapper : ((module Cohttp_client_wrapper)[@sexp.opaque])
     ; time_source : Time_source.t
     ; sequencer_table : (Nothing.t, Nothing.t) Sequencer_table.t
@@ -234,8 +206,10 @@ module Local = struct
   [@@deriving sexp_of]
 
   let create_internal cohttp_client_wrapper credentials ~time_source ~rate_limiter =
-    { auth = Auth.create credentials ()
-    ; rate_limiter
+    let state_machine = Connection_state_machine.create ~credentials ~rate_limiter in
+    let check = Bvar.create () in
+    { state_machine
+    ; check
     ; cohttp_client_wrapper
     ; time_source
     ; sequencer_table = Sequencer_table.create ()
@@ -263,13 +237,55 @@ module Local = struct
 
   let handle_request
     ?sequence
-    { auth; rate_limiter; cohttp_client_wrapper; time_source; sequencer_table }
+    ({ state_machine; check; cohttp_client_wrapper; time_source; sequencer_table } as t)
     ~f
-    ~headers:initial_headers
+    ~headers
     =
     let run () =
       repeat_until_finished_with_result () (fun () ->
         let open Deferred.Result.Let_syntax in
+        let now = Time_source.now time_source in
+        let new_state_machine, what_to_do =
+          Connection_state_machine.send_request state_machine ~now
+        in
+        t.state_machine <- new_state_machine;
+        match what_to_do with
+        | Send_now { access_token } ->
+          let headers =
+            Cohttp.Header.add headers "Authorization" (sprintf "bearer %s" token)
+          in
+        let%bind ((response, _body) as result) = f headers in
+        let authorization_failed =
+          match Cohttp.Response.status response with
+          | `Unauthorized ->
+            (match
+               Cohttp.Header.get (Cohttp.Response.headers response) "www-authenticate"
+             with
+             | Some "Bearer realm=\"reddit\", error=\"invalid_token\"" -> true
+             | Some _ | None -> false)
+          | _ -> false
+        in
+        (* TODO: Need a way of telling state machine that auth failed *)
+        t.state_machine <-
+        Connection_state_machine.received_response t.state_machine response ;
+        ()
+        | Get_access_token ->
+          let%bind new_token =
+            Auth.get_token
+              cohttp_client_wrapper
+              (Connection_state_machine.credentials t.state_machine)
+              ~time_source
+          in
+          t.state_machine
+          <- Connection_state_machine.got_access_token t.state_machine new_token;
+          Bvar.broadcast check ();
+          return (`Repeat ())
+        | Wait_for_access_token_response -> Deferred.return (`Repeat (Bvar.wait check))
+        | Send_after time | Check_after_receiving_response -> ())
+    in
+    run ()
+  ;;
+
         let%bind headers =
           Auth.add_access_token
             auth

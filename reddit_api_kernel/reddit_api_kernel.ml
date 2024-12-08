@@ -1,4 +1,5 @@
 module Comment_response = Comment_response
+module Connection_state_machine = Connection_state_machine
 module Credentials = Credentials
 module Endpoint = Endpoint
 module Id36 = Id36
