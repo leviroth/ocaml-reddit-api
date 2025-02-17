@@ -39,5 +39,6 @@
     (jsonaf            (>= v0.16.0))
     (ppx_jane          (>= v0.16.0))
     (ppx_jsonaf_conv   (>= v0.16.0))
+    (prometheus        (>= 1.2))
     (reddit_api_kernel (=  :version))
     (sequencer_table   (>= v0.16.0))))

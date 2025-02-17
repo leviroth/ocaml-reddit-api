@@ -1,3 +1,0 @@
-[submodule "vendor/prometheus"]
-	path = vendor/prometheus
-	url = git@github.com:leviroth/prometheus.git
