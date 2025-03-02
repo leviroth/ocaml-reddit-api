@@ -820,13 +820,23 @@ module For_testing = struct
         ~secret:(Credentials.basic_auth_string credentials)
         ~placeholder:"authorization";
       let%bind file_exists = Sys.file_exists_exn filename in
-      let (module Cassette) =
+      let mode =
         match file_exists with
-        | true -> reading filename placeholders
-        | false -> recording filename placeholders
+        | true -> `Reading
+        | false -> `Recording
+      in
+      let (module Cassette) =
+        match mode with
+        | `Reading -> reading filename placeholders
+        | `Recording -> recording filename placeholders
       in
       let rate_limiter =
-        Rate_limiter.of_state_machine all_rate_limiters Cassette.time_source
+        let state_machine =
+          match mode with
+          | `Reading -> Rate_limiter_state_machine.combine []
+          | `Recording -> all_rate_limiters
+        in
+        Rate_limiter.of_state_machine state_machine Cassette.time_source
       in
       let connection =
         T
