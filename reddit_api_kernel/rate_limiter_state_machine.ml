@@ -48,7 +48,9 @@ module With_minimum_delay = struct
 
   let send_request t ~now =
     match wait_until t with
-    | Now -> { t with last_request = Some now }, When_to_send.Now
+    | Now ->
+      Debug.eprint_s [%message "" (now : Time_ns.t)];
+      { t with last_request = Some now }, When_to_send.Now
     | wait_until -> t, wait_until
   ;;
 

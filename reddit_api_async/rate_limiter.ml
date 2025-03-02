@@ -38,15 +38,24 @@ let wait_until_ready t =
 ;;
 
 let permit_request t =
-  Deferred.repeat_until_finished () (fun () ->
-    let%bind () = wait_until_ready t in
-    let new_state, when_to_send =
-      Rate_limiter_state_machine.send_request t.state ~now:(Time_source.now t.time_source)
-    in
-    t.state <- new_state;
-    match when_to_send with
-    | Now -> return (`Finished ())
-    | _ -> return (`Repeat ()))
+  Deferred.choose
+    [ choice
+        (Deferred.repeat_until_finished () (fun () ->
+           let%bind () = wait_until_ready t in
+           let new_state, when_to_send =
+             Rate_limiter_state_machine.send_request
+               t.state
+               ~now:(Time_source.now t.time_source)
+           in
+           t.state <- new_state;
+           match when_to_send with
+           | Now -> return (`Finished ())
+           | _ -> return (`Repeat ())))
+        Fn.id
+    ; choice
+        (Clock_ns.after (Time_ns.Span.of_int_sec 5))
+        (fun () -> raise_s [%message "asdf" (t.state : Rate_limiter_state_machine.t)])
+    ]
 ;;
 
 let notify_response t response =
