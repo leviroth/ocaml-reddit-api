@@ -12,7 +12,7 @@ module type Basic = sig
 
   val kind : string
   val wait_until : t -> When_to_send.t
-  val sent_request_unchecked : t -> now:Time_ns.t -> t
+  val send_request : t -> now:Time_ns.t -> t * When_to_send.t
   val received_response : t -> Cohttp.Response.t -> t
 end
 
@@ -21,8 +21,9 @@ type t = T : (module Basic with type t = 't) * 't -> t
 let sexp_of_t (T ((module S), t)) : Sexp.t = List [ Atom S.kind; [%sexp_of: S.t] t ]
 let wait_until (T ((module S), t)) = S.wait_until t
 
-let sent_request_unchecked (T (((module M) as m), t)) ~now =
-  T (m, M.sent_request_unchecked t ~now)
+let send_request (T (((module M) as m), t)) ~now =
+  let new_state, action = M.send_request t ~now in
+  T (m, new_state), action
 ;;
 
 let received_response (T (((module M) as m), t)) response =
@@ -45,7 +46,12 @@ module With_minimum_delay = struct
     | Some time -> After (Time_ns.add time t.delay)
   ;;
 
-  let sent_request_unchecked t ~now = { t with last_request = Some now }
+  let send_request t ~now =
+    match wait_until t with
+    | Now -> { t with last_request = Some now }, When_to_send.Now
+    | wait_until -> t, wait_until
+  ;;
+
   let received_response t (_ : Cohttp.Response.t) = t
 end
 
@@ -180,23 +186,24 @@ module By_headers = struct
        | false -> After reset_time)
   ;;
 
-  let sent_request_unchecked t ~now =
-    match t with
-    | Created -> Waiting_on_first_request
-    | Waiting_on_first_request ->
-      raise_s
-        [%message
-          "[sent_request_unchecked] illegally called in [Waiting_on_first_request] state."]
-    | Consuming_rate_limit server_side_info ->
-      let base_server_side_info =
-        match Time_ns.( <= ) server_side_info.reset_time now with
-        | false -> server_side_info
-        | true -> Server_side_info.state_at_start_of_window ~representative_time:now
-      in
-      Consuming_rate_limit
-        { base_server_side_info with
-          remaining_api_calls = base_server_side_info.remaining_api_calls - 1
-        }
+  let send_request t ~now =
+    let wait_until = wait_until t in
+    let new_t =
+      match t with
+      | Created -> Waiting_on_first_request
+      | Waiting_on_first_request -> Waiting_on_first_request
+      | Consuming_rate_limit server_side_info ->
+        let base_server_side_info =
+          match Time_ns.( <= ) server_side_info.reset_time now with
+          | false -> server_side_info
+          | true -> Server_side_info.state_at_start_of_window ~representative_time:now
+        in
+        Consuming_rate_limit
+          { base_server_side_info with
+            remaining_api_calls = base_server_side_info.remaining_api_calls - 1
+          }
+    in
+    new_t, wait_until
   ;;
 
   let received_response t response =
@@ -244,7 +251,13 @@ module Combined = struct
     | None -> Now
   ;;
 
-  let sent_request_unchecked ts ~now = List.map ts ~f:(sent_request_unchecked ~now)
+  let send_request ts ~now =
+    match wait_until ts with
+    | Now ->
+      let new_ts = List.map ts ~f:(fun t -> fst (send_request t ~now)) in
+      new_ts, When_to_send.Now
+    | wait_until -> ts, wait_until
+  ;;
 
   let received_response ts response =
     List.map ts ~f:(fun t -> received_response t response)

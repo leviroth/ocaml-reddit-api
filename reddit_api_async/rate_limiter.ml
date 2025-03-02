@@ -40,14 +40,13 @@ let wait_until_ready t =
 let permit_request t =
   Deferred.repeat_until_finished () (fun () ->
     let%bind () = wait_until_ready t in
-    match is_ready t with
-    | false -> return (`Repeat ())
-    | true ->
-      t.state
-      <- Rate_limiter_state_machine.sent_request_unchecked
-           t.state
-           ~now:(Time_source.now t.time_source);
-      return (`Finished ()))
+    let new_state, when_to_send =
+      Rate_limiter_state_machine.send_request t.state ~now:(Time_source.now t.time_source)
+    in
+    t.state <- new_state;
+    match when_to_send with
+    | Now -> return (`Finished ())
+    | _ -> return (`Repeat ()))
 ;;
 
 let notify_response t response =

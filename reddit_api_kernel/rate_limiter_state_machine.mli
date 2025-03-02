@@ -19,7 +19,7 @@ val combine : t list -> t
 
 (** [sent_request_unchecked] should called immediately after sending a request.
     It is the caller's responsibility to first call {!wait_until}. *)
-val sent_request_unchecked : t -> now:Time_ns.t -> t
+val send_request : t -> now:Time_ns.t -> t * When_to_send.t
 
 val received_response : t -> Cohttp.Response.t -> t
 
