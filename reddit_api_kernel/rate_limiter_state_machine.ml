@@ -203,15 +203,24 @@ module By_headers = struct
     let headers = Cohttp.Response.headers response in
     match Server_side_info.t_of_headers headers with
     | None ->
-      (* We assume that, in the absence of ratelimit headers, we must have hit
-         some authentication failure. As a heuristic to avoid getting stuck, we
-         immediately reset [t.ready]. *)
-      Created
+      (* Reddit sometimes sends an otherwise good response without rate limit
+         headers. If this happens in the [Waiting_on_first_request] state, we don't
+         want to remain in that state or we'll never send another request. *)
+      (match t with
+       | Waiting_on_first_request -> Created
+       | Created | Consuming_rate_limit _ -> t)
     | Some response_server_side_info ->
       (match t with
-       | Created ->
-         raise_s [%message "[received_response] called before [sent_request_unchecked]."]
-       | Waiting_on_first_request -> Consuming_rate_limit response_server_side_info
+       (* In theory, the [Created] case should never be reached: if [t] is
+          [Created], then either this is a new rate limiter and we haven't called
+          [sent_request_unchecked] yet - in which case there should be no request
+          to receive a response, or [t] was previously [Waiting_on_first_request]
+          and became [Created] via a call to [received_response] - in which case
+          there should be no other outstanding request to receive a response. But,
+          in case we've made a mistake, it's less disruptive to take the response
+          headers at face value. *)
+       | Created | Waiting_on_first_request ->
+         Consuming_rate_limit response_server_side_info
        | Consuming_rate_limit server_side_info ->
          Consuming_rate_limit
            (Server_side_info.freshest server_side_info response_server_side_info))
