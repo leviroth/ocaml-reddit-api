@@ -17,19 +17,8 @@ end
 
 module Permanent_error = struct
   module Access_token_request_error = struct
-    type t =
-      | Token_request_rejected of
-          { response : Cohttp.Response.t
-          ; body : Cohttp.Body.t
-          }
-      | Other_http_error of
-          { response : Cohttp.Response.t
-          ; body : Cohttp.Body.t
-          }
-    [@@deriving sexp_of]
-
     let classify_error (error : Connection.Access_token_request_error.t)
-      : ('a, t) Transience.t
+      : ('a, Connection.Access_token_request_error.t) Transience.t
       =
       match error with
       | Cohttp_raised _ | Json_parsing_error _ -> Transient_error
@@ -43,15 +32,7 @@ module Permanent_error = struct
   end
 
   module Endpoint_error = struct
-    type t =
-      | Http_error of
-          { response : Cohttp.Response.t
-          ; body : Cohttp.Body.t
-          }
-      | Json_response_errors of Endpoint.Json_response_error.t list
-    [@@deriving sexp_of]
-
-    let classify_error (error : Endpoint.Error.t) : ('a, t) Transience.t =
+    let classify_error (error : Endpoint.Error.t) : ('a, Endpoint.Error.t) Transience.t =
       match error with
       | Cohttp_raised _ | Json_parsing_error _ -> Transient_error
       | Json_response_errors errors -> Permanent (Error (Json_response_errors errors))
@@ -62,11 +43,6 @@ module Permanent_error = struct
     ;;
   end
 
-  type t =
-    | Access_token_request_error of Access_token_request_error.t
-    | Endpoint_error of Endpoint_error.t
-  [@@deriving sexp_of]
-
   let classify_response (result : (_, Endpoint.Error.t Connection.Error.t) Result.t)
     : (_, _) Transience.t
     =
@@ -74,10 +50,11 @@ module Permanent_error = struct
     | Ok result -> Permanent (Ok result)
     | Error (Access_token_request_error error) ->
       Access_token_request_error.classify_error error
-      |> Transience.map_error ~f:(fun error -> Access_token_request_error error)
+      |> Transience.map_error ~f:(fun error ->
+        Connection.Error.Access_token_request_error error)
     | Error (Endpoint_error error) ->
       Endpoint_error.classify_error error
-      |> Transience.map_error ~f:(fun error -> Endpoint_error error)
+      |> Transience.map_error ~f:(fun error -> Connection.Error.Endpoint_error error)
   ;;
 end
 
@@ -145,12 +122,21 @@ let rec call t endpoint =
        on_permanent_response t;
        return response
      | Transient_error ->
-       let request = endpoint.request in
-       [%log.error
-         log
-           "Transient error"
-           (request : Endpoint.Request.t)
-           (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
        let%bind () = on_transient_error t in
-       call t endpoint)
+       let request = endpoint.request in
+       (match request with
+        | Get _ ->
+          [%log.error
+            log
+              "Transient error"
+              (request : Endpoint.Request.t)
+              (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
+          call t endpoint
+        | Post_form _ ->
+          [%log.error
+            log
+              "Got error for POST request; treating as permanent"
+              (request : Endpoint.Request.t)
+              (response : (_, Endpoint.Error.t Connection.Error.t) Result.t)];
+          return response))
 ;;
