@@ -15,7 +15,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.2
+          ocaml-compiler: 5.3
           dune-cache: true
           opam-repositories: |
             janestreet-bleeding: git+https://github.com/janestreet/opam-repository.git#cbba1c46769a588f795a9dd7b397c62cb71b03e9
@@ -36,7 +36,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.2
+          ocaml-compiler: 5.3
           dune-cache: true
 
       - name: Lint doc
@@ -66,7 +66,7 @@ jobs:
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.2
+          ocaml-compiler: 5.3
           dune-cache: true
 
       - name: Lint opam
