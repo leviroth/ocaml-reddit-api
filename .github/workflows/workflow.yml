@@ -21,6 +21,12 @@ jobs:
             janestreet-bleeding: git+https://github.com/janestreet/opam-repository.git#cbba1c46769a588f795a9dd7b397c62cb71b03e9
             default: https://opam.ocaml.org
 
+      - run: opam pin add ppxlib 0.35.0
+
+      - run: opam pin add ppxlib_jane git+https://github.com/janestreet/ppxlib_jane.git#14cf4bd37c310cdc81955eec961a7795c75a274a
+
+      - run: opam pin add typerep git+https://github.com/smuenzel/typerep.git#9e6abef4dbe71840aaf173a1a10be88ccad80f5b
+
       - run: opam install . --deps-only --with-test
 
       - run: opam exec -- dune build
