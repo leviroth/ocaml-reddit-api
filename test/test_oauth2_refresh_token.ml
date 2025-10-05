@@ -48,7 +48,6 @@ let%expect_test "oauth2_refresh_token_insufficient_scope" =
       Endpoint_error (
         Http_error
         (response (
-          (encoding (Fixed 38))
           (headers (
             (accept-ranges                 bytes)
             (access-control-allow-origin   *)
@@ -79,9 +78,9 @@ let%expect_test "oauth2_refresh_token_insufficient_scope" =
             (x-ua-compatible        IE=edge)
             (x-xss-protection       "1; mode=block")))
           (version HTTP_1_1)
-          (status  Forbidden)
-          (flush   false)))
-        (body (String "{\"message\": \"Forbidden\", \"error\": 403}"))))) |}];
+          (status  Forbidden)))
+        (body (String "{\"message\": \"Forbidden\", \"error\": 403}")))))
+    |}];
   return ()
 ;;
 
@@ -98,7 +97,6 @@ let%expect_test "oauth2_refresh_token__bad_token" =
       Access_token_request_error (
         Token_request_rejected
         (response (
-          (encoding (Fixed 40))
           (headers (
             (accept-ranges  bytes)
             (cache-control  "max-age=0, must-revalidate")
@@ -126,9 +124,9 @@ let%expect_test "oauth2_refresh_token__bad_token" =
             (x-ua-compatible        IE=edge)
             (x-xss-protection       "1; mode=block")))
           (version HTTP_1_1)
-          (status  Bad_request)
-          (flush   false)))
-        (body (String "{\"message\": \"Bad Request\", \"error\": 400}"))))) |}];
+          (status  Bad_request)))
+        (body (String "{\"message\": \"Bad Request\", \"error\": 400}")))))
+    |}];
   return ()
 ;;
 

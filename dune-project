@@ -33,7 +33,7 @@
   (depends
     (async        (>= v0.16.0))
     (async_ssl    (>= v0.16.0))
-    (cohttp-async (>= 5.0.0))
+    (cohttp-async (>= 6.0.0))
     (core         (>= v0.16.0))
     (expect_test_helpers_async (and (>= v0.16.0) :with-test))
     (jsonaf            (>= v0.16.0))
